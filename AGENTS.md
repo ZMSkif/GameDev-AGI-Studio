@@ -9,3 +9,6 @@
 7. Begin with repository/decision/contract audit, then create your own phased GitHub Issues and Projects from the binding decisions; start with feasibility tests, not production claims.
 8. For each PR: link decisions and tasks, tests and actual results, rollback, risks, licensing and independent review.
 9. Treat the 2026-11-14 architecture baseline as a **consolidated source**, not a verbatim transcript of all 142 historical answers; never fabricate original dialogue citations.
+
+10. On first setup, create the **Decision Register** GitHub Project with `Area` and `Phase` fields, attach all `decision` Issues (script: `scripts/setup_decision_register.sh`); never recreate existing decisions.
+11. Validate `contracts/v1/manifest.json` and run `python scripts/validate_contracts.py` before creating implementation plans.
