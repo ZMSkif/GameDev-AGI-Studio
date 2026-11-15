@@ -14,7 +14,7 @@ echo "Using Project #$project"
 existing="$(gh project field-list "$project" --owner "$OWNER" --format json --jq '.fields[].name')"
 if ! grep -qx 'Area' <<<"$existing"; then
   gh project field-create "$project" --owner "$OWNER" --name Area --data-type SINGLE_SELECT \
-    --single-select-options 'Governance,Architecture,Agents,Providers,Memory,Security,Tools,Workers,Games,Assets,Platforms,QA,Publishing,Budget,Finance,Research,DevOps,UX,Analytics,LiveOps,Learning,Portfolio'
+    --single-select-options 'Governance,Architecture,Agents,Providers,Memory,Security,Tools,Workers,Games,Assets,Audio,Platforms,QA,Publishing,Budget,Finance,Research,DevOps,UX,Analytics,LiveOps,Learning,Portfolio'
 fi
 if ! grep -qx 'Phase' <<<"$existing"; then
   gh project field-create "$project" --owner "$OWNER" --name Phase --data-type SINGLE_SELECT \
