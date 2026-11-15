@@ -2,8 +2,7 @@
 .env.*
 !.env.example
 __pycache__/
+.pytest_cache/
 .venv/
 node_modules/
-.godot/
-*.pyc
-*.log
+.DS_Store
