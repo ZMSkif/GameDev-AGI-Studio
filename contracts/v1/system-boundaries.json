@@ -1,0 +1,53 @@
+{
+  "version": "1.0.0",
+  "modules": [
+    {
+      "id": "control-center",
+      "responsibility": "owner_dashboard_and_approvals",
+      "no_direct_privileged_execution": true
+    },
+    {
+      "id": "coordinator",
+      "responsibility": "orchestration_scheduling_audit_policy",
+      "implementation_style": "modular_monolith_initially"
+    },
+    {
+      "id": "worker-agent",
+      "responsibility": "capability_advertisement_leases_sandbox_execution",
+      "inbound_ports_required": false
+    },
+    {
+      "id": "github",
+      "responsibility": "authoritative_decisions_tasks_and_prs"
+    },
+    {
+      "id": "postgresql",
+      "responsibility": "durable_state_checkpoints_leases_audit"
+    },
+    {
+      "id": "hindsight",
+      "responsibility": "provenance_backed_knowledge_only"
+    },
+    {
+      "id": "tool-registry",
+      "responsibility": "availability_versions_permissions_recovery"
+    },
+    {
+      "id": "godot-game",
+      "responsibility": "independently_buildable_game_client_with_platform_adapters"
+    },
+    {
+      "id": "qa-release",
+      "responsibility": "independent_verification_and_owner_release_gates"
+    }
+  ],
+  "adapters": [
+    "claude_code_cli",
+    "codex_cli",
+    "cloud_manual_handoff",
+    "godot",
+    "blender_mcp",
+    "playgama_bridge",
+    "youtube_playables"
+  ]
+}
