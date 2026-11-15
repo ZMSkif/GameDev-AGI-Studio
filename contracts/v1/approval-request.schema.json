@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "approval-request",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "request_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "task_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "action": {
+      "enum": [
+        "architecture_change",
+        "creative_change",
+        "paid_operation",
+        "permission_grant",
+        "publish",
+        "destructive_operation",
+        "release",
+        "other"
+      ]
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "impact": {
+      "type": "string",
+      "minLength": 1
+    },
+    "proposed_change": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rollback": {
+      "type": "string",
+      "minLength": 1
+    },
+    "owner_approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "enum": [
+            "requested",
+            "approved",
+            "rejected"
+          ]
+        },
+        "approver": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "record_url": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uri"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "status"
+      ]
+    }
+  },
+  "required": [
+    "request_id",
+    "task_id",
+    "action",
+    "reason",
+    "impact",
+    "proposed_change",
+    "rollback",
+    "owner_approval"
+  ]
+}

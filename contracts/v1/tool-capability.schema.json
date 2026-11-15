@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "tool-capability",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "capability_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tool_kind": {
+      "enum": [
+        "mcp",
+        "cli",
+        "api",
+        "sdk",
+        "desktop",
+        "gpu_worker",
+        "other"
+      ]
+    },
+    "provider": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "supported_actions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    },
+    "worker_constraints": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "permission_scopes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "paid": {
+      "type": "boolean"
+    },
+    "availability": {
+      "enum": [
+        "verified",
+        "unverified",
+        "unavailable"
+      ]
+    },
+    "last_verified_at": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "date-time"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "evidence_url": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "uri"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "license": {
+      "type": "string",
+      "minLength": 1
+    },
+    "recovery_policy": {
+      "enum": [
+        "stop_and_repair",
+        "manual_recovery"
+      ]
+    }
+  },
+  "required": [
+    "capability_id",
+    "tool_kind",
+    "provider",
+    "version",
+    "supported_actions",
+    "permission_scopes",
+    "paid",
+    "availability",
+    "license",
+    "recovery_policy"
+  ]
+}

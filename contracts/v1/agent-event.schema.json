@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "agent-event",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "protocol_version": {
+      "const": "1.0.0"
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "task_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "type": {
+      "enum": [
+        "task.created",
+        "task.preflight",
+        "task.started",
+        "task.blocked",
+        "task.needs_approval",
+        "task.checkpointed",
+        "task.review_requested",
+        "task.accepted",
+        "task.failed",
+        "task.cancelled"
+      ]
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "actor_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "idempotency_key": {
+      "type": "string",
+      "minLength": 1
+    },
+    "payload": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "protocol_version",
+    "event_id",
+    "task_id",
+    "type",
+    "occurred_at",
+    "actor_id",
+    "idempotency_key",
+    "payload"
+  ]
+}

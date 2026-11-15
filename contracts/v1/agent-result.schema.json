@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "agent-result",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "protocol_version": {
+      "const": "1.0.0"
+    },
+    "task_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "status": {
+      "enum": [
+        "completed",
+        "blocked",
+        "failed",
+        "needs_approval",
+        "cancelled"
+      ]
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "branch": {
+      "type": "string",
+      "minLength": 1
+    },
+    "pr_url": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "uri"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "commit_sha": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "changed_paths": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "uri": {
+            "type": "string",
+            "format": "uri"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "media_type": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "uri"
+        ]
+      }
+    },
+    "test_evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "enum": [
+              "pass",
+              "fail",
+              "not_run"
+            ]
+          },
+          "environment": {
+            "type": "string",
+            "minLength": 1
+          },
+          "log_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "executed_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "name",
+          "status",
+          "environment"
+        ]
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "risks": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "approval_requests": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "required": [
+    "protocol_version",
+    "task_id",
+    "status",
+    "summary",
+    "changed_paths",
+    "test_evidence",
+    "limitations",
+    "risks"
+  ]
+}

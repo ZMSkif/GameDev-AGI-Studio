@@ -1,0 +1,104 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "GameDev AGI Studio Coordinator API",
+    "version": "1.0.0",
+    "description": "Initial machine-readable implementation interface derived from approved system topology; endpoint details require engineering review."
+  },
+  "paths": {
+    "/v1/health": {
+      "get": {
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "description": "Coordinator available"
+          }
+        }
+      }
+    },
+    "/v1/tasks": {
+      "post": {
+        "operationId": "submitTask",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./agent-task-envelope.schema.json"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted for preflight"
+          },
+          "403": {
+            "description": "Policy denied"
+          },
+          "409": {
+            "description": "Idempotency conflict"
+          }
+        }
+      }
+    },
+    "/v1/tasks/{task_id}": {
+      "get": {
+        "operationId": "getTask",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task state"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/v1/approvals": {
+      "post": {
+        "operationId": "requestApproval",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./approval-request.schema.json"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Approval request recorded"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ServiceAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "opaque"
+      }
+    }
+  },
+  "security": [
+    {
+      "ServiceAuth": []
+    }
+  ]
+}

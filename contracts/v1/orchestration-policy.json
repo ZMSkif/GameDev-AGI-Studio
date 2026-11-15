@@ -1,0 +1,87 @@
+{
+  "protocol_version": "1.0.0",
+  "states": [
+    "proposed",
+    "ready",
+    "preflight",
+    "planned",
+    "running",
+    "review",
+    "integration",
+    "accepted",
+    "blocked",
+    "needs_approval",
+    "retry",
+    "cancelled"
+  ],
+  "transitions": {
+    "proposed": [
+      "ready",
+      "cancelled"
+    ],
+    "ready": [
+      "preflight",
+      "cancelled"
+    ],
+    "preflight": [
+      "planned",
+      "blocked",
+      "needs_approval"
+    ],
+    "planned": [
+      "running",
+      "blocked",
+      "cancelled"
+    ],
+    "running": [
+      "review",
+      "blocked",
+      "retry",
+      "needs_approval",
+      "cancelled"
+    ],
+    "review": [
+      "integration",
+      "running",
+      "blocked"
+    ],
+    "integration": [
+      "accepted",
+      "running",
+      "blocked"
+    ],
+    "blocked": [
+      "preflight",
+      "cancelled"
+    ],
+    "needs_approval": [
+      "planned",
+      "cancelled",
+      "blocked"
+    ],
+    "retry": [
+      "preflight",
+      "blocked",
+      "cancelled"
+    ],
+    "cancelled": [],
+    "accepted": []
+  },
+  "policies": {
+    "independent_review": true,
+    "direct_main_writes": false,
+    "paid_operations_without_owner_approval": false,
+    "publishing_without_owner_approval": false,
+    "quality_reduction_on_budget_limit": false,
+    "infinite_retries": false,
+    "tool_failure": "stop_affected_task",
+    "restore": "reconcile_checkpoint_and_idempotency_key"
+  },
+  "authority": {
+    "decisions": "github_issues_label_decision",
+    "tasks": "github_issues_and_projects",
+    "execution": "postgresql",
+    "memory": "hindsight_not_authoritative",
+    "artifacts": "versioned_hashes"
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "integration-evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "integration_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "capability": {
+      "type": "string",
+      "minLength": 1
+    },
+    "checked_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "enum": [
+        "pass",
+        "fail",
+        "manual",
+        "unknown"
+      ]
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "environment": {
+      "type": "string",
+      "minLength": 1
+    },
+    "command_redacted": {
+      "type": "string",
+      "minLength": 1
+    },
+    "observed_result": {
+      "type": "string",
+      "minLength": 1
+    },
+    "proof_url": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "uri"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "recovery_test": {
+      "enum": [
+        "pass",
+        "fail",
+        "not_run"
+      ]
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "required": [
+    "integration_id",
+    "capability",
+    "checked_at",
+    "status",
+    "version",
+    "environment",
+    "command_redacted",
+    "observed_result",
+    "recovery_test"
+  ]
+}
