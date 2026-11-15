@@ -1,0 +1,203 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "agent-task-envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "protocol_version": {
+      "const": "1.0.0"
+    },
+    "task_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "project_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "goal": {
+      "type": "string",
+      "minLength": 1
+    },
+    "github_issue": {
+      "type": "string",
+      "pattern": "^https://github.com/[^/]+/[^/]+/issues/[0-9]+$"
+    },
+    "decision_issue_urls": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^https://github.com/[^/]+/[^/]+/issues/[0-9]+$"
+      },
+      "uniqueItems": true
+    },
+    "repository": {
+      "type": "string",
+      "pattern": "^[^/]+/[^/]+$"
+    },
+    "base_commit": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "branch": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_of_truth_revision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "context_refs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "worker_requirements": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "required_capabilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "capability_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minimum_version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "mandatory": {
+            "const": true
+          }
+        },
+        "required": [
+          "capability_id",
+          "mandatory"
+        ]
+      }
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "permissions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rule": {
+            "enum": [
+              "allow",
+              "ask",
+              "deny"
+            ]
+          }
+        },
+        "required": [
+          "action",
+          "rule"
+        ]
+      }
+    },
+    "acceptance_criteria": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "expected_artifacts": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "paid_actions": {
+          "const": false
+        },
+        "on_limit": {
+          "const": "pause"
+        },
+        "quality_reduction": {
+          "const": false
+        }
+      },
+      "required": [
+        "paid_actions",
+        "on_limit",
+        "quality_reduction"
+      ]
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "independent": {
+          "const": true
+        },
+        "required_checks": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "independent",
+        "required_checks"
+      ]
+    },
+    "idempotency_key": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "protocol_version",
+    "task_id",
+    "project_id",
+    "goal",
+    "github_issue",
+    "decision_issue_urls",
+    "repository",
+    "base_commit",
+    "branch",
+    "source_of_truth_revision",
+    "acceptance_criteria",
+    "expected_artifacts",
+    "budget",
+    "review",
+    "idempotency_key"
+  ]
+}
