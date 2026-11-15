@@ -26,7 +26,8 @@
         "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/36",
         "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/37",
         "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/85",
-        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/86"
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/86",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/128"
       ],
       "decision_ids": [
         "DEC-027",
@@ -34,7 +35,8 @@
         "DEC-036",
         "DEC-037",
         "DEC-084",
-        "DEC-085"
+        "DEC-085",
+        "DEC-126"
       ]
     },
     "agent-result.schema.json": {
@@ -44,7 +46,8 @@
         "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/34",
         "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/40",
         "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/75",
-        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/76"
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/76",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/131"
       ],
       "decision_ids": [
         "DEC-016",
@@ -52,7 +55,8 @@
         "DEC-034",
         "DEC-040",
         "DEC-074",
-        "DEC-075"
+        "DEC-075",
+        "DEC-129"
       ]
     },
     "agent-event.schema.json": {
@@ -75,14 +79,16 @@
         "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/27",
         "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/78",
         "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/83",
-        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/93"
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/93",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/132"
       ],
       "decision_ids": [
         "DEC-009",
         "DEC-027",
         "DEC-077",
         "DEC-082",
-        "DEC-092"
+        "DEC-092",
+        "DEC-130"
       ]
     },
     "integration-evidence.schema.json": {
@@ -92,7 +98,9 @@
         "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/55",
         "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/58",
         "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/59",
-        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/122"
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/122",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/127",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/133"
       ],
       "decision_ids": [
         "DEC-019",
@@ -100,7 +108,9 @@
         "DEC-055",
         "DEC-058",
         "DEC-059",
-        "DEC-120"
+        "DEC-120",
+        "DEC-125",
+        "DEC-131"
       ]
     },
     "tool-capability.schema.json": {
@@ -150,7 +160,8 @@
         "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/51",
         "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/83",
         "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/86",
-        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/96"
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/96",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/129"
       ],
       "decision_ids": [
         "DEC-015",
@@ -160,7 +171,8 @@
         "DEC-051",
         "DEC-082",
         "DEC-085",
-        "DEC-095"
+        "DEC-095",
+        "DEC-127"
       ]
     },
     "system-boundaries.json": {
@@ -175,7 +187,10 @@
         "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/25",
         "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/30",
         "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/47",
-        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/56"
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/56",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/126",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/134",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/135"
       ],
       "decision_ids": [
         "DEC-011",
@@ -188,7 +203,10 @@
         "DEC-025",
         "DEC-030",
         "DEC-047",
-        "DEC-056"
+        "DEC-056",
+        "DEC-124",
+        "DEC-132",
+        "DEC-133"
       ]
     },
     "coordinator.openapi.json": {
@@ -198,7 +216,8 @@
         "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/97",
         "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/98",
         "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/99",
-        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/123"
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/123",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/130"
       ],
       "decision_ids": [
         "DEC-021",
@@ -206,7 +225,8 @@
         "DEC-096",
         "DEC-097",
         "DEC-098",
-        "DEC-121"
+        "DEC-121",
+        "DEC-128"
       ]
     }
   }
