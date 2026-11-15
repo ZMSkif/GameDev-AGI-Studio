@@ -1,0 +1,49 @@
+{
+  "version": "1.0.0",
+  "engine": "Godot 4.x",
+  "initial_platforms": [
+    "Playgama HTML5",
+    "YouTube Playables when accepted"
+  ],
+  "design_authority": [
+    "approved GDD",
+    "approved Art Bible",
+    "approved architecture",
+    "binding GitHub Decision Issues"
+  ],
+  "game_preproduction": {
+    "owner_led_adaptive_interview": true,
+    "allow_multiple_or_hybrid_answers": true,
+    "visual_references_before_mass_production": true,
+    "concept_validation_gate": true,
+    "owner_can_explicitly_skip_prototype": true
+  },
+  "art_pipeline": [
+    "readable pixel concept as proportion/color blueprint",
+    "smooth stylized 2D concept",
+    "high-quality stylized PBR 3D",
+    "rig and animation",
+    "Godot in-engine independent visual review"
+  ],
+  "asset_quality": {
+    "art_director_review": true,
+    "default_primitive_visuals_cannot_pass": true,
+    "source_license_required": true,
+    "unique_game_audio": true,
+    "shared_audio_library_reference_only": true,
+    "automatic_audio_reuse_across_games": false
+  },
+  "multiplayer": {
+    "assess_every_project": true,
+    "do_not_force_network_services_into_offline_games": true
+  },
+  "qa": {
+    "independent_gameplay_and_visual_review": true,
+    "physical_device_evidence_required_for_device_pass": true,
+    "no_fake_test_claims": true
+  },
+  "release": {
+    "default_mode": "semi_auto",
+    "owner_approval_required": true
+  }
+}

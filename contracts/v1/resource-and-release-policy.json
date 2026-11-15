@@ -1,0 +1,22 @@
+{
+  "version": "1.0.0",
+  "default_model_profile": "maximum_quality",
+  "other_model_profiles": [
+    "balanced",
+    "custom"
+  ],
+  "quality_reduction_to_save_tokens": false,
+  "provider_entitlements_must_be_verified": true,
+  "paid_provider_api_by_default": false,
+  "spending_requires_explicit_owner_approval": true,
+  "quota_exhaustion_action": "pause_or_request_approved_reroute",
+  "release_mode_default": "semi_auto",
+  "release_modes": [
+    "manual",
+    "semi_auto",
+    "auto"
+  ],
+  "publishing_without_owner_approval": false,
+  "credential_changes_require_explicit_owner_approval": true,
+  "source_of_cost_data": "reconciled_evidence_not_estimates"
+}
