@@ -1,0 +1,213 @@
+{
+  "version": "1.0.0",
+  "purpose": "Versioned machine-readable protocol contracts; authoritative owner decisions are linked GitHub issues, not this manifest.",
+  "source_policy": "chat quotations are direct; baseline quotations are from dated consolidated architecture only",
+  "contracts": {
+    "decision-record.schema.json": {
+      "decision_issue_urls": [
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/3",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/4",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/5",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/7",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/10"
+      ],
+      "decision_ids": [
+        "DEC-003",
+        "DEC-004",
+        "DEC-005",
+        "DEC-007",
+        "DEC-010"
+      ]
+    },
+    "agent-task-envelope.schema.json": {
+      "decision_issue_urls": [
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/27",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/33",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/36",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/37",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/85",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/86"
+      ],
+      "decision_ids": [
+        "DEC-027",
+        "DEC-033",
+        "DEC-036",
+        "DEC-037",
+        "DEC-084",
+        "DEC-085"
+      ]
+    },
+    "agent-result.schema.json": {
+      "decision_issue_urls": [
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/16",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/18",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/34",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/40",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/75",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/76"
+      ],
+      "decision_ids": [
+        "DEC-016",
+        "DEC-018",
+        "DEC-034",
+        "DEC-040",
+        "DEC-074",
+        "DEC-075"
+      ]
+    },
+    "agent-event.schema.json": {
+      "decision_issue_urls": [
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/23",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/38",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/41",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/100"
+      ],
+      "decision_ids": [
+        "DEC-023",
+        "DEC-038",
+        "DEC-041",
+        "DEC-099"
+      ]
+    },
+    "approval-request.schema.json": {
+      "decision_issue_urls": [
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/9",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/27",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/78",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/83",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/93"
+      ],
+      "decision_ids": [
+        "DEC-009",
+        "DEC-027",
+        "DEC-077",
+        "DEC-082",
+        "DEC-092"
+      ]
+    },
+    "integration-evidence.schema.json": {
+      "decision_issue_urls": [
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/19",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/45",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/55",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/58",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/59",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/122"
+      ],
+      "decision_ids": [
+        "DEC-019",
+        "DEC-045",
+        "DEC-055",
+        "DEC-058",
+        "DEC-059",
+        "DEC-120"
+      ]
+    },
+    "tool-capability.schema.json": {
+      "decision_issue_urls": [
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/19",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/28",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/37",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/46",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/61",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/62",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/63"
+      ],
+      "decision_ids": [
+        "DEC-019",
+        "DEC-028",
+        "DEC-037",
+        "DEC-046",
+        "DEC-060",
+        "DEC-061",
+        "DEC-062"
+      ]
+    },
+    "project-source-revision.schema.json": {
+      "decision_issue_urls": [
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/17",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/29",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/49",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/81",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/82",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/104"
+      ],
+      "decision_ids": [
+        "DEC-017",
+        "DEC-029",
+        "DEC-049",
+        "DEC-080",
+        "DEC-081",
+        "DEC-103"
+      ]
+    },
+    "orchestration-policy.json": {
+      "decision_issue_urls": [
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/15",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/35",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/38",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/39",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/51",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/83",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/86",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/96"
+      ],
+      "decision_ids": [
+        "DEC-015",
+        "DEC-035",
+        "DEC-038",
+        "DEC-039",
+        "DEC-051",
+        "DEC-082",
+        "DEC-085",
+        "DEC-095"
+      ]
+    },
+    "system-boundaries.json": {
+      "decision_issue_urls": [
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/11",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/12",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/20",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/21",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/22",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/23",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/24",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/25",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/30",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/47",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/56"
+      ],
+      "decision_ids": [
+        "DEC-011",
+        "DEC-012",
+        "DEC-020",
+        "DEC-021",
+        "DEC-022",
+        "DEC-023",
+        "DEC-024",
+        "DEC-025",
+        "DEC-030",
+        "DEC-047",
+        "DEC-056"
+      ]
+    },
+    "coordinator.openapi.json": {
+      "decision_issue_urls": [
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/21",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/35",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/97",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/98",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/99",
+        "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/123"
+      ],
+      "decision_ids": [
+        "DEC-021",
+        "DEC-035",
+        "DEC-096",
+        "DEC-097",
+        "DEC-098",
+        "DEC-121"
+      ]
+    }
+  }
+}
