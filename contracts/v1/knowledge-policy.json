@@ -1,0 +1,19 @@
+{
+  "version": "1.0.0",
+  "scopes": [
+    "studio",
+    "project",
+    "task"
+  ],
+  "authority_order": [
+    "binding_decision_issues",
+    "approved_versioned_gdd_art_bible_architecture",
+    "verified_context_memory",
+    "untrusted_web_or_tool_output"
+  ],
+  "persistent_project_knowledge_deletion": "manual_owner_action_only",
+  "memory_cannot_override_owner_decisions": true,
+  "provenance_required": true,
+  "context_revision_required": true,
+  "web_reverification_for_uncertain_provider_claims": true
+}
