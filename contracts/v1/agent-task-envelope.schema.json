@@ -29,7 +29,8 @@
         "type": "string",
         "pattern": "^https://github.com/[^/]+/[^/]+/issues/[0-9]+$"
       },
-      "uniqueItems": true
+      "uniqueItems": true,
+      "minItems": 1
     },
     "repository": {
       "type": "string",
@@ -205,6 +206,32 @@
     "idempotency_key": {
       "type": "string",
       "minLength": 1
+    },
+    "model_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "profile": {
+          "enum": [
+            "maximum_quality",
+            "balanced",
+            "custom"
+          ],
+          "default": "maximum_quality"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "effort": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "profile"
+      ]
     }
   },
   "required": [
@@ -222,6 +249,7 @@
     "expected_artifacts",
     "budget",
     "review",
-    "idempotency_key"
+    "idempotency_key",
+    "model_policy"
   ]
 }
