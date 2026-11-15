@@ -142,19 +142,43 @@
       "additionalProperties": false,
       "properties": {
         "paid_actions": {
-          "const": false
+          "type": "boolean",
+          "default": false
         },
         "on_limit": {
           "const": "pause"
         },
         "quality_reduction": {
           "const": false
+        },
+        "approved_paid_action_issue": {
+          "type": "string",
+          "pattern": "^https://github.com/[^/]+/[^/]+/issues/[0-9]+$"
         }
       },
       "required": [
         "paid_actions",
         "on_limit",
         "quality_reduction"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "paid_actions": {
+                "const": true
+              }
+            },
+            "required": [
+              "paid_actions"
+            ]
+          },
+          "then": {
+            "required": [
+              "approved_paid_action_issue"
+            ]
+          }
+        }
       ]
     },
     "review": {
