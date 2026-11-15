@@ -1,0 +1,23 @@
+{
+  "version": "1.0.0",
+  "minimum_roles": [
+    "Studio Director",
+    "Producer",
+    "Game Designer",
+    "Art Director",
+    "Technical Director",
+    "Gameplay Engineer",
+    "Asset Pipeline Artist",
+    "QA Engineer",
+    "Publishing & Analytics Agent"
+  ],
+  "minimum_team_may_be_reduced": false,
+  "additional_specialists_on_demand": true,
+  "execution": {
+    "isolated_worktrees": true,
+    "independent_review_required": true,
+    "agent_may_override_owner_decisions": false,
+    "work_may_be_sequential_on_single_worker": true
+  },
+  "no_assumed_provider_cloud_automation": true
+}
