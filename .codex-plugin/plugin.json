@@ -12,13 +12,12 @@
   "interface": {
     "displayName": "GameDev Studio",
     "shortDescription": "Binding studio rules for building games with coding agents",
-    "longDescription": "GameDev Studio loads the owner's binding decisions from GitHub Issues and applies them while agents build games or extend this plugin.",
+    "longDescription": "GameDev Studio tells agents to fetch the owner's binding decisions from GitHub Issues with gh and to apply them while they build games or extend this plugin.",
     "developerName": "ZMSkif",
     "category": "Developer Tools",
     "capabilities": [
       "Interactive",
-      "Read",
-      "Write"
+      "Read"
     ],
     "websiteURL": "https://github.com/ZMSkif/GameDev-AGI-Studio",
     "defaultPrompt": [

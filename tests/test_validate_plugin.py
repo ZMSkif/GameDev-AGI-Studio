@@ -2,8 +2,10 @@
 
 Each check is shown to fail by mutating a valid fixture tree.
 """
+import contextlib
 import copy
 import importlib.util
+import io
 import json
 import tempfile
 import unittest
@@ -104,9 +106,15 @@ class ValidFixtureTest(FixtureCase):
         self.assertEqual(self.errors(), [])
 
     def test_main_returns_zero_and_one(self):
-        self.assertEqual(vp.main(["validate_plugin.py", str(self.root)]), 0)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(vp.main(["validate_plugin.py", str(self.root)]), 0)
+        self.assertIn("valid", out.getvalue())
         (self.root / ".codex-plugin" / "plugin.json").unlink()
-        self.assertEqual(vp.main(["validate_plugin.py", str(self.root)]), 1)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(vp.main(["validate_plugin.py", str(self.root)]), 1)
+        self.assertIn("ERROR: .codex-plugin/plugin.json: file is missing", out.getvalue())
 
 
 class ManifestParsingTest(FixtureCase):
@@ -263,6 +271,8 @@ class SecretTest(FixtureCase):
             "bearer": "Bearer " + "abcdefghijklmnop1234",
             "private_key": "-----BEGIN RSA PRIVATE KEY-----",
             "url_credentials": "https://user:hunter2@example.com/x",
+            "sk_underscore": "sk_" + "abcdEFGH1234ijkl5678",
+            "npm": "npm_" + "A1b2C3d4E5f6G7h8I9j0K1l2",
         }
         for label, value in samples.items():
             with self.subTest(label=label):
@@ -303,6 +313,139 @@ class SecretTest(FixtureCase):
     def test_authentication_policy_is_not_flagged(self):
         # "authentication": "ON_INSTALL" is a policy setting, not a credential.
         self.assertEqual(self.errors(), [])
+
+
+class SecretRefinementTest(FixtureCase):
+    def test_env_reference_values_are_exempt(self):
+        self.mutate(
+            ".codex-plugin/plugin.json",
+            lambda d: d.update(mcpServers={"x": {"env": {"GITHUB_TOKEN": "${GITHUB_TOKEN}", "API_KEY": "$API_KEY"}}}),
+        )
+        self.assertEqual(self.errors(), [])
+
+    def test_env_reference_lookalike_with_text_still_fails(self):
+        self.mutate(".codex-plugin/plugin.json", lambda d: d.update(token="${TOKEN}-literal"))
+        self.assertFails("key 'token' looks like a secret")
+
+    def test_key_substring_alone_is_not_flagged(self):
+        self.mutate(".codex-plugin/plugin.json", lambda d: d.update(tokenizer="whitespace", secretary="Ann"))
+        self.assertEqual(self.errors(), [])
+
+    def test_camel_case_secret_keys_are_flagged(self):
+        self.mutate(".codex-plugin/plugin.json", lambda d: d.update(apiKey="abc"))
+        self.assertFails("key 'apiKey' looks like a secret")
+
+    def test_secret_in_hooks_json_fails(self):
+        write_json(self.root, "hooks/hooks.json", {"hooks": {}, "note": "ghp_" + "a1B2c3D4e5F6g7H8i9J0k1L2m3N4"})
+        self.assertFails("hooks/hooks.json: value at 'note' looks like a secret")
+
+    def test_secret_named_key_in_hooks_json_fails(self):
+        write_json(self.root, "hooks/hooks.json", {"hooks": {}, "password": "hunter2"})
+        self.assertFails("hooks/hooks.json: key 'password' looks like a secret")
+
+    def test_secret_in_skill_body_fails(self):
+        path = self.root / "skills" / "demo-skill" / "SKILL.md"
+        path.write_text(SKILL + "\nUse key sk-" + "abcdEFGH1234ijkl5678 for the API.\n", encoding="utf-8")
+        self.assertFails("skills/demo-skill/SKILL.md: contains a secret-looking value")
+
+
+class VersionFormatTest(FixtureCase):
+    def test_leading_zero_semver_fails(self):
+        for rel in (".claude-plugin/plugin.json", ".codex-plugin/plugin.json"):
+            self.mutate(rel, lambda d: d.update(version="01.02.03"))
+        self.assertFails("'version' must be a semver string")
+
+    def test_prerelease_and_build_semver_pass(self):
+        for rel in (".claude-plugin/plugin.json", ".codex-plugin/plugin.json"):
+            self.mutate(rel, lambda d: d.update(version="1.0.0-rc.1+build.5"))
+        self.assertEqual(self.errors(), [])
+
+
+class CodexSkillsPathTest(FixtureCase):
+    def test_absolute_posix_path_fails(self):
+        self.mutate(".codex-plugin/plugin.json", lambda d: d.update(skills="/etc"))
+        self.assertFails("must be relative, not absolute")
+
+    def test_absolute_path_of_real_directory_fails(self):
+        self.mutate(".codex-plugin/plugin.json", lambda d: d.update(skills=str(self.root / "skills")))
+        self.assertFails("must be relative, not absolute")
+
+    def test_windows_drive_path_fails(self):
+        self.mutate(".codex-plugin/plugin.json", lambda d: d.update(skills="C:\\skills"))
+        self.assertFails("must be relative, not absolute")
+
+    def test_parent_escape_fails(self):
+        outside = self.root.parent / "outside-skills"
+        outside.mkdir(exist_ok=True)
+        self.addCleanup(outside.rmdir)
+        self.mutate(".codex-plugin/plugin.json", lambda d: d.update(skills="../outside-skills"))
+        self.assertFails("escapes the repository root")
+
+    def test_non_string_skills_fails(self):
+        for value in (["./skills/"], 5, None, ""):
+            with self.subTest(value=value):
+                self.mutate(".codex-plugin/plugin.json", lambda d, v=value: d.update(skills=v))
+                self.assertFails("must be a relative path string")
+
+    def test_path_that_normalizes_inside_root_passes(self):
+        self.mutate(".codex-plugin/plugin.json", lambda d: d.update(skills="./skills/../skills"))
+        self.assertEqual(self.errors(), [])
+
+
+class SkillFrontmatterLimitsTest(FixtureCase):
+    def write_skill(self, directory, text):
+        target = self.root / "skills" / directory
+        target.mkdir(exist_ok=True)
+        (target / "SKILL.md").write_text(text, encoding="utf-8")
+
+    def test_overlong_name_fails(self):
+        name = "a" * (vp.MAX_SKILL_NAME + 1)
+        self.write_skill(name, f"---\nname: {name}\ndescription: x\n---\nbody\n")
+        self.assertFails(f"name is longer than {vp.MAX_SKILL_NAME} characters")
+
+    def test_name_at_limit_passes(self):
+        name = "a" * vp.MAX_SKILL_NAME
+        self.write_skill(name, f"---\nname: {name}\ndescription: x\n---\nbody\n")
+        self.assertEqual(self.errors(), [])
+
+    def test_overlong_description_fails(self):
+        text = f"---\nname: demo-skill\ndescription: {'d' * (vp.MAX_SKILL_DESCRIPTION + 1)}\n---\nbody\n"
+        self.write_skill("demo-skill", text)
+        self.assertFails(f"description is longer than {vp.MAX_SKILL_DESCRIPTION} characters")
+
+    def test_description_at_limit_passes(self):
+        text = f"---\nname: demo-skill\ndescription: {'d' * vp.MAX_SKILL_DESCRIPTION}\n---\nbody\n"
+        self.write_skill("demo-skill", text)
+        self.assertEqual(self.errors(), [])
+
+    def test_invalid_frontmatter_line_fails(self):
+        self.write_skill("demo-skill", "---\nname: demo-skill\nthis line has no colon\n---\nbody\n")
+        self.assertFails("invalid frontmatter line")
+
+    def test_unterminated_frontmatter_fails(self):
+        self.write_skill("demo-skill", "---\nname: demo-skill\n")
+        self.assertFails("missing YAML frontmatter")
+
+    def test_skills_directory_without_skills_fails(self):
+        (self.root / "skills" / "demo-skill" / "SKILL.md").unlink()
+        (self.root / "skills" / "demo-skill").rmdir()
+        self.assertFails("skills/: no skill directories found")
+
+
+class HooksShapeTest(FixtureCase):
+    def test_hooks_not_an_object_fails(self):
+        for value in ([], "none", 3, None):
+            with self.subTest(value=value):
+                write_json(self.root, "hooks/hooks.json", {"hooks": value})
+                self.assertFails("'hooks' must be an object")
+
+    def test_invalid_hooks_json_fails(self):
+        (self.root / "hooks" / "hooks.json").write_text("{broken", encoding="utf-8")
+        self.assertFails("hooks/hooks.json: cannot parse JSON")
+
+    def test_hooks_json_not_an_object_fails(self):
+        (self.root / "hooks" / "hooks.json").write_text("[]", encoding="utf-8")
+        self.assertFails("hooks/hooks.json: top level must be a JSON object")
 
 
 if __name__ == "__main__":

@@ -18,7 +18,7 @@ from __future__ import annotations
 import json
 import re
 import sys
-from pathlib import Path, PurePosixPath
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 CLAUDE_PLUGIN = PurePosixPath(".claude-plugin/plugin.json")
 CLAUDE_MARKETPLACE = PurePosixPath(".claude-plugin/marketplace.json")
@@ -27,14 +27,18 @@ CODEX_MARKETPLACE = PurePosixPath(".agents/plugins/marketplace.json")
 MANIFESTS = (CLAUDE_PLUGIN, CLAUDE_MARKETPLACE, CODEX_PLUGIN, CODEX_MARKETPLACE)
 
 NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
-SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$")
+_NUM = r"(?:0|[1-9]\d*)"  # numeric identifier without leading zeros
+SEMVER_RE = re.compile(rf"^{_NUM}\.{_NUM}\.{_NUM}(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$")
 ALLOWED_FRONTMATTER = {"name", "description"}
 MAX_SKILL_LINES = 500
+MAX_SKILL_NAME = 64
+MAX_SKILL_DESCRIPTION = 1024
 
 SECRET_VALUE_PATTERNS = [
     ("private key block", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")),
     ("GitHub token", re.compile(r"\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b")),
-    ("OpenAI/Anthropic-style key", re.compile(r"\bsk-[A-Za-z0-9_-]{16,}")),
+    ("OpenAI/Anthropic-style key", re.compile(r"\bsk[_-][A-Za-z0-9_-]{16,}")),
+    ("npm token", re.compile(r"\bnpm_[A-Za-z0-9]{20,}")),
     ("AWS access key id", re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b")),
     ("Slack token", re.compile(r"\bxox[abprs]-[A-Za-z0-9-]{10,}")),
     ("Google API key", re.compile(r"\bAIza[0-9A-Za-z_-]{30,}")),
@@ -42,9 +46,18 @@ SECRET_VALUE_PATTERNS = [
     ("bearer credential", re.compile(r"(?i)\bbearer\s+[A-Za-z0-9._~+/=-]{16,}")),
     ("credentials in URL", re.compile(r"(?i)\b[a-z][a-z0-9+.-]*://[^/\s:@]+:[^/\s@]+@")),
 ]
+# Matched against the key split into words (camelCase and separators become "_"), so
+# `GITHUB_TOKEN` and `apiKey` match but `tokenizer` does not.
 SECRET_KEY_RE = re.compile(
-    r"(?i)(password|passwd|secret|api[_-]?key|access[_-]?key|private[_-]?key|token)"
+    r"(?:^|_)(?:password|passwd|secret|token|api_?key|access_?key|private_?key)s?(?:_|$)"
 )
+# A reference to an environment variable (`${GITHUB_TOKEN}`, `$TOKEN`) holds no secret.
+ENV_REFERENCE_RE = re.compile(r"^\$\{?[A-Z0-9_]+\}?$")
+
+
+def normalized_key(key: str) -> str:
+    spaced = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", key)
+    return re.sub(r"[^A-Za-z0-9]+", "_", spaced).lower()
 
 
 def load_json(root: Path, rel: PurePosixPath, errors: list[str]):
@@ -70,7 +83,12 @@ def check_secrets(rel: PurePosixPath, data, errors: list[str]) -> None:
         if isinstance(value, dict):
             for key, child in value.items():
                 child_path = f"{path}.{key}" if path else key
-                if SECRET_KEY_RE.search(key) and isinstance(child, str) and child.strip():
+                if (
+                    SECRET_KEY_RE.search(normalized_key(key))
+                    and isinstance(child, str)
+                    and child.strip()
+                    and not ENV_REFERENCE_RE.match(child.strip())
+                ):
                     errors.append(f"{rel}: key '{child_path}' looks like a secret and has a value")
                 visit(child, child_path)
         elif isinstance(value, list):
@@ -82,6 +100,12 @@ def check_secrets(rel: PurePosixPath, data, errors: list[str]) -> None:
                     errors.append(f"{rel}: value at '{path}' looks like a secret ({label})")
 
     visit(data, "")
+
+
+def scan_text_for_secrets(rel: PurePosixPath, text: str, errors: list[str]) -> None:
+    for label, pattern in SECRET_VALUE_PATTERNS:
+        if pattern.search(text):
+            errors.append(f"{rel}: contains a secret-looking value ({label})")
 
 
 def source_path(source) -> str | None:
@@ -160,6 +184,7 @@ def check_skills(root: Path, errors: list[str]) -> None:
         except (OSError, UnicodeDecodeError) as exc:
             errors.append(f"{rel}: cannot read ({exc})")
             continue
+        scan_text_for_secrets(rel, text, errors)
         fields, _ = parse_frontmatter(text)
         if fields is None:
             errors.append(f"{rel}: missing YAML frontmatter")
@@ -170,6 +195,10 @@ def check_skills(root: Path, errors: list[str]) -> None:
         for key in ("name", "description"):
             if not fields.get(key):
                 errors.append(f"{rel}: frontmatter '{key}' is missing or empty")
+        if len(fields.get("name", "")) > MAX_SKILL_NAME:
+            errors.append(f"{rel}: name is longer than {MAX_SKILL_NAME} characters")
+        if len(fields.get("description", "")) > MAX_SKILL_DESCRIPTION:
+            errors.append(f"{rel}: description is longer than {MAX_SKILL_DESCRIPTION} characters")
         extra = sorted(set(fields) - ALLOWED_FRONTMATTER)
         if extra:
             errors.append(f"{rel}: frontmatter keys outside the portable subset: {', '.join(extra)}")
@@ -184,8 +213,13 @@ def check_hooks(root: Path, errors: list[str]) -> None:
     if not (root / rel).is_file():
         return
     data = load_json(root, rel, errors)
-    if data is not None and "hooks" not in data:
+    if data is None:
+        return
+    check_secrets(rel, data, errors)
+    if "hooks" not in data:
         errors.append(f"{rel}: must have a top-level 'hooks' key")
+    elif not isinstance(data["hooks"], dict):
+        errors.append(f"{rel}: 'hooks' must be an object")
 
 
 def check_plugin_manifest(rel: PurePosixPath, data, errors: list[str]) -> None:
@@ -196,6 +230,21 @@ def check_plugin_manifest(rel: PurePosixPath, data, errors: list[str]) -> None:
         errors.append(f"{rel}: 'name' must not start with 'claude-' or 'anthropic-'")
     if not isinstance(version, str) or not SEMVER_RE.match(version):
         errors.append(f"{rel}: 'version' must be a semver string")
+
+
+def check_codex_skills_path(root: Path, ref, errors: list[str]) -> None:
+    """The Codex `skills` path must be a relative directory inside the repository root."""
+    if not isinstance(ref, str) or not ref.strip():
+        errors.append(f"{CODEX_PLUGIN}: 'skills' must be a relative path string, got {ref!r}")
+        return
+    if ref.startswith(("/", "\\")) or Path(ref).is_absolute() or PureWindowsPath(ref).is_absolute():
+        errors.append(f"{CODEX_PLUGIN}: 'skills' {ref!r} must be relative, not absolute")
+        return
+    target = (root / ref).resolve()
+    if root != target and root not in target.parents:
+        errors.append(f"{CODEX_PLUGIN}: 'skills' {ref!r} escapes the repository root")
+    elif not target.is_dir():
+        errors.append(f"{CODEX_PLUGIN}: 'skills' {ref!r} does not point to a directory")
 
 
 def validate(root) -> list[str]:
@@ -213,9 +262,8 @@ def validate(root) -> list[str]:
         check_plugin_manifest(CLAUDE_PLUGIN, claude, errors)
     if codex is not None:
         check_plugin_manifest(CODEX_PLUGIN, codex, errors)
-        skills_ref = codex.get("skills")
-        if skills_ref is not None and (not isinstance(skills_ref, str) or not (root / skills_ref).is_dir()):
-            errors.append(f"{CODEX_PLUGIN}: 'skills' {skills_ref!r} does not point to a directory")
+        if "skills" in codex:
+            check_codex_skills_path(root, codex["skills"], errors)
     if claude is not None and codex is not None:
         if claude.get("name") != codex.get("name"):
             errors.append(f"name mismatch: {claude.get('name')!r} (claude) != {codex.get('name')!r} (codex)")

@@ -10,7 +10,7 @@ Development Issues and Projects are created by Claude/Codex from the approved de
 
 ## Plugin
 
-This repository is a plugin for Claude Code and Codex named `gamedev-studio` (display name "GameDev Studio"); the repository root is both the marketplace and the plugin ([DEC-143](../../issues/146)). It currently ships one skill, `studio-rules`, which makes an agent load the binding decisions from GitHub Issues before working on a game or on this plugin.
+This repository is a plugin for Claude Code and Codex named `gamedev-studio` (display name "GameDev Studio"); the repository root is both the marketplace and the plugin ([DEC-143](../../issues/146)). It currently ships one skill, `studio-rules`, which tells an agent to fetch the binding decisions from GitHub Issues before working on a game or on this plugin.
 
 Layout: `.claude-plugin/` (Claude manifest and marketplace), `.codex-plugin/` (Codex manifest), `.agents/plugins/marketplace.json` (Codex marketplace), `skills/`, `agents/`, `hooks/`. The version is set only in the two `plugin.json` files and must match; `python scripts/validate_plugin.py` checks this.
 
@@ -46,9 +46,11 @@ codex plugin add gamedev-studio@gamedev-studio
 
 ```
 claude plugin validate . --strict
+claude plugin validate skills --strict
+claude plugin validate agents --strict
 python scripts/validate_contracts.py
 python scripts/validate_plugin.py
 python -m unittest discover -s tests -v
 ```
 
-CI runs the last three; `claude plugin validate` is run locally because the Claude Code CLI is not set up in the CI runner.
+`claude plugin validate .` checks the manifests only; the `skills` and `agents` forms check the components in those directories. CI runs the last three Python commands; `claude plugin validate` is run locally because the Claude Code CLI is not set up in the CI runner.
