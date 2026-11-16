@@ -3,10 +3,12 @@
 from pathlib import Path
 import json
 import re
+import sys
 
 SUPPORTED_VERSION = "1.1.0"
 REPO_ISSUES = "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/"
-ISSUE_URL = re.compile(r"^" + re.escape(REPO_ISSUES) + r"[1-9][0-9]*$")
+ISSUE_URL = re.compile(re.escape(REPO_ISSUES) + r"[1-9][0-9]*")
+# The only decision allowed to defer modules so far: owner decision #146 (DEC-143).
 PLUGIN_DECISION_URL = REPO_ISSUES + "146"
 MODULE_STATUSES = {"active", "deferred"}
 # Owner decision #146 (DEC-143): exactly these modules are deferred, not cancelled.
@@ -33,8 +35,9 @@ def load(path):
 
 
 def check_deferred_by(value, where):
-    check(isinstance(value, str) and ISSUE_URL.match(value),
+    check(isinstance(value, str) and ISSUE_URL.fullmatch(value),
           f"{where}: deferred_by must be a URL of an issue in this repository")
+    check(value == PLUGIN_DECISION_URL, f"{where}: deferred_by must be {PLUGIN_DECISION_URL}")
 
 
 def validate_boundaries(boundaries):
@@ -64,8 +67,8 @@ def validate_orchestration(policy):
     check(authority.get("execution") == "postgresql", f"{where}: original value must be preserved")
     check(authority.get("execution_status") == "deferred", f"{where}: execution_status must be deferred")
     check_deferred_by(authority.get("execution_deferred_by"), where)
-    check(authority.get("execution_while_deferred") == "agent_session_and_github_issues_prs",
-          f"{where}: execution_while_deferred must name the active execution authority")
+    check(authority.get("execution_while_deferred") == "agent_runtime",
+          f"{where}: execution_while_deferred must be agent_runtime")
 
 
 def validate_openapi(spec):
@@ -103,8 +106,12 @@ def validate(root):
     return len(manifest["contracts"])
 
 
-def main():
-    count = validate(Path(__file__).resolve().parents[1])
+def main(argv=None):
+    """Validate the repository, or the tree at the optional root path argument."""
+    args = sys.argv[1:] if argv is None else argv
+    check(len(args) <= 1, "usage: validate_contracts.py [root]")
+    root = Path(args[0]) if args else Path(__file__).resolve().parents[1]
+    count = validate(root)
     print(f"Validated {count} contracts and decision links")
 
 
