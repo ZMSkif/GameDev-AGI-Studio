@@ -1,0 +1,20 @@
+{
+  "name": "gamedev-studio",
+  "interface": {
+    "displayName": "GameDev Studio"
+  },
+  "plugins": [
+    {
+      "name": "gamedev-studio",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

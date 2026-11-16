@@ -12,3 +12,4 @@
 
 10. On first setup, create the **Decision Register** GitHub Project with `Area` and `Phase` fields, attach all `decision` Issues (script: `scripts/setup_decision_register.sh`); never recreate existing decisions.
 11. Validate `contracts/v1/manifest.json` and run `python scripts/validate_contracts.py` before creating implementation plans.
+12. Plugin structure (DEC-143, #146): the repository root is a Claude Code and Codex plugin named `gamedev-studio` (`.claude-plugin/`, `.codex-plugin/`, `.agents/plugins/marketplace.json`, `skills/`, `agents/`, `hooks/`). Version lives only in the two `plugin.json` files and must match. Run `python scripts/validate_plugin.py` and `claude plugin validate . --strict` when changing it.
