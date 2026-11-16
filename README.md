@@ -32,7 +32,7 @@ To try the plugin in a single Claude Code session without installing it: `claude
 
 ### Install from GitHub
 
-Unverified: the repository is private and the plugin is not yet on `main`, so these forms have not been run. They use the `owner/repo` source documented by both CLIs and need GitHub access to the private repository.
+Unverified: these forms have not been run. They use the `owner/repo` source documented by both CLIs and require GitHub access to the private repository.
 
 ```
 claude plugin marketplace add ZMSkif/GameDev-AGI-Studio

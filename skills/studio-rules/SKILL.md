@@ -16,4 +16,4 @@ Rules (a) to (h) apply to any work on a GameDev Studio game or on this plugin:
 - (e) Work in a separate branch and open a pull request; never push directly to `main` (DEC-001, #1).
 - (f) No secrets in the repository, and no paid actions or publishing without explicit owner approval (DEC-009, #9).
 - (g) Never accept your own work; an independent reviewer is required (DEC-040, #40).
-- (h) Decisions labelled `deferred` are paused, not cancelled, by DEC-143 (#146): the self-hosted coordinator, PostgreSQL execution, distributed workers and Studio Control Center. Do not build on them unless the owner reopens them. List them with `gh issue list -R ZMSkif/GameDev-AGI-Studio --label deferred --state all`.
+- (h) Decisions labelled `deferred` are paused, not cancelled, by DEC-143 (#146), including the self-hosted coordinator, PostgreSQL execution, distributed workers, Studio Control Center, platform IaC and the Phase 1 UI-to-PR criterion. Do not build on them unless the owner reopens them. List them with `gh issue list -R ZMSkif/GameDev-AGI-Studio --label deferred --state all`.
