@@ -81,6 +81,9 @@
     "decisions": "github_issues_label_decision",
     "tasks": "github_issues_and_projects",
     "execution": "postgresql",
+    "execution_status": "deferred",
+    "execution_deferred_by": "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/146",
+    "execution_while_deferred": "agent_runtime",
     "memory": "hindsight_not_authoritative",
     "artifacts": "versioned_hashes"
   }

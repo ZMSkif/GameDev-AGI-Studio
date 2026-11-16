@@ -1,43 +1,65 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "modules": [
     {
+      "id": "studio-plugin",
+      "status": "active",
+      "responsibility": "skills_agent_roles_hooks_quality_gates_mcp_connector_configuration",
+      "delivery_targets": [
+        "claude_code",
+        "codex"
+      ]
+    },
+    {
       "id": "control-center",
+      "status": "deferred",
       "responsibility": "owner_dashboard_and_approvals",
-      "no_direct_privileged_execution": true
+      "no_direct_privileged_execution": true,
+      "deferred_by": "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/146"
     },
     {
       "id": "coordinator",
+      "status": "deferred",
       "responsibility": "orchestration_scheduling_audit_policy",
-      "implementation_style": "modular_monolith_initially"
+      "implementation_style": "modular_monolith_initially",
+      "deferred_by": "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/146"
     },
     {
       "id": "worker-agent",
+      "status": "deferred",
       "responsibility": "capability_advertisement_leases_sandbox_execution",
-      "inbound_ports_required": false
+      "inbound_ports_required": false,
+      "deferred_by": "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/146"
     },
     {
       "id": "github",
+      "status": "active",
       "responsibility": "authoritative_decisions_tasks_and_prs"
     },
     {
       "id": "postgresql",
-      "responsibility": "durable_state_checkpoints_leases_audit"
+      "status": "deferred",
+      "responsibility": "durable_state_checkpoints_leases_audit",
+      "deferred_by": "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/146"
     },
     {
       "id": "hindsight",
+      "status": "active",
       "responsibility": "provenance_backed_knowledge_only"
     },
     {
       "id": "tool-registry",
+      "status": "active",
       "responsibility": "availability_versions_permissions_recovery"
     },
     {
       "id": "godot-game",
+      "status": "active",
       "responsibility": "independently_buildable_game_client_with_platform_adapters"
     },
     {
       "id": "qa-release",
+      "status": "active",
       "responsibility": "independent_verification_and_owner_release_gates"
     }
   ],

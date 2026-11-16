@@ -3,7 +3,9 @@
   "info": {
     "title": "GameDev AGI Studio Coordinator API",
     "version": "1.0.0",
-    "description": "Initial machine-readable implementation interface derived from approved system topology; endpoint details require engineering review."
+    "description": "Initial machine-readable implementation interface derived from approved system topology; endpoint details require engineering review.",
+    "x-status": "deferred",
+    "x-deferred-by": "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/146"
   },
   "paths": {
     "/v1/health": {
