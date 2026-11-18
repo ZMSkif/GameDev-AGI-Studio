@@ -7,6 +7,7 @@ import copy
 import importlib.util
 import io
 import json
+import re
 import shutil
 import tempfile
 import unittest
@@ -76,14 +77,34 @@ SLUGS = [
 AGENT = """---
 name: {slug}
 description: Delegate to the {role} for demo work.
-skills: demo-plugin:studio-rules
+skills:
+  - demo-plugin:studio-rules
 ---
 
 First apply the `demo-plugin:studio-rules` skill.
 
 ## Mission
 Demo.
+
+## Responsibilities
+- Demo duty (DEC-001, #1).
+
+## Does not do
+- Never accepts its own work (DEC-040, #40).
+
+## Reviewed by
+The Producer.
 """
+STUDIO_RULES_SKILL = "---\nname: studio-rules\ndescription: Demo rules.\n---\n\n# Rules\n"
+
+
+def agent_text(slug="producer", role="Producer", frontmatter=None, body=None) -> str:
+    """A valid agent file, with optional replacement frontmatter lines or body."""
+    text = AGENT.format(role=role, slug=slug)
+    head, _, rest = text.partition("\n---\n\n")
+    if frontmatter is not None:
+        head = "---\n" + frontmatter.strip("\n")
+    return head + "\n---\n\n" + (body if body is not None else rest)
 
 
 def team_skill_text(roles=ROLES, slugs=SLUGS) -> str:
@@ -107,6 +128,8 @@ def build_fixture(root: Path) -> None:
     (root / "skills" / "demo-skill" / "SKILL.md").write_text(SKILL, encoding="utf-8")
     (root / "skills" / "studio-team").mkdir(parents=True)
     (root / "skills" / "studio-team" / "SKILL.md").write_text(team_skill_text(), encoding="utf-8")
+    (root / "skills" / "studio-rules").mkdir(parents=True)
+    (root / "skills" / "studio-rules" / "SKILL.md").write_text(STUDIO_RULES_SKILL, encoding="utf-8")
     write_json(root, "contracts/v1/agent-team-policy.json", {"minimum_roles": list(ROLES)})
     (root / "agents").mkdir()
     for role, slug in zip(ROLES, SLUGS):
@@ -472,8 +495,8 @@ class SkillFrontmatterLimitsTest(FixtureCase):
         self.assertFails("missing YAML frontmatter")
 
     def test_skills_directory_without_skills_fails(self):
-        for name in ("demo-skill", "studio-team"):
-            shutil.rmtree(self.root / "skills" / name)
+        for child in list((self.root / "skills").iterdir()):
+            shutil.rmtree(child)
         self.assertFails("skills/: no skill directories found")
 
 
@@ -497,10 +520,13 @@ class RoleSlugTest(unittest.TestCase):
     def test_slug_function(self):
         self.assertEqual([vp.role_slug(r) for r in ROLES], SLUGS)
 
-    def test_real_policy_roles_match_the_nine(self):
+    def test_real_policy_contains_the_nine_and_every_role_has_a_file(self):
+        # Extra roles are allowed (DEC-142): the policy must contain the nine, never fewer.
         policy = json.loads((REPO_ROOT / "contracts/v1/agent-team-policy.json").read_text(encoding="utf-8"))
-        self.assertEqual(policy["minimum_roles"], ROLES)
-        for slug in SLUGS:
+        self.assertTrue(set(ROLES) <= set(policy["minimum_roles"]), policy["minimum_roles"])
+        for role in policy["minimum_roles"]:
+            slug = vp.role_slug(role)
+            self.assertTrue(slug, role)
             self.assertTrue((REPO_ROOT / "agents" / f"{slug}.md").is_file(), slug)
 
 
@@ -546,42 +572,68 @@ class AgentRolesTest(FixtureCase):
                 self.assertTrue(any("agent-team-policy.json" in e for e in self.errors()), self.errors())
 
     def test_name_not_matching_file_fails(self):
-        self.agent("producer", AGENT.format(role="Producer", slug="producer-x"))
+        self.agent("producer", agent_text("producer-x", "Producer"))
         self.assertFails("name 'producer-x' does not match file name 'producer'")
 
+    def test_name_must_be_kebab_case(self):
+        self.agent("producer", agent_text("producer", frontmatter="name: Producer_X\ndescription: x\nskills:\n  - demo-plugin:studio-rules"))
+        self.assertFails("name 'Producer_X' must be kebab-case")
+
     def test_missing_name_fails(self):
-        self.agent("producer", "---\ndescription: x\n---\nApply studio-rules.\n")
+        self.agent("producer", agent_text(frontmatter="description: x\nskills:\n  - demo-plugin:studio-rules"))
         self.assertFails("frontmatter 'name' is missing or empty")
 
     def test_empty_description_fails(self):
-        self.agent("producer", "---\nname: producer\ndescription:\n---\nApply studio-rules.\n")
+        self.agent("producer", agent_text(frontmatter="name: producer\ndescription:\nskills:\n  - demo-plugin:studio-rules"))
         self.assertFails("frontmatter 'description' is missing or empty")
 
     def test_missing_description_fails(self):
-        self.agent("producer", "---\nname: producer\n---\nApply studio-rules.\n")
+        self.agent("producer", agent_text(frontmatter="name: producer\nskills:\n  - demo-plugin:studio-rules"))
         self.assertFails("frontmatter 'description' is missing or empty")
 
     def test_missing_frontmatter_fails(self):
         self.agent("producer", "No frontmatter, studio-rules\n")
         self.assertFails("agents/producer.md: missing YAML frontmatter")
 
-    def test_multiline_frontmatter_fails(self):
-        self.agent("producer", "---\nname: producer\ndescription: x\nskills:\n  - a\n---\nstudio-rules\n")
+    def test_malformed_frontmatter_line_fails(self):
+        self.agent("producer", agent_text(frontmatter="name: producer\ndescription: x\nstray line without colon"))
         self.assertFails("invalid frontmatter line")
 
     def test_forbidden_frontmatter_keys_fail(self):
         for key in ("permissionMode", "hooks", "mcpServers", "initialPrompt"):
             with self.subTest(key=key):
-                self.agent("producer", f"---\nname: producer\ndescription: x\n{key}: value\n---\nstudio-rules\n")
+                self.agent(
+                    "producer",
+                    agent_text(frontmatter=f"name: producer\ndescription: x\nskills:\n  - demo-plugin:studio-rules\n{key}: value"),
+                )
                 self.assertFails(f"frontmatter keys ignored for plugin agents: {key}")
 
     def test_optional_frontmatter_keys_are_allowed(self):
-        self.agent("producer", "---\nname: producer\ndescription: x\nmodel: sonnet\ntools: Read, Grep, Skill\n---\nstudio-rules\n")
+        self.agent(
+            "producer",
+            agent_text(frontmatter="name: producer\ndescription: x\nmodel: sonnet\ntools: Read, Grep, Skill\nskills:\n  - demo-plugin:studio-rules"),
+        )
         self.assertEqual(self.errors(), [])
 
     def test_body_without_studio_rules_fails(self):
-        self.agent("producer", "---\nname: producer\ndescription: x\n---\nNo rules here.\n")
+        self.agent("producer", agent_text(body="## Responsibilities\n## Does not do\n## Reviewed by\nDEC-040\n"))
         self.assertFails("body must tell the role to apply the studio-rules skill")
+
+    def test_missing_required_headings_fail(self):
+        for heading in ("## Responsibilities", "## Does not do", "## Reviewed by"):
+            with self.subTest(heading=heading):
+                body = agent_text().partition("\n---\n\n")[2].replace(heading, "## Renamed")
+                self.agent("producer", agent_text(body=body))
+                self.assertFails(f"missing required heading '{heading}'")
+
+    def test_role_without_decision_reference_fails(self):
+        body = re.sub(r"DEC-\d+", "decision", agent_text().partition("\n---\n\n")[2])
+        self.agent("producer", agent_text(body=body))
+        self.assertFails("must cite at least one decision")
+
+    def test_empty_slug_in_policy_fails(self):
+        self.mutate("contracts/v1/agent-team-policy.json", lambda d: d["minimum_roles"].append("&"))
+        self.assertFails("role title '&' has no letters or digits")
 
     def test_secret_in_agent_markdown_fails(self):
         path = self.root / "agents" / "producer.md"
@@ -595,6 +647,70 @@ class AgentRolesTest(FixtureCase):
     def test_non_utf8_agent_file_fails(self):
         (self.root / "agents" / "blob.bin").write_bytes(b"\xff\xfe\x00\x80")
         self.assertFails("agents/blob.bin: cannot read as UTF-8 text")
+
+
+class AgentSkillsFrontmatterTest(FixtureCase):
+    def agent(self, frontmatter):
+        (self.root / "agents" / "producer.md").write_text(
+            agent_text(frontmatter="name: producer\ndescription: x\n" + frontmatter), encoding="utf-8"
+        )
+
+    def test_missing_skills_key_fails(self):
+        self.agent("model: sonnet")
+        self.assertFails("frontmatter 'skills' is missing")
+
+    def test_empty_skills_key_fails(self):
+        self.agent("skills:")
+        self.assertFails("frontmatter 'skills' must be a non-empty YAML list")
+
+    def test_string_form_is_rejected(self):
+        self.agent("skills: demo-plugin:studio-rules")
+        self.assertFails("frontmatter 'skills' must be a non-empty YAML list")
+
+    def test_studio_rules_must_be_listed(self):
+        self.agent("skills:\n  - demo-skill")
+        self.assertFails("frontmatter 'skills' must contain 'demo-plugin:studio-rules'")
+
+    def test_nonexistent_skill_fails(self):
+        self.agent("skills:\n  - demo-plugin:studio-rules\n  - demo-plugin:no-such-skill")
+        self.assertFails("skill 'demo-plugin:no-such-skill' does not exist as skills/no-such-skill/SKILL.md")
+
+    def test_skill_of_another_plugin_fails(self):
+        self.agent("skills:\n  - demo-plugin:studio-rules\n  - other:studio-rules")
+        self.assertFails("skill 'other:studio-rules' is not from this plugin")
+
+    def test_block_and_flow_lists_are_accepted(self):
+        self.agent("skills:\n  - demo-plugin:studio-rules\n  - demo-skill")
+        self.assertEqual(self.errors(), [])
+        self.agent("skills: [demo-plugin:studio-rules, 'demo-skill']")
+        self.assertEqual(self.errors(), [])
+
+    def test_removed_studio_rules_skill_fails(self):
+        shutil.rmtree(self.root / "skills" / "studio-rules")
+        self.assertFails("skill 'demo-plugin:studio-rules' does not exist as skills/studio-rules/SKILL.md")
+
+
+class FrontmatterParserTest(unittest.TestCase):
+    def test_block_list_is_parsed(self):
+        fields, body = vp.parse_frontmatter("---\nname: a\nskills:\n  - x:y\n  - \"z\"\nmodel: m\n---\nbody\n")
+        self.assertEqual(fields, {"name": "a", "skills": ["x:y", "z"], "model": "m"})
+        self.assertEqual(body, "body")
+
+    def test_flow_list_and_scalars(self):
+        fields, _ = vp.parse_frontmatter("---\nskills: [a, b]\ntools: Read, Grep\n---\n")
+        self.assertEqual(fields, {"skills": ["a", "b"], "tools": "Read, Grep"})
+
+    def test_list_item_without_key_is_invalid(self):
+        fields, _ = vp.parse_frontmatter("---\n  - orphan\n---\n")
+        self.assertIn("__invalid__", fields)
+
+    def test_list_value_for_skill_name_fails(self):
+        shutil_tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(shutil_tmp.cleanup)
+        root = Path(shutil_tmp.name)
+        build_fixture(root)
+        (root / "skills" / "demo-skill" / "SKILL.md").write_text("---\nname:\n  - a\ndescription: x\n---\nbody\n", encoding="utf-8")
+        self.assertTrue(any("'name' must be a single string" in e for e in vp.validate(root)))
 
 
 class TeamSkillTest(FixtureCase):

@@ -32,7 +32,7 @@ To try the plugin in a single Claude Code session without installing it: `claude
 
 ### Install from GitHub
 
-Verified by the director on 2026-11-17 in isolated configs after merge. The repository is private, so these need GitHub access to it.
+These commands install the default branch and need GitHub access to the private repository.
 
 ```
 claude plugin marketplace add ZMSkif/GameDev-AGI-Studio
@@ -57,6 +57,8 @@ The base team is the `minimum_roles` list in [`contracts/v1/agent-team-policy.js
 | Asset Pipeline Artist | `gamedev-studio:asset-pipeline-artist` |
 | QA Engineer | `gamedev-studio:qa-engineer` |
 | Publishing & Analytics Agent | `gamedev-studio:publishing-analytics-agent` |
+
+Reviewer and duty assignments are a proposal under DEC-040 and DEC-072, not an owner decision; the owner may change them.
 
 In Claude Code, delegate to a role by name, or with `@agent-gamedev-studio:qa-engineer`.
 

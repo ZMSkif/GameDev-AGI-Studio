@@ -38,3 +38,4 @@ Codex 0.169.0 did not discover custom agents shipped inside a plugin, so the rol
 - Retries are bounded; then independent diagnosis, then the Technical Director, then the owner (DEC-039, #39).
 - Overlapping semantic edits are reconciled by an independent integration engineer, an on-demand specialist outside the nine (DEC-052, #52).
 - Report only what was actually run and observed (DEC-016, #16).
+- Reviewer and duty assignments are a proposal under DEC-040 and DEC-072, not an owner decision; the owner may change them.

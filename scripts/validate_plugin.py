@@ -12,7 +12,9 @@ Checks:
   * agents/: every role in contracts/v1/agent-team-policy.json `minimum_roles` is present
     as agents/<role-slug>.md (extra roles are allowed), each agent has a `name` matching
     its file name, a non-empty `description`, none of the frontmatter keys Claude Code
-    ignores for plugin agents, and a reference to the studio-rules skill;
+    ignores for plugin agents, a kebab-case name, a `skills` YAML list that contains
+    <plugin>:studio-rules (every entry must exist under skills/), the headings
+    Responsibilities / Does not do / Reviewed by, and at least one DEC-nnn reference;
   * skills/studio-team/SKILL.md names every minimum role and the role files it points to exist;
   * no manifest, agent or skill contains a secret-looking value.
 
@@ -45,6 +47,8 @@ AGENT_POLICY = PurePosixPath("contracts/v1/agent-team-policy.json")
 FORBIDDEN_AGENT_KEYS = {"permissionMode", "hooks", "mcpServers", "initialPrompt"}
 STUDIO_RULES_SKILL = "studio-rules"
 TEAM_SKILL = PurePosixPath("skills/studio-team/SKILL.md")
+REQUIRED_AGENT_HEADINGS = ("## Responsibilities", "## Does not do", "## Reviewed by")
+DECISION_REF_RE = re.compile(r"\bDEC-\d+\b")
 
 SECRET_VALUE_PATTERNS = [
     ("private key block", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")),
@@ -155,24 +159,43 @@ def check_marketplace(root: Path, rel: PurePosixPath, data, plugin_name: str, er
 
 
 def parse_frontmatter(text: str):
-    """Return (fields, body); fields is None without frontmatter. Simple `key: value` only."""
+    """Return (fields, body); fields is None without frontmatter.
+
+    Supports single-line `key: value`, a block list (`key:` followed by `- item` lines)
+    and a flow list (`key: [a, b]`); list values come back as list[str], others as str.
+    """
+
+    def unquote(value: str) -> str:
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
+            return value[1:-1]
+        return value
+
     lines = text.splitlines()
     if not lines or lines[0].strip() != "---":
         return None, text
     for end in range(1, len(lines)):
         if lines[end].strip() != "---":
             continue
-        fields: dict[str, str] = {}
+        fields: dict[str, str | list[str]] = {}
+        last_key = None
         for line in lines[1:end]:
             if not line.strip() or line.lstrip().startswith("#"):
+                continue
+            item = re.match(r"^\s*-\s+(.*)$", line)
+            if item and last_key is not None and (fields[last_key] == "" or isinstance(fields[last_key], list)):
+                current = fields[last_key]
+                fields[last_key] = (current if isinstance(current, list) else []) + [unquote(item.group(1))]
                 continue
             if ":" not in line:
                 return {"__invalid__": line}, ""
             key, _, value = line.partition(":")
             value = value.strip()
-            if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
-                value = value[1:-1]
-            fields[key.strip()] = value
+            if value.startswith("[") and value.endswith("]"):
+                fields[key.strip()] = [unquote(part) for part in value[1:-1].split(",") if part.strip()]
+            else:
+                fields[key.strip()] = unquote(value)
+            last_key = key.strip()
         return fields, "\n".join(lines[end + 1:])
     return None, text
 
@@ -207,6 +230,9 @@ def check_skills(root: Path, errors: list[str]) -> None:
         for key in ("name", "description"):
             if not fields.get(key):
                 errors.append(f"{rel}: frontmatter '{key}' is missing or empty")
+            elif not isinstance(fields[key], str):
+                errors.append(f"{rel}: frontmatter '{key}' must be a single string")
+                fields[key] = ""
         if len(fields.get("name", "")) > MAX_SKILL_NAME:
             errors.append(f"{rel}: name is longer than {MAX_SKILL_NAME} characters")
         if len(fields.get("description", "")) > MAX_SKILL_DESCRIPTION:
@@ -235,13 +261,17 @@ def load_minimum_roles(root: Path, errors: list[str]) -> list[str] | None:
         errors.append(f"{AGENT_POLICY}: 'minimum_roles' must be a non-empty list of role titles")
         return None
     slugs = [role_slug(r) for r in roles]
+    for role, slug in zip(roles, slugs):
+        if not slug:
+            errors.append(f"{AGENT_POLICY}: role title {role!r} has no letters or digits, so it yields an empty file name")
+            return None
     if len(set(slugs)) != len(slugs):
         errors.append(f"{AGENT_POLICY}: 'minimum_roles' contains duplicate roles")
         return None
     return roles
 
 
-def check_agents(root: Path, roles: list[str] | None, errors: list[str]) -> None:
+def check_agents(root: Path, roles: list[str] | None, plugin_name: str | None, errors: list[str]) -> None:
     agents_dir = root / "agents"
     if not agents_dir.is_dir():
         errors.append("agents/: directory is missing")
@@ -269,19 +299,57 @@ def check_agents(root: Path, roles: list[str] | None, errors: list[str]) -> None
             errors.append(f"{rel}: missing YAML frontmatter")
             continue
         if "__invalid__" in fields:
-            errors.append(f"{rel}: invalid frontmatter line {fields['__invalid__']!r} (use single-line `key: value`)")
+            errors.append(
+                f"{rel}: invalid frontmatter line {fields['__invalid__']!r} "
+                "(use `key: value`, or a `key:` line followed by `- item` lines)"
+            )
             continue
-        if not fields.get("name"):
+        name = fields.get("name")
+        if not name:
             errors.append(f"{rel}: frontmatter 'name' is missing or empty")
-        elif fields["name"] != path.stem:
-            errors.append(f"{rel}: name '{fields['name']}' does not match file name '{path.stem}'")
-        if not fields.get("description"):
+        elif not isinstance(name, str):
+            errors.append(f"{rel}: frontmatter 'name' must be a single string")
+        else:
+            if not NAME_RE.match(name):
+                errors.append(f"{rel}: name '{name}' must be kebab-case (lowercase letters, digits, hyphens)")
+            if name != path.stem:
+                errors.append(f"{rel}: name '{name}' does not match file name '{path.stem}'")
+        description = fields.get("description")
+        if not description:
             errors.append(f"{rel}: frontmatter 'description' is missing or empty")
+        elif not isinstance(description, str):
+            errors.append(f"{rel}: frontmatter 'description' must be a single string")
         forbidden = sorted(set(fields) & FORBIDDEN_AGENT_KEYS)
         if forbidden:
             errors.append(f"{rel}: frontmatter keys ignored for plugin agents: {', '.join(forbidden)}")
+        check_agent_skills(root, rel, fields.get("skills"), plugin_name, errors)
         if STUDIO_RULES_SKILL not in body:
             errors.append(f"{rel}: body must tell the role to apply the {STUDIO_RULES_SKILL} skill first")
+        for heading in REQUIRED_AGENT_HEADINGS:
+            if not re.search(rf"(?m)^{re.escape(heading)}\s*$", body):
+                errors.append(f"{rel}: missing required heading '{heading}'")
+        if not DECISION_REF_RE.search(body):
+            errors.append(f"{rel}: must cite at least one decision (DEC-nnn)")
+
+
+def check_agent_skills(root: Path, rel, skills, plugin_name: str | None, errors: list[str]) -> None:
+    """`skills` must be a YAML list that preloads <plugin>:studio-rules; every entry must exist."""
+    if skills is None:
+        errors.append(f"{rel}: frontmatter 'skills' is missing (it must list {plugin_name or '<plugin>'}:{STUDIO_RULES_SKILL})")
+        return
+    if not isinstance(skills, list) or not skills:
+        errors.append(f"{rel}: frontmatter 'skills' must be a non-empty YAML list")
+        return
+    required = f"{plugin_name}:{STUDIO_RULES_SKILL}" if plugin_name else None
+    if required is not None and required not in skills:
+        errors.append(f"{rel}: frontmatter 'skills' must contain '{required}'")
+    for entry in skills:
+        prefix, sep, skill = entry.rpartition(":")
+        if sep and plugin_name is not None and prefix != plugin_name:
+            errors.append(f"{rel}: skill '{entry}' is not from this plugin ('{plugin_name}')")
+            continue
+        if not skill or not (root / "skills" / skill / "SKILL.md").is_file():
+            errors.append(f"{rel}: skill '{entry}' does not exist as skills/{skill}/SKILL.md")
 
 
 def check_team_skill(root: Path, roles: list[str] | None, errors: list[str]) -> None:
@@ -378,7 +446,7 @@ def validate(root) -> list[str]:
 
     check_skills(root, errors)
     roles = load_minimum_roles(root, errors)
-    check_agents(root, roles, errors)
+    check_agents(root, roles, plugin_name if isinstance(plugin_name, str) else None, errors)
     check_team_skill(root, roles, errors)
     check_hooks(root, errors)
     return errors
