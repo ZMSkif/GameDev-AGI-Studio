@@ -1,5 +1,5 @@
 {
-  "description": "GameDev Studio quality-gate hooks. Every hook is a silent no-op outside a GameDev Studio project.",
+  "description": "GameDev Studio quality-gate hooks. Every hook is a silent no-op outside a GameDev Studio project. Commands are written for bash (Git Bash on Windows); if Claude Code falls back to PowerShell they fail visibly with a ParserError and the PreToolUse guard fails open.",
   "hooks": {
     "SessionStart": [
       {

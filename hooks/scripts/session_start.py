@@ -40,7 +40,7 @@ def preflight():
     else:
         try:
             done = subprocess.run(
-                [gh, "auth", "status"],
+                [gh, "auth", "status", "--hostname", "github.com"],
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
@@ -48,7 +48,8 @@ def preflight():
                 env=dict(os.environ, GH_PROMPT_DISABLED="1", NO_COLOR="1"),
             )
             if done.returncode != 0:
-                problems.append("`gh auth status` failed (exit %d): gh is not authenticated" % done.returncode)
+                problems.append("`gh auth status` failed (exit %d): gh authentication failed or could not be verified "
+                                "(possibly a network error)" % done.returncode)
         except subprocess.TimeoutExpired:
             problems.append("`gh auth status` did not finish within %ds, so gh authentication could not be verified"
                             % GH_AUTH_TIMEOUT)

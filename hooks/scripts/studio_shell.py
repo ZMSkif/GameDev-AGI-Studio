@@ -47,8 +47,11 @@ def strip_heredocs(text: str) -> str:
     return "\n".join(out)
 
 
-def tokenize(text: str):
-    """Split into a list of words and operator markers (None = command separator)."""
+def tokenize(text: str, powershell: bool = False):
+    """Split into a list of words and operator markers (None = command separator).
+
+    powershell=True: the backtick is the escape / line-continuation character, not command substitution.
+    """
     tokens = []
     cur = []
     have = False
@@ -82,6 +85,9 @@ def tokenize(text: str):
             if c == "\\" and i + 1 < n and text[i + 1] in '"\\$`':
                 cur.append(text[i + 1])
                 i += 1
+            elif c == "`" and powershell and i + 1 < n:
+                cur.append(text[i + 1])
+                i += 1
             elif c == '"':
                 quote = None
             else:
@@ -94,6 +100,19 @@ def tokenize(text: str):
                 have = True
             elif c == "\\" and i + 1 < n and text[i + 1] == "\n":
                 i += 1  # line continuation
+            elif c == "`" and (powershell or text[i + 1:i + 2] in ("\n", "\r")):
+                # PowerShell escape character / line continuation. In bash only a backtick right before a
+                # newline is treated this way (no real command has a substitution that starts there).
+                if i + 1 >= n:
+                    pass
+                elif text[i + 1] in "\r\n":
+                    flush()
+                    i += 3 if text[i + 1:i + 3] == "\r\n" else 2  # skip the backtick and the line break
+                    continue
+                else:
+                    cur.append(text[i + 1])
+                    have = True
+                    i += 1
             elif c == "\\" and i + 1 < n and text[i + 1] in _ESCAPABLE:
                 cur.append(text[i + 1])
                 have = True
@@ -178,11 +197,11 @@ def _parse_git(words):
     return None
 
 
-def parse(command: str, depth: int = 0):
+def parse(command: str, depth: int = 0, powershell: bool = False):
     events = []
     if depth > 3 or not isinstance(command, str):
         return events
-    tokens = tokenize(strip_heredocs(command))
+    tokens = tokenize(strip_heredocs(command), powershell)
     for words in _commands(tokens):
         i = 0
         prefixed = False
@@ -218,7 +237,7 @@ def parse(command: str, depth: int = 0):
             for k, w in enumerate(rest[:-1]):
                 low = w.lower()
                 if (low.startswith("-") and not low.startswith("--") and "c" in low[1:]) or low in ("-command", "-c"):
-                    events.extend(parse(rest[k + 1], depth + 1))
+                    events.extend(parse(rest[k + 1], depth + 1, powershell or head in ("pwsh", "powershell")))
                     break
     return events
 

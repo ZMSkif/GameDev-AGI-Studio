@@ -18,7 +18,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import studio_scope as scope  # noqa: E402
 import studio_shell as shell  # noqa: E402
 
-SECRET_GLOBS = ("*.pem", "*.key", "id_rsa*", "*.p12", "*.pfx", "*.ppk", "*.jks")
+SECRET_GLOBS = ("*.pem", "*.key", "id_rsa*", "id_ed25519*", "id_ecdsa*", "id_dsa*", "*.p12", "*.pfx", "*.ppk",
+                "*.jks", "*.keystore")
 ENV_TEMPLATE_SUFFIXES = ("example", "sample", "template")
 
 BRANCH_HELP = (
@@ -29,7 +30,7 @@ BRANCH_HELP = (
 
 def is_credential_path(path: str) -> bool:
     base = os.path.basename(str(path).replace("\\", "/")).lower()
-    if not base:
+    if not base or base.endswith(".pub"):  # public keys are not secrets
         return False
     if base == ".env":
         return True
@@ -55,11 +56,25 @@ _PUSH_VALUE_OPTS = {"-o", "--push-option", "--repo", "--receive-pack", "--exec"}
 _RECURSE_VALUES = {"check", "on-demand", "only", "no"}
 
 
-def check_push(head_branch, args):
-    """Return a deny reason if this `git push` would update main/master."""
+_FORCE_FLAGS = {"-f", "--force", "--force-if-includes"}
+
+
+def remote_lacks_branch(directory: str, remote, branch: str):
+    """True only when `git ls-remote --exit-code --heads` proves the remote has no such branch (exit 2)."""
+    args = ["ls-remote", "--exit-code", "--heads", remote or "origin", branch]
+    done = scope.run_git(directory, args, timeout=5.0)
+    return done is not None and done.returncode == 2
+
+
+def check_push(directory: str, head_branch, args):
+    """Return a deny reason if this `git push` would update main/master.
+
+    Decision #1 allows the initial commit into an empty repository, so a plain (non-force) push of
+    main/master is allowed when the remote has no such branch yet.
+    """
     positional = []
     flags = set()
-    repo_opt = False
+    repo_opt = None
     i = 0
     while i < len(args):
         a = args[i]
@@ -67,14 +82,15 @@ def check_push(head_branch, args):
             positional.extend(args[i + 1:])
             break
         if a in _PUSH_VALUE_OPTS:
-            repo_opt = repo_opt or a == "--repo"
+            if a == "--repo" and i + 1 < len(args):
+                repo_opt = args[i + 1]
             i += 2
             continue
         if a == "--recurse-submodules" and i + 1 < len(args) and args[i + 1] in _RECURSE_VALUES:
             i += 2
             continue
         if a.startswith("--repo="):
-            repo_opt = True
+            repo_opt = a[len("--repo="):]
         if a.startswith("-") and len(a) > 1:
             flags.add(a)
             if not a.startswith("--") and len(a) > 2:  # clustered short flags such as -fu / -nv
@@ -89,7 +105,11 @@ def check_push(head_branch, args):
         which = "--all" if "--all" in flags else "--mirror"
         return "`git push %s` would update main/master." % which
 
+    remote = repo_opt if repo_opt else (positional[0] if positional else None)
     refspecs = positional if repo_opt else positional[1:]
+    forced = (bool(flags & _FORCE_FLAGS) or any(f.startswith("--force") for f in flags)
+              or any(spec.startswith("+") for spec in refspecs))
+    deleting = bool(flags & {"-d", "--delete"})
 
     targets = []
     if not refspecs:
@@ -103,14 +123,21 @@ def check_push(head_branch, args):
             dst = src
         elif not dst:
             continue
+        elif not src:
+            deleting = True  # `:main` deletes the remote branch
         if dst == "HEAD":
             dst = head_branch() or ""
         if dst.startswith("refs/heads/"):
             dst = dst[len("refs/heads/"):]
         targets.append(dst)
     for dst in targets:
-        if dst and any(fnmatch.fnmatchcase(p, dst) for p in scope.PROTECTED_BRANCHES):
+        if not dst or not any(fnmatch.fnmatchcase(p, dst) for p in scope.PROTECTED_BRANCHES):
+            continue
+        if forced or deleting or dst not in scope.PROTECTED_BRANCHES:
             return "`git push` would update %s on the remote." % dst
+        if not remote_lacks_branch(directory, remote, dst):
+            return ("`git push` of %s is only allowed as the initial push into an empty remote, and `git ls-remote` "
+                    "did not confirm that %s is absent (it exists, or the check failed or timed out)." % (dst, dst))
     return None
 
 
@@ -233,7 +260,12 @@ def simulated_branch(directory: str, sub: str, args, current):
 
 # ---- driver ---------------------------------------------------------------------------
 
-def evaluate(command: str, session_cwd: str):
+_WATCHED = {"commit", "push", "add", "checkout", "switch", "merge", "cherry-pick", "revert", "rebase"}
+_HISTORY_REWRITERS = {"merge", "cherry-pick", "revert", "rebase"}
+_HISTORY_ESCAPES = {"--abort", "--continue", "--quit", "--skip"}
+
+
+def evaluate(command: str, session_cwd: str, powershell: bool = False):
     """Return (rule, reason) for the first violating git invocation in `command`, else None.
 
     rule is "branch" (decision #1) or "credentials" (decision #9).
@@ -247,14 +279,14 @@ def evaluate(command: str, session_cwd: str):
             return simulated[key]
         return scope.current_branch(directory)
 
-    for event in shell.parse(command):
+    for event in shell.parse(command, powershell=powershell):
         if event[0] == "cd":
             # unknown target (variable, command substitution, missing dir) -> None: the following git
             # commands cannot be placed in a repository, so they are skipped (fail open)
             cur = shell.resolve_dir(cur, event[1])
             continue
         _, dirs, sub, args, bad = event
-        if bad or sub not in ("commit", "push", "add", "checkout", "switch"):
+        if bad or sub not in _WATCHED:
             continue
         target = cur
         for d in dirs:
@@ -273,11 +305,19 @@ def evaluate(command: str, session_cwd: str):
         if sub == "add":
             found = ("credentials", check_add(target, args))
         elif sub == "push":
-            found = ("branch", check_push(lambda t=target: branch_of(t), args))
+            found = ("branch", check_push(target, lambda t=target: branch_of(t), args))
+        elif sub in _HISTORY_REWRITERS:
+            branch = branch_of(target)
+            reason = None
+            if branch in scope.PROTECTED_BRANCHES and not (set(args) & _HISTORY_ESCAPES):
+                reason = "`git %s` while `%s` is checked out would change %s directly." % (sub, branch, branch)
+            found = ("branch", reason)
         else:
             branch = branch_of(target)
             reason = None
-            if branch in scope.PROTECTED_BRANCHES and "--dry-run" not in args:
+            # Decision #1 allows the initial commit into an empty repository: HEAD is unborn there.
+            if (branch in scope.PROTECTED_BRANCHES and "--dry-run" not in args
+                    and scope.head_exists(target) is not False):
                 reason = "`git commit` while `%s` is checked out is a direct commit to %s." % (branch, branch)
             found = ("branch", reason) if reason else ("credentials", check_commit(target, args))
         if found[1]:
@@ -295,11 +335,11 @@ def main() -> None:
         command = " ".join(str(x) if " " not in str(x) else '"%s"' % x for x in command)
     if not isinstance(command, str) or "git" not in command.lower():
         return
-    if not scope.session_in_scope(payload):
-        return
+    # No session-level scope gate: only the directory a git command targets decides (is_studio_dir), so
+    # `git -C <studio> commit` / `cd <studio> && git commit` from another project is still guarded.
     cwd = payload.get("cwd") if isinstance(payload.get("cwd"), str) else None
     cwd = cwd if cwd and os.path.isdir(cwd) else os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
-    found = evaluate(command, cwd)
+    found = evaluate(command, cwd, payload.get("tool_name") == "PowerShell")
     if found:
         rule, reason = found
         scope.debug("deny: " + reason)

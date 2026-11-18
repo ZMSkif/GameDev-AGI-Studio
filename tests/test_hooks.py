@@ -116,12 +116,23 @@ class HookTestCase(unittest.TestCase):
         self.assertEqual(done.stdout.strip(), b"", "unexpected output for: %s -> %r" % (command, done.stdout))
 
 
+def make_bare_remote(parent, name="remote.git"):
+    remote = Path(parent) / name
+    git(parent, "init", "-q", "--bare", "-b", "main", str(remote))
+    return remote
+
+
 class DirectCommitAndPushRule(HookTestCase):
     """Rule 1 (decision #1)."""
 
     def setUp(self):
         super().setUp()
-        self.repo = make_repo(self.tmp, "studio")
+        # Hermetic: the origin is a local bare repository that already has main and master, and the
+        # marker file (not the origin URL) puts the repository in scope.
+        self.remote = make_bare_remote(self.tmp)
+        self.repo = make_repo(self.tmp, "studio", origin=str(self.remote), marker=True)
+        git(self.repo, "branch", "master")
+        git(self.repo, "push", "-q", "origin", "main", "master")
 
     def test_commit_on_main_is_blocked_with_actionable_reason(self):
         reason = self.assertBlocked("git commit -m test", self.repo, "direct commit to main")
@@ -148,9 +159,23 @@ class DirectCommitAndPushRule(HookTestCase):
         repo = make_repo(self.tmp, "masterrepo", branch="master")
         self.assertBlocked("git commit -m x", repo, "master")
 
-    def test_commit_on_unborn_main_is_blocked(self):
-        repo = make_repo(self.tmp, "fresh", commit=False)
-        self.assertBlocked("git commit --allow-empty -m x", repo, "main")
+    def test_initial_commit_into_an_empty_repository_is_allowed(self):
+        # decision #1: the necessary initial commit into an empty repository is the one exception
+        repo = make_repo(self.tmp, "fresh", commit=False, marker=True)
+        self.assertAllowed("git commit --allow-empty -m x", repo)
+        self.assertAllowed("git add -A && git commit -m init", repo)
+        self.assertAllowed('git -c user.name=x commit -m "$(cat <<\'EOF\'\ninit\nEOF\n)"', repo)
+
+    def test_unborn_head_still_gets_the_credential_check(self):
+        repo = make_repo(self.tmp, "fresh2", commit=False, marker=True)
+        (repo / ".env").write_text("S=1", encoding="utf-8")
+        git(repo, "add", "-f", ".env")
+        self.assertBlocked("git commit -m init", repo, ".env")
+
+    def test_second_commit_on_main_is_blocked_again(self):
+        repo = make_repo(self.tmp, "fresh3", commit=False, marker=True)
+        git(repo, "commit", "-q", "--allow-empty", "-m", "initial")
+        self.assertBlocked("git commit --allow-empty -m second", repo, "direct commit to main")
 
     def test_commit_on_feature_branch_is_allowed(self):
         git(self.repo, "switch", "-q", "-c", "feat/x")
@@ -202,6 +227,27 @@ class DirectCommitAndPushRule(HookTestCase):
         self.assertAllowed("git push", self.repo)
         self.assertAllowed("git push -u origin HEAD", self.repo)
         self.assertAllowed("git push origin", self.repo)
+
+    def test_merge_cherry_pick_revert_rebase_on_main_are_blocked(self):
+        for cmd in ("git merge feat/x", "git merge --ff-only origin/main", "git merge --no-ff feat/x -m msg",
+                    "git cherry-pick abc123", "git revert HEAD", "git rebase origin/main", "git -C . merge feat/x",
+                    "git checkout main && git merge feat/x"):
+            with self.subTest(cmd=cmd):
+                self.assertBlocked(cmd, self.repo, "would change main directly")
+
+    def test_history_rewriters_may_be_aborted_or_continued_on_main(self):
+        for cmd in ("git merge --abort", "git rebase --abort", "git rebase --continue", "git rebase --skip",
+                    "git cherry-pick --quit", "git cherry-pick --continue", "git revert --abort",
+                    "git merge --continue"):
+            with self.subTest(cmd=cmd):
+                self.assertAllowed(cmd, self.repo)
+
+    def test_history_rewriters_are_allowed_off_main(self):
+        git(self.repo, "switch", "-q", "-c", "feat/x")
+        for cmd in ("git merge main", "git rebase main", "git rebase origin/main", "git cherry-pick abc123",
+                    "git revert HEAD", "git switch -c feat/y && git merge main"):
+            with self.subTest(cmd=cmd):
+                self.assertAllowed(cmd, self.repo)
 
     def test_pushes_that_do_not_touch_main_are_allowed(self):
         for cmd in (
@@ -300,6 +346,22 @@ class DirectCommitAndPushRule(HookTestCase):
         self.assertBlocked("git status; git push origin main", self.repo, "git push", tool="PowerShell")
         self.assertAllowed("git status; git log -1", self.repo, tool="PowerShell")
 
+    def test_powershell_backtick_is_an_escape_not_a_separator(self):
+        for cmd in ("git push origin `\n  main", "git push `\n  origin main", "git push origin `\r\n  main",
+                    "git push origin main `\n  --force"):
+            with self.subTest(cmd=cmd):
+                self.assertBlocked(cmd, self.repo, "git push", tool="PowerShell")
+        git(self.repo, "switch", "-q", "-c", "feat/x")
+        self.assertAllowed("git push origin `\n  feat/x", self.repo, tool="PowerShell")
+        self.assertAllowed("git push `\n  -u origin feat/x", self.repo, tool="PowerShell")
+        self.assertBlocked('git commit -m "say `"hi`""; git push origin `\n main', self.repo, "git push",
+                           tool="PowerShell")
+        self.assertAllowed('git commit -m "say `"hi`" and `$x"', self.repo, tool="PowerShell")
+
+    def test_backtick_before_a_newline_continues_the_line_in_bash_tool_payloads_too(self):
+        # Codex on Windows reports tool_name "Bash" but runs PowerShell
+        self.assertBlocked("git push origin `\n  main", self.repo, "git push")
+
     def test_codex_argv_command_payload(self):
         payload = pre_payload("", self.repo)
         payload["tool_input"] = {"command": ["git", "commit", "-m", "two words"]}
@@ -309,6 +371,64 @@ class DirectCommitAndPushRule(HookTestCase):
     def test_works_without_git_on_path_using_head_file(self):
         env = clean_env(PATH=os.devnull)
         self.assertBlocked("git commit -m x", self.repo, "main", env=env)
+
+
+class InitialPushRule(HookTestCase):
+    """Decision #1 allows the initial push into an empty remote, nothing else on main/master."""
+
+    def setUp(self):
+        super().setUp()
+        self.remote = make_bare_remote(self.tmp)
+        self.repo = make_repo(self.tmp, "game", origin=str(self.remote), marker=True)
+
+    def test_plain_push_of_main_into_an_empty_remote_is_allowed(self):
+        for cmd in ("git push origin main", "git push -u origin main", "git push origin HEAD:main",
+                    "git push origin main:main", "git push origin refs/heads/main", "git push", "git push origin",
+                    "git push -u origin HEAD", "git push --set-upstream origin main && git status"):
+            with self.subTest(cmd=cmd):
+                self.assertAllowed(cmd, self.repo)
+
+    def test_master_into_an_empty_remote_is_allowed(self):
+        repo = make_repo(self.tmp, "game-master", origin=str(self.remote), marker=True, branch="master")
+        self.assertAllowed("git push origin master", repo)
+
+    def test_force_push_is_denied_even_into_an_empty_remote(self):
+        for cmd in ("git push --force origin main", "git push -f origin main", "git push origin +main",
+                    "git push --force-with-lease origin main", "git push -fu origin main",
+                    "git push origin +HEAD:main", "git push --force-if-includes origin main"):
+            with self.subTest(cmd=cmd):
+                self.assertBlocked(cmd, self.repo, "would update main")
+
+    def test_deleting_or_mass_pushing_is_denied_even_into_an_empty_remote(self):
+        for cmd in ("git push origin :main", "git push --delete origin main", "git push --all",
+                    "git push --mirror", "git push origin 'refs/heads/*:refs/heads/*'"):
+            with self.subTest(cmd=cmd):
+                self.assertBlocked(cmd, self.repo, "git push")
+
+    def test_push_is_denied_once_the_remote_has_the_branch(self):
+        git(self.repo, "push", "-q", "origin", "main")
+        for cmd in ("git push origin main", "git push", "git push -u origin main", "git push origin HEAD:main"):
+            with self.subTest(cmd=cmd):
+                reason = self.assertBlocked(cmd, self.repo, "git push")
+                self.assertIn("initial push into an empty remote", reason)
+
+    def test_presence_is_checked_per_branch(self):
+        git(self.repo, "push", "-q", "origin", "main")
+        git(self.repo, "branch", "master")
+        # main exists, master does not
+        self.assertAllowed("git push origin master", self.repo)
+        self.assertBlocked("git push origin main master", self.repo, "git push")
+
+    def test_unverifiable_remote_is_denied_with_a_clear_message(self):
+        repo = make_repo(self.tmp, "game2", origin=str(self.tmp / "does-not-exist.git"), marker=True)
+        reason = self.assertBlocked("git push origin main", repo, "ls-remote")
+        self.assertIn("failed or timed out", reason)
+
+    def test_pushes_of_other_branches_never_need_the_remote(self):
+        repo = make_repo(self.tmp, "game3", origin=str(self.tmp / "does-not-exist.git"), marker=True)
+        git(repo, "switch", "-q", "-c", "feat/x")
+        self.assertAllowed("git push -u origin feat/x", repo)
+        self.assertAllowed("git push", repo)
 
 
 class CredentialFileRule(HookTestCase):
@@ -326,11 +446,12 @@ class CredentialFileRule(HookTestCase):
 
     def test_is_credential_path(self):
         yes = [".env", ".env.local", ".env.production", "cfg/.env", "a/b/server.pem", "tls.key", "id_rsa",
-               "id_rsa_work", "id_rsa.pub", "cert.p12", "cert.pfx", "putty.ppk", "release.jks", "SERVER.PEM",
-               "config\\prod.pem", ".ENV"]
+               "id_rsa_work", "id_ed25519", "id_ed25519_sk", "id_ecdsa", "id_ecdsa_sk", "id_dsa", "app.keystore",
+               "cert.p12", "cert.pfx", "putty.ppk", "release.jks", "SERVER.PEM", "config\\prod.pem", ".ENV"]
         no = [".env.example", ".env.sample", ".env.template", ".env.production.example", "env.py", "environment.md",
-              "keyboard.cs", "monkey.txt", "pem.md", "README.md", "src/key_binding.gd", "id_ed25519.pub.txt",
-              "jks.txt", "dotenv", ""]
+              "keyboard.cs", "monkey.txt", "pem.md", "README.md", "src/key_binding.gd", "jks.txt", "dotenv", "",
+              "id_rsa.pub", "id_ed25519.pub", "id_ecdsa.pub", "id_dsa.pub", "keys/id_rsa.pub", "my.key.pub",
+              "known_hosts", "keystore.md"]
         for name in yes:
             with self.subTest(yes=name):
                 self.assertTrue(guard_bash.is_credential_path(name))
@@ -340,7 +461,7 @@ class CredentialFileRule(HookTestCase):
 
     def test_add_of_each_credential_pattern_is_blocked(self):
         for name in (".env", ".env.local", "keys/server.pem", "tls.key", "id_rsa", "id_rsa_old", "a.p12", "b.pfx",
-                     "c.ppk", "d.jks"):
+                     "c.ppk", "d.jks", "id_ed25519", "id_ecdsa", "id_dsa", "release.keystore"):
             self.write(name)
             with self.subTest(name=name):
                 reason = self.assertBlocked("git add %s" % name, self.repo, "credential-like")
@@ -348,9 +469,10 @@ class CredentialFileRule(HookTestCase):
                 self.assertIn(os.path.basename(name), reason)
 
     def test_add_of_templates_and_normal_files_is_allowed(self):
-        for name in (".env.example", ".env.sample", ".env.template", "src/main.gd"):
+        for name in (".env.example", ".env.sample", ".env.template", "src/main.gd", "id_rsa.pub", "id_ed25519.pub"):
             self.write(name)
-        self.assertAllowed("git add .env.example .env.sample .env.template src/main.gd", self.repo)
+        self.assertAllowed("git add .env.example .env.sample .env.template src/main.gd id_rsa.pub id_ed25519.pub",
+                           self.repo)
         self.assertAllowed("git add -A", self.repo)
         self.assertAllowed("git add .", self.repo)
 
@@ -511,24 +633,39 @@ class ScopeGuard(HookTestCase):
         self.assertTrue(studio_scope.is_studio_dir(str(wt)))
         self.assertAllowed("git commit --allow-empty -m x", wt)
 
-    def test_session_scope_uses_claude_project_dir_when_cwd_is_elsewhere(self):
-        repo = make_repo(self.tmp, "proj")
+    def test_studio_target_is_guarded_from_any_session_directory(self):
+        # no session-level gate: the directory a git command targets decides
+        repo = make_repo(self.tmp, "proj", origin=None, marker=True)
         elsewhere = self.tmp / "elsewhere"
         elsewhere.mkdir()
-        env = clean_env(CLAUDE_PROJECT_DIR=str(repo))
-        self.assertBlocked("git -C %s commit -m x" % repo, elsewhere, "main", env=env)
-        # ... but with neither cwd nor project dir in scope the command is not looked at
-        self.assertAllowed("git -C %s commit -m x" % repo, elsewhere)
+        foreign = make_repo(self.tmp, "foreign", origin="https://github.com/x/y.git")
+        for session in (elsewhere, foreign):
+            for cmd in ("git -C %s commit -m x" % repo, "cd %s && git commit -m x" % repo,
+                        "git -C %s push origin main" % repo, "cd %s; git push --force origin main" % repo):
+                with self.subTest(session=session.name, cmd=cmd):
+                    self.assertBlocked(cmd, session, "main")
+        self.assertBlocked("git -C %s commit -m x" % repo, elsewhere, "main", env=clean_env(CLAUDE_PROJECT_DIR=str(repo)))
 
-    def test_non_studio_session_may_not_be_blocked_even_when_the_command_targets_a_studio_repo(self):
-        repo = make_repo(self.tmp, "proj2")
-        other = make_repo(self.tmp, "other", origin="https://github.com/x/y.git")
-        self.assertAllowed("git -C %s commit -m x" % repo, other)
-
-    def test_studio_session_does_not_block_a_non_studio_target(self):
+    def test_out_of_scope_targets_stay_silent_from_any_session(self):
         repo = make_repo(self.tmp, "proj3")
         other = make_repo(self.tmp, "other2", origin="https://github.com/x/y.git")
-        self.assertAllowed("git -C %s commit -m x" % other, repo)
+        plain = self.tmp / "plain"
+        plain.mkdir()
+        (other / ".env").write_text("x", encoding="utf-8")
+        for session in (repo, plain):
+            for cmd in ("git -C %s commit -m x" % other, "cd %s && git commit -m x" % other,
+                        "git -C %s push origin main" % other, "git -C %s add .env" % other):
+                with self.subTest(session=session.name, cmd=cmd):
+                    self.assertAllowed(cmd, session)
+
+    def test_session_start_scope_also_uses_claude_project_dir(self):
+        repo = make_repo(self.tmp, "proj4")
+        elsewhere = self.tmp / "elsewhere2"
+        elsewhere.mkdir()
+        payload = {"hook_event_name": "SessionStart", "source": "startup", "cwd": str(elsewhere)}
+        self.assertEqual(run_script(SESSION, payload).stdout, b"")
+        done = run_script(SESSION, payload, env=clean_env(CLAUDE_PROJECT_DIR=str(repo)))
+        self.assertIn(b"gamedev-studio:studio-rules", done.stdout)
 
 
 class FailOpen(HookTestCase):
@@ -607,8 +744,11 @@ class FailOpen(HookTestCase):
 
 
 def make_fake_tool(directory: Path, name: str, exit_code: int = 0, sleep: float = 0.0):
+    """A fake executable that records its arguments in <name>.log, sleeps, then exits with exit_code."""
     directory.mkdir(parents=True, exist_ok=True)
-    body = "import sys,time\ntime.sleep(%s)\nsys.exit(%d)\n" % (sleep, exit_code)
+    log = directory / (name + ".log")
+    body = ("import sys,time\nopen(%r,'a').write(' '.join(sys.argv[1:])+chr(10))\ntime.sleep(%s)\nsys.exit(%d)\n"
+            % (str(log), sleep, exit_code))
     script = directory / (name + "_impl.py")
     script.write_text(body, encoding="utf-8")
     if os.name == "nt":
@@ -680,8 +820,17 @@ class SessionStartHook(HookTestCase):
 
     def test_unauthenticated_gh_is_reported(self):
         out = self.start(self.env(gh=1))
-        self.assertIn("`gh auth status` failed", out["hookSpecificOutput"]["additionalContext"])
-        self.assertIn("not authenticated", out["systemMessage"])
+        text = out["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("`gh auth status` failed (exit 1)", text)
+        # a non-zero exit may be a network error, so it must not be reported as "not authenticated"
+        self.assertIn("gh authentication failed or could not be verified (possibly a network error)", text)
+        self.assertIn("possibly a network error", out["systemMessage"])
+        self.assertNotIn("not authenticated", text + out["systemMessage"])
+
+    def test_gh_auth_status_is_scoped_to_github_com(self):
+        self.start(self.env())
+        calls = (self.bin / "gh.log").read_text(encoding="utf-8").splitlines()
+        self.assertEqual(calls, ["auth status --hostname github.com"])
 
     def test_missing_git_is_reported(self):
         out = self.start(self.env(with_git=False))
@@ -740,6 +889,18 @@ class ParserUnits(unittest.TestCase):
     def test_nested_shells(self):
         self.assertEqual([e[2] for e in self.git_events("bash -lc 'cd x && git push origin main'")], ["push"])
         self.assertEqual([e[2] for e in self.git_events('pwsh -NoProfile -Command "git commit -m x"')], ["commit"])
+
+    def test_powershell_backtick_tokenization(self):
+        ps = studio_shell.parse("git push origin `\n  main", powershell=True)
+        self.assertEqual([e[2:4] for e in ps], [("push", ["origin", "main"])])
+        ps = studio_shell.parse("git commit -m \"a `\"b`\" c\"; git status", powershell=True)
+        self.assertEqual([e[2:4] for e in ps], [("commit", ["-m", 'a "b" c']), ("status", [])])
+        # without powershell=True a backtick opens a command substitution (separator)...
+        bash = studio_shell.parse("echo `git status`")
+        self.assertEqual([e[2] for e in bash], ["status"])
+        # ... except right before a newline
+        bash = studio_shell.parse("git push origin `\n main")
+        self.assertEqual([e[2:4] for e in bash], [("push", ["origin", "main"])])
 
     def test_cd_events(self):
         self.assertEqual(studio_shell.parse("cd a/b && git status")[0], ("cd", "a/b"))
@@ -820,26 +981,27 @@ BS_GIT86 = r"C:\Program Files (x86)\Git\bin\bash.exe"
 class Launcher(HookTestCase):
     """The polyglot run-hook.cmd must pass stdin through and fail open."""
 
-    def shells(self):
-        """Argv builders, one per shell the hook command can run in."""
+    def shells(self, launcher=None):
+        """Argv builders, one per way the hook command can reach the launcher."""
+        launcher = Path(launcher or LAUNCHER)
         if os.name == "nt":
             # On Windows both cmd.exe and Git Bash (which hands .cmd files to cmd.exe) run the batch half.
-            builders = [("cmd", lambda name: ["cmd", "/c", str(LAUNCHER), name])]
+            builders = [("cmd", lambda name: ["cmd", "/c", str(launcher), name])]
             for candidate in (BS_GIT, BS_GIT86):
                 if os.path.exists(candidate):
                     # like Claude Code: bash -c '"<plugin root>/hooks/run-hook.cmd" name'
-                    builders.append(("git-bash -c", lambda name, c=candidate: [c, "-c", '"%s" %s' % (LAUNCHER, name)]))
+                    builders.append(("git-bash -c", lambda name, c=candidate: [c, "-c", '"%s" %s' % (launcher, name)]))
                     # the POSIX half, run explicitly by bash
                     builders.append(("git-bash file (POSIX half)",
-                                     lambda name, c=candidate: [c, LAUNCHER.as_posix(), name]))
+                                     lambda name, c=candidate: [c, launcher.as_posix(), name]))
                     break
             return builders
         builders = []
         for label in ("sh", "bash"):
             exe = shutil.which(label)
             if exe:
-                builders.append((label + " file", lambda name, e=exe: [e, str(LAUNCHER), name]))
-                builders.append((label + " -c exec", lambda name, e=exe: [e, "-c", '"%s" %s' % (LAUNCHER, name)]))
+                builders.append((label + " file", lambda name, e=exe: [e, str(launcher), name]))
+                builders.append((label + " -c exec", lambda name, e=exe: [e, "-c", '"%s" %s' % (launcher, name)]))
         return builders
 
     def run_launcher(self, build, name, data, env=None):
@@ -869,6 +1031,35 @@ class Launcher(HookTestCase):
                 with self.subTest(shell=label, name=name):
                     done = self.run_launcher(build, name, b"{}")
                     self.assertEqual((done.returncode, done.stdout), (0, b""))
+
+    def test_python_exit_codes_other_than_0_and_2_fail_open(self):
+        hooks = self.tmp / "hooks"
+        (hooks / "scripts").mkdir(parents=True)
+        launcher = hooks / "run-hook.cmd"
+        shutil.copyfile(str(LAUNCHER), str(launcher))
+        launcher.chmod(0o755)
+        for name, body in (("ok", "print('hi')"), ("crash", "raise RuntimeError('boom')"),
+                           ("exit1", "import sys; sys.exit(1)"), ("exit3", "import sys; sys.exit(3)"),
+                           ("exit255", "import sys; sys.exit(255)"), ("block", "import sys; sys.exit(2)"),
+                           ("syntax", "def (:")):
+            (hooks / "scripts" / (name + ".py")).write_text(body + "\n", encoding="utf-8")
+        expected = {"ok": 0, "crash": 0, "exit1": 0, "exit3": 0, "exit255": 0, "block": 2, "syntax": 0}
+        for label, build in self.shells(launcher):
+            for name, code in expected.items():
+                with self.subTest(shell=label, script=name):
+                    done = self.run_launcher(build, name, b"{}")
+                    self.assertEqual(done.returncode, code, done.stderr)
+                    self.assertEqual(done.stdout.strip(), b"hi" if name == "ok" else b"")
+
+    def test_launcher_requires_python_3_8(self):
+        text = LAUNCHER.read_text(encoding="utf-8")
+        self.assertEqual(text.count("sys.version_info>=(3,8)"), 4)  # three cmd probes, one POSIX probe
+        self.assertNotIn("version_info[0]==3", text)
+
+    def test_attribution_for_the_adapted_technique(self):
+        head = LAUNCHER.read_text(encoding="utf-8").split("CMDBLOCK")[1]
+        for needle in ("superpowers", "Jesse Vincent", "MIT"):
+            self.assertIn(needle, head)
 
     @unittest.skipIf(os.name == "nt", "py.exe lives in the Windows directory on PATH")
     def test_no_python_on_path_fails_open_silently(self):

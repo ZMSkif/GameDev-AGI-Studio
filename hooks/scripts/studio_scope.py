@@ -205,6 +205,16 @@ def current_branch(directory: str):
     return None
 
 
+def head_exists(directory: str):
+    """True if HEAD resolves to a commit, False if it is unborn (empty repository), None if unknown."""
+    done = run_git(directory, ["rev-parse", "--verify", "-q", "HEAD"])
+    if done is None:
+        return None
+    if done.returncode == 0:
+        return True
+    return False if done.returncode == 1 else None
+
+
 def fail_open(func):
     """Run a hook main(); any internal error exits 0 silently (a crashed hook must not block work)."""
     try:
