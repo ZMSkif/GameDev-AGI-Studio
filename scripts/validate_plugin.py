@@ -9,7 +9,12 @@ Checks:
   * every skills/*/SKILL.md has name + description frontmatter, only those keys,
     and the name matches its directory;
   * hooks/hooks.json (if present) parses and has a top-level "hooks" key;
-  * no manifest contains a secret-looking value.
+  * agents/: every role in contracts/v1/agent-team-policy.json `minimum_roles` is present
+    as agents/<role-slug>.md (extra roles are allowed), each agent has a `name` matching
+    its file name, a non-empty `description`, none of the frontmatter keys Claude Code
+    ignores for plugin agents, and a reference to the studio-rules skill;
+  * skills/studio-team/SKILL.md names every minimum role and the role files it points to exist;
+  * no manifest, agent or skill contains a secret-looking value.
 
 Usage: python scripts/validate_plugin.py [repo_root]
 """
@@ -33,6 +38,13 @@ ALLOWED_FRONTMATTER = {"name", "description"}
 MAX_SKILL_LINES = 500
 MAX_SKILL_NAME = 64
 MAX_SKILL_DESCRIPTION = 1024
+
+AGENT_POLICY = PurePosixPath("contracts/v1/agent-team-policy.json")
+# Frontmatter keys that Claude Code ignores for plugin agents; declare hooks and MCP
+# servers at plugin level instead.
+FORBIDDEN_AGENT_KEYS = {"permissionMode", "hooks", "mcpServers", "initialPrompt"}
+STUDIO_RULES_SKILL = "studio-rules"
+TEAM_SKILL = PurePosixPath("skills/studio-team/SKILL.md")
 
 SECRET_VALUE_PATTERNS = [
     ("private key block", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")),
@@ -208,6 +220,92 @@ def check_skills(root: Path, errors: list[str]) -> None:
             errors.append(f"{rel}: longer than {MAX_SKILL_LINES} lines")
 
 
+def role_slug(role: str) -> str:
+    """'Publishing & Analytics Agent' -> 'publishing-analytics-agent'."""
+    return re.sub(r"[^a-z0-9]+", "-", role.lower()).strip("-")
+
+
+def load_minimum_roles(root: Path, errors: list[str]) -> list[str] | None:
+    """The role titles from the agent team policy; None (with an error) when unusable."""
+    policy = load_json(root, AGENT_POLICY, errors)
+    if policy is None:
+        return None
+    roles = policy.get("minimum_roles")
+    if not isinstance(roles, list) or not roles or not all(isinstance(r, str) and r.strip() for r in roles):
+        errors.append(f"{AGENT_POLICY}: 'minimum_roles' must be a non-empty list of role titles")
+        return None
+    slugs = [role_slug(r) for r in roles]
+    if len(set(slugs)) != len(slugs):
+        errors.append(f"{AGENT_POLICY}: 'minimum_roles' contains duplicate roles")
+        return None
+    return roles
+
+
+def check_agents(root: Path, roles: list[str] | None, errors: list[str]) -> None:
+    agents_dir = root / "agents"
+    if not agents_dir.is_dir():
+        errors.append("agents/: directory is missing")
+        return
+    # Secrets: every file under agents/, not only the Markdown ones.
+    for path in sorted(p for p in agents_dir.rglob("*") if p.is_file()):
+        rel = PurePosixPath(path.relative_to(root).as_posix())
+        try:
+            scan_text_for_secrets(rel, path.read_text(encoding="utf-8"), errors)
+        except (OSError, UnicodeDecodeError) as exc:
+            errors.append(f"{rel}: cannot read as UTF-8 text ({exc})")
+    if roles is not None:
+        for role in roles:
+            rel = PurePosixPath("agents") / f"{role_slug(role)}.md"
+            if not (root / rel).is_file():
+                errors.append(f"{rel}: file is missing (required role '{role}' from {AGENT_POLICY})")
+    for path in sorted(agents_dir.rglob("*.md")):
+        rel = PurePosixPath(path.relative_to(root).as_posix())
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue  # already reported above
+        fields, body = parse_frontmatter(text)
+        if fields is None:
+            errors.append(f"{rel}: missing YAML frontmatter")
+            continue
+        if "__invalid__" in fields:
+            errors.append(f"{rel}: invalid frontmatter line {fields['__invalid__']!r} (use single-line `key: value`)")
+            continue
+        if not fields.get("name"):
+            errors.append(f"{rel}: frontmatter 'name' is missing or empty")
+        elif fields["name"] != path.stem:
+            errors.append(f"{rel}: name '{fields['name']}' does not match file name '{path.stem}'")
+        if not fields.get("description"):
+            errors.append(f"{rel}: frontmatter 'description' is missing or empty")
+        forbidden = sorted(set(fields) & FORBIDDEN_AGENT_KEYS)
+        if forbidden:
+            errors.append(f"{rel}: frontmatter keys ignored for plugin agents: {', '.join(forbidden)}")
+        if STUDIO_RULES_SKILL not in body:
+            errors.append(f"{rel}: body must tell the role to apply the {STUDIO_RULES_SKILL} skill first")
+
+
+def check_team_skill(root: Path, roles: list[str] | None, errors: list[str]) -> None:
+    """The studio-team skill is how Codex gets the roles; it must index every minimum role."""
+    path = root / TEAM_SKILL
+    if not path.is_file():
+        errors.append(f"{TEAM_SKILL}: file is missing")
+        return
+    if roles is None:
+        return
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return  # reported by check_skills
+    for role in roles:
+        role_file = f"agents/{role_slug(role)}.md"
+        if role not in text:
+            errors.append(f"{TEAM_SKILL}: does not name role '{role}'")
+        if role_file not in text:
+            errors.append(f"{TEAM_SKILL}: does not reference '{role_file}'")
+        if not (root / role_file).is_file():
+            errors.append(f"{TEAM_SKILL}: referenced role file '{role_file}' does not exist")
+
+
 def check_hooks(root: Path, errors: list[str]) -> None:
     rel = PurePosixPath("hooks/hooks.json")
     if not (root / rel).is_file():
@@ -279,6 +377,9 @@ def validate(root) -> list[str]:
                 check_marketplace(root, rel, loaded[rel], plugin_name, errors)
 
     check_skills(root, errors)
+    roles = load_minimum_roles(root, errors)
+    check_agents(root, roles, errors)
+    check_team_skill(root, roles, errors)
     check_hooks(root, errors)
     return errors
 
@@ -291,7 +392,7 @@ def main(argv: list[str]) -> int:
     if errors:
         print(f"Plugin validation failed with {len(errors)} error(s)")
         return 1
-    print("Plugin manifests, marketplaces and skills are valid")
+    print("Plugin manifests, marketplaces, skills and agents are valid")
     return 0
 
 
