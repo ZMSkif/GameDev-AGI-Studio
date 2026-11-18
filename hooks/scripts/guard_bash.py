@@ -204,7 +204,10 @@ _SWITCH_CREATE = {"-b", "-B", "-c", "-C", "--create", "--force-create", "--orpha
 def simulated_branch(directory: str, sub: str, args, current):
     """Return (known, branch) after `git checkout|switch ...`; known=False when unchanged/unknown."""
     if "--" in args:
-        args = args[: args.index("--")]
+        cut = args.index("--")
+        if cut < len(args) - 1:  # `git checkout <tree-ish> -- <paths>` restores files, it does not switch
+            return False, current
+        args = args[:cut]
     i = 0
     positional = []
     while i < len(args):
@@ -246,8 +249,9 @@ def evaluate(command: str, session_cwd: str):
 
     for event in shell.parse(command):
         if event[0] == "cd":
-            nxt = shell.resolve_dir(cur, event[1])
-            cur = nxt if nxt else cur
+            # unknown target (variable, command substitution, missing dir) -> None: the following git
+            # commands cannot be placed in a repository, so they are skipped (fail open)
+            cur = shell.resolve_dir(cur, event[1])
             continue
         _, dirs, sub, args, bad = event
         if bad or sub not in ("commit", "push", "add", "checkout", "switch"):
@@ -257,6 +261,8 @@ def evaluate(command: str, session_cwd: str):
             target = shell.resolve_dir(target, d)
             if target is None:
                 break
+        if cur is None and not dirs:
+            continue
         if target is None or not scope.is_studio_dir(target):
             continue
         if sub in ("checkout", "switch"):

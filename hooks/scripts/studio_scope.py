@@ -161,9 +161,9 @@ def read_payload():
 
 
 def emit(obj) -> None:
-    sys.stdout.write(json.dumps(obj))
-    sys.stdout.write("\n")
-    sys.stdout.flush()
+    # ASCII-only JSON, LF line ending, written as bytes: identical on every console code page.
+    sys.stdout.buffer.write((json.dumps(obj) + "\n").encode("ascii"))
+    sys.stdout.buffer.flush()
 
 
 def run_git(directory: str, args, timeout: float = 5.0):

@@ -229,7 +229,7 @@ _MSYS_RE = re.compile(r"^/(?:cygdrive/)?([A-Za-z])(?:/(.*))?$")
 
 
 def resolve_dir(base: str, target):
-    """Resolve `target` against `base`; None when unknown (variables, `cd -`, missing dir)."""
+    """Resolve `target` against `base` (may be None); None when unknown (variables, `cd -`, missing dir)."""
     if target is None or not isinstance(target, str):
         return None
     if any(ch in target for ch in "$`*?") or target == "-":
@@ -240,6 +240,11 @@ def resolve_dir(base: str, target):
         m = _MSYS_RE.match(target)
         if m:
             target = m.group(1).upper() + ":/" + (m.group(2) or "")
-    path = target if os.path.isabs(target) else os.path.join(base, target)
+    if os.path.isabs(target):
+        path = target
+    elif base:
+        path = os.path.join(base, target)
+    else:
+        return None
     path = os.path.normpath(path)
     return path if os.path.isdir(path) else None

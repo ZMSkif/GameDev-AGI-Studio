@@ -31,7 +31,7 @@ CMDBLOCK
 
 # POSIX half (Linux, macOS, Git Bash on Windows).
 case "$0" in
-  */*|*\*) HOOK_DIR="${0%[/\]*}" ;;
+  */*|*\\*) HOOK_DIR="${0%[/\\]*}" ;;
   *) HOOK_DIR="." ;;
 esac
 name="${1:-}"

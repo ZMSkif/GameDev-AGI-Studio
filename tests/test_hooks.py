@@ -270,7 +270,20 @@ class DirectCommitAndPushRule(HookTestCase):
         self.assertAllowed("cd %s && git commit --allow-empty -m x" % posix, self.repo)
 
     def test_unresolvable_directory_fails_open(self):
-        self.assertAllowed('cd "$(git rev-parse --show-toplevel)" && git push origin feature', self.repo)
+        # the target of `cd` is unknown, so the commit cannot be placed on a branch: allowed (known gap)
+        self.assertAllowed('cd "$(git rev-parse --show-toplevel)" && git commit -m x', self.repo)
+        self.assertAllowed('cd "$WORKTREE" && git push origin main', self.repo)
+        self.assertAllowed('cd does-not-exist && git commit -m x', self.repo)
+        # a later resolvable cd or an explicit -C brings the check back
+        self.assertBlocked('cd "$X"; cd %s && git commit -m x' % self.repo, self.repo, "main")
+        self.assertBlocked('cd "$X"; git -C %s commit -m x' % self.repo, self.repo, "main")
+
+    def test_checkout_of_paths_from_main_is_not_a_branch_switch(self):
+        git(self.repo, "switch", "-q", "-c", "feat/x")
+        self.assertAllowed("git checkout main -- README.md && git commit -m y", self.repo)
+        self.assertAllowed("git checkout -- README.md && git commit -m y", self.repo)
+        self.assertAllowed("git restore --source=main README.md && git commit -m y", self.repo)
+        self.assertBlocked("git checkout main -- && git commit -m y", self.repo, "main")
 
     def test_powershell_tool_payload(self):
         self.assertBlocked("git commit -m x", self.repo, "main", tool="PowerShell")
@@ -487,7 +500,6 @@ class ScopeGuard(HookTestCase):
         wt = self.tmp / "linked"
         git(repo, "worktree", "add", "-q", "-b", "feat/wt", str(wt))
         self.assertTrue(studio_scope.is_studio_dir(str(wt)))
-        git(wt, "switch", "-q", "main") if False else None
         self.assertAllowed("git commit --allow-empty -m x", wt)
 
     def test_session_scope_uses_claude_project_dir_when_cwd_is_elsewhere(self):
@@ -683,6 +695,7 @@ class SessionStartHook(HookTestCase):
         done = run_script(SESSION, {"hook_event_name": "SessionStart", "source": "startup", "cwd": str(self.repo)},
                           env=self.env())
         text = done.stdout.decode("ascii")  # ASCII-only JSON, safe on any console code page
+        self.assertNotIn("\r", text)
         self.assertEqual(text.count("\n"), 1)
         json.loads(text)
 
@@ -791,22 +804,34 @@ class Configuration(unittest.TestCase):
                     self.assertTrue(name in local or stdlib is None or name in stdlib, "%s imports %s" % (path.name, name))
 
 
+BS_GIT = r"C:\Program Files\Git\bin\bash.exe"
+BS_GIT86 = r"C:\Program Files (x86)\Git\bin\bash.exe"
+
+
 class Launcher(HookTestCase):
     """The polyglot run-hook.cmd must pass stdin through and fail open."""
 
     def shells(self):
         """Argv builders, one per shell the hook command can run in."""
         if os.name == "nt":
+            # On Windows both cmd.exe and Git Bash (which hands .cmd files to cmd.exe) run the batch half.
             builders = [("cmd", lambda name: ["cmd", "/c", str(LAUNCHER), name])]
-            for candidate in (r"C:\Program Files\Git\bin\bash.exe", r"C:\Program Files (x86)\Git\bin\bash.exe"):
+            for candidate in (BS_GIT, BS_GIT86):
                 if os.path.exists(candidate):
                     # like Claude Code: bash -c '"<plugin root>/hooks/run-hook.cmd" name'
-                    builders.append(("git-bash", lambda name, c=candidate: [c, "-c", '"%s" %s' % (LAUNCHER, name)]))
+                    builders.append(("git-bash -c", lambda name, c=candidate: [c, "-c", '"%s" %s' % (LAUNCHER, name)]))
+                    # the POSIX half, run explicitly by bash
+                    builders.append(("git-bash file (POSIX half)",
+                                     lambda name, c=candidate: [c, LAUNCHER.as_posix(), name]))
                     break
             return builders
-        sh = shutil.which("sh") or "/bin/sh"
-        return [("sh", lambda name: [sh, str(LAUNCHER), name]),
-                ("sh -c", lambda name: [sh, "-c", '"%s" %s' % (LAUNCHER, name)])]
+        builders = []
+        for label in ("sh", "bash"):
+            exe = shutil.which(label)
+            if exe:
+                builders.append((label + " file", lambda name, e=exe: [e, str(LAUNCHER), name]))
+                builders.append((label + " -c exec", lambda name, e=exe: [e, "-c", '"%s" %s' % (LAUNCHER, name)]))
+        return builders
 
     def run_launcher(self, build, name, data, env=None):
         return subprocess.run(build(name), input=data, env=env or clean_env(), stdout=subprocess.PIPE,
