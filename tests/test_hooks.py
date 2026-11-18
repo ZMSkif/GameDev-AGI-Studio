@@ -82,10 +82,19 @@ def decision(done):
     return json.loads(text) if text else None
 
 
+def _make_writable_and_retry(func, path, _exc_info):
+    """rmtree error handler: git object files are read-only on Windows."""
+    try:
+        os.chmod(path, 0o700)
+        func(path)
+    except OSError:
+        pass
+
+
 class HookTestCase(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(os.path.realpath(tempfile.mkdtemp(prefix="studio-hooks-")))
-        self.addCleanup(shutil.rmtree, str(self.tmp), True)
+        self.addCleanup(shutil.rmtree, str(self.tmp), False, _make_writable_and_retry)
 
     def guard(self, command, cwd, tool="Bash", env=None):
         done = run_script(GUARD, pre_payload(command, cwd, tool), env=env)
