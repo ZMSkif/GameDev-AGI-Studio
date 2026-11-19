@@ -1,0 +1,31 @@
+{
+  "description": "GameDev Studio quality-gate hooks for Codex. Every hook is a silent no-op outside a GameDev Studio project.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/hooks/run-hook.cmd\" session_start",
+            "commandWindows": "& \"${PLUGIN_ROOT}/hooks/run-hook.cmd\" session_start",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/hooks/run-hook.cmd\" guard_bash",
+            "commandWindows": "& \"${PLUGIN_ROOT}/hooks/run-hook.cmd\" guard_bash",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
