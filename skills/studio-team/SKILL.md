@@ -1,6 +1,6 @@
 ---
 name: studio-team
-description: Index of the nine base GameDev Studio roles (Studio Director, Producer, Game Designer, Art Director, Technical Director, Gameplay Engineer, Asset Pipeline Artist, QA Engineer, Publishing and Analytics Agent) and how to use them. Use when a task needs a specific studio role, when assigning or reviewing work between roles, or in Codex, where the roles are played one after another from the role files.
+description: Index of the nine base GameDev Studio roles (Studio Director, Producer, Game Designer, Art Director, Technical Director, Gameplay Engineer, Asset Pipeline Artist, QA Engineer, Publishing and Analytics Agent) and the on-demand specialists (Release QA Engineer, Pre-publish Reviewer, Art Reviewer, i18n Language Reviewer, Crowd and NPC Soak Reviewer), and how to use them. Use when a task needs a specific studio role or reviewer, when assigning or reviewing work between roles, or in Codex, where the roles are played one after another from the role files.
 ---
 
 # GameDev Studio team
@@ -18,6 +18,18 @@ The base team is fixed at nine roles; specialists may be added on demand but the
 | Asset Pipeline Artist | `agents/asset-pipeline-artist.md` |
 | QA Engineer | `agents/qa-engineer.md` |
 | Publishing & Analytics Agent | `agents/publishing-analytics-agent.md` |
+
+## On-demand specialists
+
+Added on demand, never instead of a base role (DEC-032, #32; DEC-142, #144). Most are read-only reviewers that return `VERDICT: CONFIRMED` or `VERDICT: BLOCKED`; the coordinator archives each verdict verbatim (`orchestration-playbook` skill).
+
+| Specialist | Role file | Use for |
+| --- | --- | --- |
+| Release QA Engineer | `agents/release-qa-engineer.md` | the full release gate of one build for one platform, by requirement number |
+| Pre-publish Reviewer | `agents/pre-publish-reviewer.md` | the last independent check of the exact archive before any publish |
+| Art Reviewer | `agents/art-reviewer.md` | a strict art review: no primitives, tiers A/B/C, posed fit |
+| i18n Language Reviewer | `agents/i18n-native-reviewer.md` | an AI language review of every language; not a human native read |
+| Crowd and NPC Soak Reviewer | `agents/crowd-soak-reviewer.md` | long soaks, mutants and determinism hashes for crowds, NPCs and bots |
 
 ## In Claude Code
 

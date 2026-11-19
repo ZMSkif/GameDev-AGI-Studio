@@ -12,7 +12,7 @@ Before designing interfaces, read the studio's `AGENTS.md` and `contracts/v1/`. 
 - `gh api repos/ZMSkif/GameDev-AGI-Studio/contents/AGENTS.md -H "Accept: application/vnd.github.raw"`
 - `gh api repos/ZMSkif/GameDev-AGI-Studio/contents/contracts/v1 --jq '.[].name'` to list the contracts, then the same call with a file path and the `Accept` header above to read one.
 
-Rules (a) to (h) apply to any work on a GameDev Studio game or on this plugin:
+Rules (a) to (i) apply to any work on a GameDev Studio game or on this plugin:
 
 - (a) Fetch the decisions first. Run `gh issue list -R ZMSkif/GameDev-AGI-Studio --label decision --state open --limit 1000`, then read the relevant ones with `gh issue view <n> -R ZMSkif/GameDev-AGI-Studio`. A new agent gets all accepted requirements from GitHub, not from earlier chats (DEC-010, #10).
 - (b) Decisions are binding. Never re-ask a question the owner already answered, and never modify, bypass or supersede a decision (DEC-003, #3).
@@ -22,3 +22,4 @@ Rules (a) to (h) apply to any work on a GameDev Studio game or on this plugin:
 - (f) No secrets in the repository, and no paid actions or publishing without explicit owner approval (DEC-009, #9).
 - (g) Never accept your own work; an independent reviewer is required (DEC-040, #40).
 - (h) Paused by DEC-143 (#146), not cancelled: the decisions listed in #146 under "Затрагивает" (currently labelled `deferred`), such as the self-hosted coordinator, PostgreSQL execution, workers and Studio Control Center. Do not build on them unless the owner reopens them. Read #146 for the authoritative list.
+- (i) Engine: `contracts/v1/game-production-policy.json` (`engine_profiles`) names the engine profiles; today only Godot 4.x (DEC-012, #12). Read the `engine-profiles` skill before you choose an engine or apply a rule that names Godot. Its web profile is DEC-145, not yet registered: until that issue exists it is information, and a game goes web only when the owner approves that game's architecture.
