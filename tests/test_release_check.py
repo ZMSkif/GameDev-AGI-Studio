@@ -59,11 +59,7 @@ class ReleaseCheckTest(FixtureCase):
         notes = self.root / "notes.md"
         code, _, _ = self.call("--tag", "v1.2.0", "--notes-out", str(notes))
         self.assertEqual(code, 0)
-        text = notes.read_text(encoding="utf-8")
-        self.assertIn("New thing.", text)
-        self.assertNotIn("Old thing.", text)
-        self.assertNotIn("Not yet released.", text)
-        self.assertNotIn("## [1.2.0]", text)
+        self.assertEqual(notes.read_text(encoding="utf-8"), "### Added\n- New thing.\n")
 
     def test_last_section_runs_to_the_end(self):
         self.assertEqual(rc.section(CHANGELOG, "1.1.0"), "### Fixed\n- Old thing.")
@@ -112,6 +108,17 @@ class ReleaseCheckTest(FixtureCase):
         out, err = io.StringIO(), io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
             self.assertEqual(rc.main([]), 2)
+
+    def test_tag_shape_alone_rejects_pre_release_and_build_versions(self):
+        # The manifests and the heading match the tag, so only the tag rule can refuse it.
+        for version in ("1.2.0-rc.1", "1.2.0+build.5", "١.٢.٠"):
+            with self.subTest(version=version):
+                for rel in rc.MANIFESTS:
+                    self.manifest(rel, {"version": version})
+                self.changelog(f"## [{version}] - 2026-12-01\n- x\n")
+                code, _, err = self.call("--tag", f"v{version}")
+                self.assertEqual(code, 1)
+                self.assertIn("is not v<major>.<minor>.<patch>", err)
 
     def test_heading_needs_exactly_version_and_a_real_date(self):
         for text in ("## [1.2.0]\n- x\n", "## [1.2.0] - 2026-12-01 extra\n- x\n", "## [1.2.0] - 2026-13-45\n- x\n",
