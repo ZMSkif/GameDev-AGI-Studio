@@ -52,6 +52,19 @@ class PieceKeyTest(unittest.TestCase):
                                           "Review credits screen rework", "Review audio loading and sounds")}
         self.assertEqual(keys, {"cn1", "ca1b", "ck2", "credits-screen-rework", "audio-loading-and-sounds"})
 
+    def test_versions_are_not_piece_codes(self):
+        self.assertEqual(ml.piece_key("Review v1 of CN1"), ml.piece_key("Re-review v2 of CN1"))
+        self.assertEqual(ml.piece_key("Review v1 of CN1"), "cn1")
+        self.assertEqual(ml.piece_key("Review WA-1 crown, cape, posed gate v2"), "wa1")
+        self.assertEqual(ml.piece_key("Review city CA1a + WA-0 fixes"), "ca1a")
+        self.assertEqual(ml.piece_key("Review I18N-C city strings"), "i18n")
+        self.assertEqual(ml.piece_key("Review notes r2 for CN1"), "cn1")   # the upper-case code wins
+        self.assertEqual(ml.piece_key("Review v2 of the menu"), "menu")    # v2 is a version
+        for title in ("Re-check B1 fix for CN1", "R2 re-review of CN1", "Review M3 mutants for CN1"):
+            self.assertEqual(ml.piece_key(title), "cn1", title)             # the code after for / of
+        self.assertEqual(ml.piece_key("Fix round for LOD1 of WA-1"), "wa1")
+        self.assertEqual(ml.piece_key("Re-review jump teaching, round 3"), ml.piece_key("Review jump teaching piece"))
+
     def test_review_words_are_not_piece_codes(self):
         self.assertEqual(ml.piece_key("Second review of fix round r16"), "r16")
         self.assertEqual(ml.piece_key("Review pass 2 of the menu"), "menu")
@@ -99,7 +112,7 @@ class NoiseGuardTest(MineCase):
         self.assertNotIn("audio-lifecycle", self.classes(ml.mine(self.dir)))
 
     def test_no_blockers_heading_is_not_severe(self):
-        for heading in ("## No blockers", "## Blockers: none", "### Zero must-fix items"):
+        for heading in ("## No blockers", "## Blockers: none", "### Zero must-fix items", "## Must-fix list: none."):
             with self.subTest(heading=heading):
                 for f in self.dir.glob("*.md"):
                     f.unlink()
@@ -107,8 +120,42 @@ class NoiseGuardTest(MineCase):
                             "confirmed")
                 self.assertNotIn("audio-lifecycle", self.classes(ml.mine(self.dir)))
 
-    def test_a_pass_line_is_not_an_occurrence(self):
-        self.review(1, "review-a", "VERDICT: BLOCKED\n\n## BLOCKER\n- Music playback passed all checks.\n")
+    def test_a_pass_line_outside_a_blocker_is_not_an_occurrence(self):
+        for n, slug in ((1, "review-npc"), (2, "review-city")):
+            self.review(n, slug, "VERDICT: CONFIRMED\n\n## Notes\n- Music playback passed all checks.\n", "confirmed")
+        report = ml.mine(self.dir)
+        self.assertNotIn("audio-lifecycle", self.classes(report))
+        self.assertEqual(report["dropped"], [])
+
+    def test_inside_a_blocker_a_line_that_mentions_a_pass_still_counts(self):
+        # The real _37 shape: rows are gone while the test that should catch it still passes.
+        self.review(37, "review-city-ca1a", "VERDICT: BLOCKED\n\n## BLOCKER\n"
+                    "- The licence rows for three tracks are gone, and the licence test still passes.\n")
+        self.assertTrue(self.classes(ml.mine(self.dir))["licence-registry"]["severe"])
+
+    def test_a_blocker_section_that_says_none_is_not_severe(self):
+        # The real _41 shape: "## BLOCKER", then "None.", then notes about fixed defects.
+        body = ("VERDICT: CONFIRMED\n\n## BLOCKER\nNone.\n\n**B1 is fixed.**\n"
+                "- **Awning crest:** clean coral. The blue shards and white slivers are gone at both distances.\n")
+        self.review(41, "review-city-ca1a-wa-0-fixes", body, "confirmed")
+        report = ml.mine(self.dir)
+        self.assertNotIn("primitive-or-mangled-asset", self.classes(report))
+        self.assertEqual([d["class"] for d in report["dropped"]], ["primitive-or-mangled-asset"])
+        for f in self.dir.glob("*.md"):
+            f.unlink()
+        self.review(42, "review-x", body.replace("None.", "None. All the validators and the tests pass."), "confirmed")
+        self.assertNotIn("primitive-or-mangled-asset", self.classes(ml.mine(self.dir)))
+
+    def test_a_heading_that_names_a_defect_is_severe(self):
+        self.review(1, "review-a", "VERDICT: BLOCKED\n\n## Must-fix: no music after resume\n- Found on the iPhone.\n")
+        self.assertNotIn("audio-lifecycle", self.classes(ml.mine(self.dir)))  # the heading itself is not a line
+        self.review(2, "review-b", "VERDICT: BLOCKED\n\n## Must-fix: no music after resume\n- The music stops.\n")
+        self.assertTrue(self.classes(ml.mine(self.dir))["audio-lifecycle"]["severe"])
+
+    def test_a_line_that_says_a_defect_is_absent_is_not_an_occurrence(self):
+        for n, slug in ((1, "review-npc"), (2, "review-city")):
+            self.review(n, slug, "## Notes\n- Music is not stuck; all checks pass.\n- The music never fails to resume.\n",
+                        "confirmed")
         report = ml.mine(self.dir)
         self.assertNotIn("audio-lifecycle", self.classes(report))
         self.assertEqual(report["dropped"], [])
@@ -203,31 +250,29 @@ class RetainTest(MineCase):
         self.assertEqual(marker["metadata"]["archive_last"], "1")
         for item in (lesson, marker):
             self.assertNotIn("update_mode", item)
+            self.assertNotIn("document_id", item)
+            self.assertEqual(item["metadata"]["lessons_run"], "t1")
 
-    def test_document_ids_differ_between_runs_and_games(self):
-        ids = set()
-        for repo, token in (("owner/game", "a"), ("owner/game", "b"), ("owner/other", "a")):
-            fake = FakeHindsight()
-            self.REPO = repo
-            for f in self.dir.glob("*.md"):
-                f.unlink()
-            self.retain(fake, token=token)
-            ids |= {s["items"][0]["document_id"] for s in fake.sent}
-        self.assertEqual(len(ids), 6)
-        self.assertTrue(all("::" in i for i in ids))
+    def test_no_item_names_a_document(self):
+        # Hindsight replaces a document whose id repeats; without an id it makes a new one (DEC-138).
+        fake = FakeHindsight()
+        self.retain(fake)
+        self.assertTrue(all("document_id" not in s["items"][0] and "update_mode" not in s["items"][0]
+                            for s in fake.sent))
 
     def test_default_token_is_random(self):
         a, b = FakeHindsight(), FakeHindsight()
         report = self.report()
         self.retain(a, report, token=None)
         self.retain(b, report, token=None)
-        self.assertNotEqual(a.sent[0]["items"][0]["document_id"], b.sent[0]["items"][0]["document_id"])
+        self.assertNotEqual(a.sent[0]["items"][0]["metadata"]["lessons_run"],
+                            b.sent[0]["items"][0]["metadata"]["lessons_run"])
 
     def test_forbidden_text_in_content_is_not_retained(self):
         fake = FakeHindsight()
         refused = self.retain(fake, forbid=[re.compile("audio-lifecycle")])
-        self.assertEqual(len(fake.sent), 1)  # only the run marker, which does not name the class
-        self.assertIn("audio-lifecycle", refused[0][0])
+        self.assertEqual(fake.sent, [])  # the lesson is refused, so the run marker is not stored either
+        self.assertEqual([r[0] for r in refused], ["lesson:audio-lifecycle", "lessons-run"])
 
     def test_forbidden_text_in_metadata_tags_or_id_is_not_retained(self):
         for pattern in ("owner/game", "gamedev-studio:lessons", "review archive"):  # metadata, tags, id
@@ -242,13 +287,29 @@ class RetainTest(MineCase):
         report["lessons"][0]["files"] = ["2026-11-19_01_agent-ghp_" + "a" * 36 + "-finished_blocked.md"]
         fake = FakeHindsight()
         refused = self.retain(fake, report)
-        self.assertEqual(len(fake.sent), 1)
-        self.assertEqual(len(refused), 1)
+        self.assertEqual(fake.sent, [])
+        self.assertEqual(len(refused), 2)
 
     def test_dropped_class_is_not_sent(self):
         fake = FakeHindsight()
         self.assertEqual(self.retain(fake, self.report(drop=("audio-lifecycle",))), [])
         self.assertEqual([s["items"][0]["tags"][0] for s in fake.sent], ["lessons-run"])
+
+    def test_the_run_marker_waits_for_every_lesson(self):
+        self.review(2, "review-b", "VERDICT: BLOCKED\n\n## BLOCKER\n- The collider overhang is 0.9 m.\n")
+        fake = FakeHindsight()
+        answers = iter([{"success": False}, {"success": True, "items_count": 1}])
+        fake.answer = None
+        original = fake.__call__
+
+        def first_fails(req, timeout=0):
+            fake.answer = next(answers, {"success": True, "items_count": 1})
+            return original(req, timeout)
+
+        refused = self.retain(first_fails)
+        self.assertEqual([s["items"][0]["tags"][0] for s in fake.sent], ["lesson", "lesson"])  # no marker sent
+        self.assertEqual([r[0] for r in refused][-1], "lessons-run")
+        self.assertIn("run is not finished", refused[-1][1])
 
     def test_failed_answers_are_reported(self):
         cases = [FakeHindsight(answer={"success": False}), FakeHindsight(answer={"success": True, "items_count": 0}),
@@ -277,6 +338,18 @@ class CliTest(MineCase):
         self.assertEqual(self.call("--reviews", str(self.dir), "--drop", "no-such-class")[0], 2)
         self.assertEqual(self.call("--reviews", str(self.dir), "--retain", "http://x")[0], 2)
         self.assertEqual(self.call("--reviews", str(self.dir), "--retain", "http://x", "--repository", "bad")[0], 2)
+
+    def test_out_inside_a_repository_with_a_non_ascii_path_is_refused(self):
+        # git prints the path in UTF-8; read with the Windows code page it would not match, and the guard would pass.
+        repo = self.dir / "игры" / "game"
+        reviews = repo / "docs" / "reviews"
+        reviews.mkdir(parents=True)
+        subprocess.run(["git", "init", "-q", str(repo)], check=True)
+        (reviews / "2026-11-19_01_agent-review-a-finished_blocked.md").write_text(
+            HEADER.format(title="Review a", v="BLOCKED") + "## BLOCKER\nmusic stuck\n", encoding="utf-8")
+        code, _, err = self.call("--reviews", str(reviews), "--out", str(repo / "docs" / "lessons.md"))
+        self.assertEqual(code, 2, err)
+        self.assertFalse((repo / "docs" / "lessons.md").exists())
 
     def test_out_inside_the_game_repository_is_refused(self):
         subprocess.run(["git", "init", "-q", str(self.dir)], check=True)

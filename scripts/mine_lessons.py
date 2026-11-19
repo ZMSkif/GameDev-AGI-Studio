@@ -8,9 +8,10 @@ always counted, so repeats spread over several runs still add up; --since only l
 lessons with an occurrence newer than that file number.
 
 Stdlib only. It reads the archive and writes one report. With --retain it also stores each kept
-lesson in a Hindsight bank, with provenance and a document id that is new for every run, so a later
-run never replaces an earlier one (DEC-138). Every payload passes the review archiver's secret and
---forbid check first.
+lesson in a Hindsight bank, with provenance and without a document_id, so Hindsight makes a new
+document for each and a later run never replaces an earlier one (DEC-138). Every payload passes the
+review archiver's secret and --forbid check first. The run marker that moves the next --since
+forward is stored only after every lesson was.
 
 Usage:
   python scripts/mine_lessons.py --reviews docs/reviews [--since N] [--drop CLASS ...] [--out FILE] [--json]
@@ -35,17 +36,31 @@ NAME_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})_(\d+)_(.+?)_([a-z-]+)\.md$")
 TITLE_RE = re.compile(r'^# Review: Agent "(.+?)"', re.M)
 HEADER_END = "\n---\n\n"
 SEVERE_HEADING = re.compile(r"^#{1,4}\s.*\b(blockers?|must-fix|must fix)\b", re.I)
+# "No blockers", "Zero must-fix items", "Blockers: none" - but not "Must-fix: no music after resume".
 NEGATED_HEADING = re.compile(r"\b(no|zero|none|0)\s+(\w+\s+)?(blockers?|must-fix|must fix)\b"
-                             r"|\b(blockers?|must-fix|must fix)\s*:?\s*(none|no|0)\b", re.I)
+                             r"|\b(blockers?|must-fix|must fix)(\s+list)?\s*:?\s*(none|no|0|nothing)\s*[.!]?\s*$",
+                             re.I)
 OTHER_HEADING = re.compile(r"^#{1,4}\s")
-# A line that only reports a pass is not an occurrence, unless it also names a defect.
-PASS_CUE = re.compile(r"\b(pass(?:es|ed)?|holds?|confirmed|ok|fine|works?)\b", re.I)
+# The archive's own way of saying a blocker section is empty: "## BLOCKER" then "None." on the next line.
+NONE_LINE = re.compile(r"^\W*(none|nothing|no blockers?|no must-fix(?: items)?|n/?a)\b", re.I)
+# A line that only reports a pass, or only says a defect is absent ("music is not stuck"), is not an
+# occurrence unless it also names a defect.
+# Outside blocker sections only: inside one, every line is read as a defect.
+PASS_CUE = re.compile(r"\b(pass(?:es|ed|ing)|(?:checks?|tests?|suite) pass|confirmed|works as expected)\b", re.I)
 DEFECT_CUE = re.compile(r"\b(fail\w*|broken|missing|wrong|bugs?|crash\w*|leak\w*|stuck|lost|regress\w*|not|never"
                         r"|cannot|can't|doesn't|clipp\w*|cut off|block\w*|must|surviv\w*)\b", re.I)
-# A piece code such as cn1, wp0, wa-0, ca1b, r17b; review words are not codes.
+DEFECT_WORDS = (r"fail\w*|broken|missing|wrong|bugs?|crash\w*|leak\w*|stuck|lost|regress\w*|clipp\w*|cut off"
+                r"|block\w*")
+NEGATED_DEFECT = re.compile(r"\b(?:not|no|never|without|doesn't|does not|didn't|isn't|is not|won't|nothing)\s+"
+                            r"(?:\w+\s+){0,2}?(?:" + DEFECT_WORDS + r")\b", re.I)
+# A piece code as titles write it: CN1, WP0, WA-0, CA1b, I18N. A code right after "for" or "of" names the
+# piece ("Re-check B1 fix for CN1"); otherwise the first upper-case code does. Lower-case codes (r17, r17b)
+# count only when the title has no upper-case one; a version such as v1 or v2 is never a piece code.
+UPPER_CODE = re.compile(r"(?<![A-Za-z0-9])([A-Z]{1,4})-?(\d{1,3})([A-Za-z]?)(?![A-Za-z0-9])")
 PIECE_CODE = re.compile(r"(?<![a-z0-9])([a-z]{1,4})-?(\d{1,3})([a-z]?)(?![a-z0-9])")
 REVIEW_WORDS = {"agent", "independent", "review", "re", "second", "third", "fourth", "final", "again", "fix",
-                "fixes", "round", "follow", "up", "finished", "finish", "finishe", "fi", "of", "the", "pass"}
+                "fixes", "round", "follow", "up", "finished", "finish", "finishe", "fi", "of", "the", "pass", "v",
+                "piece", "check", "recheck"}
 MIN_INDEPENDENT = 2
 REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 
@@ -91,11 +106,16 @@ def _guard():
 
 def piece_key(title: str) -> str:
     """One key per piece: its code (cn1, wp0, wa0) when the title has one, else the title without review words."""
+    codes = [m for m in UPPER_CODE.finditer(title) if m.group(1).lower() not in REVIEW_WORDS]
+    named = [m for m in codes if re.search(r"\b(for|of)\s+$", title[:m.start()], re.I)]
+    if named or codes:
+        return "".join((named[-1] if named else codes[0]).groups()).lower()
     text = title.lower()
     for match in PIECE_CODE.finditer(text):
         if match.group(1) not in REVIEW_WORDS:
             return "".join(match.groups())
-    words = [w for w in re.findall(r"[a-z0-9]+", text) if w not in REVIEW_WORDS and not w.isdigit()]
+    words = [w for w in re.findall(r"[a-z0-9]+", text)
+             if w not in REVIEW_WORDS and not w.isdigit() and not re.fullmatch(r"v\d+", w)]
     return "-".join(words) or text
 
 
@@ -110,15 +130,22 @@ def review_files(folder: Path) -> list[tuple[int, Path]]:
 
 def lines_with_severity(body: str):
     """Yield (line, severe) for every line, severe when it sits under a blocker or must-fix heading."""
-    severe = False
+    severe, first = False, False
     for line in body.splitlines():
         if OTHER_HEADING.match(line):
             severe = bool(SEVERE_HEADING.match(line)) and not NEGATED_HEADING.search(line)
+            first = severe
+        elif first and line.strip():
+            first = False
+            if NONE_LINE.match(line):
+                severe = False
         yield line, severe
 
 
 def is_pass_only(line: str) -> bool:
-    return bool(PASS_CUE.search(line)) and not DEFECT_CUE.search(line)
+    """True for a line that reports a pass or an absent defect and names no defect that is present."""
+    rest = NEGATED_DEFECT.sub(" ", line)
+    return bool(PASS_CUE.search(line) or rest != line) and not DEFECT_CUE.search(rest)
 
 
 def mine(folder: Path, since: int = 0, drop: tuple[str, ...] = ()) -> dict:
@@ -130,7 +157,7 @@ def mine(folder: Path, since: int = 0, drop: tuple[str, ...] = ()) -> dict:
         piece = piece_key(title_match.group(1) if title_match else NAME_RE.match(path.name).group(3))
         body = text.split(HEADER_END, 1)[1] if HEADER_END in text else text
         lines = [(line.strip(), severe) for line, severe in lines_with_severity(body)
-                 if line.strip() and not OTHER_HEADING.match(line) and not is_pass_only(line)]
+                 if line.strip() and not OTHER_HEADING.match(line) and (severe or not is_pass_only(line))]
         for cid, pattern, _ in CLASSES:
             hits = [(line, severe) for line, severe in lines if re.search(pattern, line, re.I)]
             if hits:
@@ -183,7 +210,8 @@ def render(report: dict) -> str:
 
 
 def items_for(report: dict, repository: str, token: str) -> list[dict]:
-    """The Hindsight items: one per lesson, then one run marker. Document ids are new for every run."""
+    """The Hindsight items: one per lesson, then one run marker. No item names a document_id or an
+    update_mode, so Hindsight makes a new document for each and nothing stored is replaced (DEC-138)."""
     span = f"{report['first']}-{report['last']}"
     items = []
     for lesson in report["lessons"]:
@@ -193,18 +221,16 @@ def items_for(report: dict, repository: str, token: str) -> list[dict]:
                          "source": f"{repository}: " + ", ".join(lesson["files"])[:900],
                          "source_rev": f"{repository} reviews {span}",
                          "recorded_by": "gamedev-studio:lessons", "verified": "false",
-                         "archive_last": str(report["last"])},
-            "tags": ["lesson", f"lesson:{lesson['class']}", f"repo:{repository}"],
-            "document_id": f"lesson::{repository}::{lesson['class']}::{span}::{token}"})
+                         "archive_last": str(report["last"]), "lessons_run": token},
+            "tags": ["lesson", f"lesson:{lesson['class']}", f"repo:{repository}"]})
     items.append({
         "content": (f"Lessons run for {repository}: review archive files {span} mined, "
                     f"{len(report['lessons'])} lessons kept. Next run: --since {report['last']}."),
         "context": "review archive lessons run marker",
         "metadata": {"source_type": "review-archive", "source": f"{repository}: review archive",
                      "source_rev": f"{repository} reviews {span}", "recorded_by": "gamedev-studio:lessons",
-                     "verified": "true", "archive_last": str(report["last"])},
-        "tags": ["lessons-run", f"repo:{repository}"],
-        "document_id": f"lessons-run::{repository}::{span}::{token}"})
+                     "verified": "false", "archive_last": str(report["last"]), "lessons_run": token},
+        "tags": ["lessons-run", f"repo:{repository}"]})
     return items
 
 
@@ -227,26 +253,34 @@ def post(base: str, bank: str, item: dict) -> str | None:
     return None
 
 
+def item_name(item: dict) -> str:
+    return next((t for t in item["tags"] if t.startswith("lesson:")), item["tags"][0])
+
+
 def retain(report: dict, base: str, bank: str, repository: str, forbid: list[re.Pattern],
            token: str | None = None) -> list[tuple[str, str]]:
-    """Store each kept lesson and the run marker; return (document id, reason) for every item not stored."""
+    """Store each kept lesson, then the run marker; return (item, reason) for every item not stored.
+
+    The marker moves the next run's --since forward, so it is stored only when every lesson was."""
     blocked_reason = _guard()
     token = token or uuid.uuid4().hex[:12]
-    refused = []
-    for item in items_for(report, repository, token):
-        reason = blocked_reason(json.dumps(item, ensure_ascii=False), forbid)
-        if not reason:
-            reason = post(base, bank, item)
-        if reason:
-            refused.append((item["document_id"], reason))
-    return refused
+    *lessons, marker = items_for(report, repository, token)
+
+    def store(item: dict) -> str | None:
+        return blocked_reason(json.dumps(item, ensure_ascii=False), forbid) or post(base, bank, item)
+
+    refused = [(item_name(item), reason) for item in lessons for reason in [store(item)] if reason]
+    if refused:
+        return refused + [(item_name(marker), "not stored: a lesson was not stored, so the run is not finished")]
+    reason = store(marker)
+    return [(item_name(marker), reason)] if reason else []
 
 
 def repository_of(folder: Path) -> Path | None:
     """The top of the git repository that holds the review archive, or None."""
     try:
         top = subprocess.run(["git", "-C", str(folder), "rev-parse", "--show-toplevel"],
-                             capture_output=True, text=True, timeout=30)
+                             capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30)
     except (OSError, subprocess.SubprocessError):
         return None
     return Path(top.stdout.strip()).resolve() if top.returncode == 0 and top.stdout.strip() else None
@@ -299,6 +333,9 @@ def main(argv: list[str] | None = None) -> int:
         refused = retain(report, args.retain, args.bank, args.repository, forbid)
         for doc, reason in refused:
             print(f"NOT RETAINED {doc}: {reason}", file=sys.stderr)
+        if refused:
+            print("The run marker was not stored; run again with the same --since after fixing the cause.",
+                  file=sys.stderr)
         return 3 if refused else 0
     return 0
 

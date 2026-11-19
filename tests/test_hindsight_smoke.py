@@ -23,6 +23,7 @@ class FakeHindsight:
     def __init__(self, **faults):
         self.banks: dict[str, list[dict]] = {}
         self.tools = set(CONTRACT_TOOLS)
+        self.bank_tools: dict[str, set] = {}
         self.faults = faults
         self.next_id = 0
 
@@ -35,8 +36,12 @@ class FakeHindsight:
             return 200, {}, json.dumps({"status": "healthy", "database": "connected"})
         if path == "/v1/version":
             return 200, {}, json.dumps({"api_version": "1.2.2"})
-        if path == "/v1/default/banks":
-            return 200, {}, json.dumps({"banks": [{"bank_id": b} for b in self.banks]})
+        if path.startswith("/v1/default/banks?"):
+            query = dict(part.split("=") for part in path.split("?", 1)[1].split("&"))
+            names = sorted(self.banks) + [f"filler-{i}" for i in range(self.faults.get("extra_banks", 0))]
+            names.sort(key=lambda n: (not n.startswith("filler"), n))           # real banks after the fillers
+            start, limit = int(query.get("offset", 0)), int(query.get("limit", 100))
+            return 200, {}, json.dumps({"banks": [{"bank_id": b} for b in names[start:start + limit]]})
         match = re.match(r"^/v1/default/banks/(.+?)/memories(/recall)?$", path)
         if match and method == "POST":
             bank = match.group(1)
@@ -64,7 +69,7 @@ class FakeHindsight:
     def recall(self, bank, body):
         pool = [m for b, ms in self.banks.items() for m in ms] if self.faults.get("leak_rest") \
             else list(self.banks.get(bank, []))
-        tags = body.get("tags")
+        tags = None if self.faults.get("tags_ignored") else body.get("tags")
         if tags:
             pool = [m for m in pool if set(tags) & set(m["tags"])]
         results = [dict(m) for m in pool]
@@ -80,20 +85,24 @@ class FakeHindsight:
         if method == "initialize":
             result = {"protocolVersion": "2025-06-18"}
         elif method == "tools/list":
-            result = {"tools": [{"name": n} for n in sorted(self.tools)]}
+            result = {"tools": [{"name": n} for n in sorted(self.bank_tools.get(bank, self.tools))]}
         else:
             name, args = body["params"]["name"], body["params"]["arguments"]
             target = args.get("bank_id", bank) if self.faults.get("mcp_honours_bank_id") else bank
             if name == "recall":
-                payload = {"results": self.recall(target, {"query": args["query"]})}
+                payload = {"results": [] if self.faults.get("mcp_recall_empty") and "bank_id" not in args
+                           else self.recall(target, {"query": args["query"]})}
             elif name == "list_memories":
                 pool = [m for ms in self.banks.values() for m in ms] if self.faults.get("leak_list") \
                     else self.banks.get(bank, [])
                 payload = {"items": pool, "total": len(pool)}
             elif name == "get_memory":
                 payload = next((m for m in self.banks.get(bank, []) if m["id"] == args["memory_id"]), None)
+                if self.faults.get("get_memory_swaps_text") and payload:
+                    beta = next(m for b, ms in self.banks.items() if "beta" in b for m in ms)
+                    payload = dict(payload, text=beta["text"])
             elif name == "get_bank":
-                payload = {"bank_id": bank}
+                payload = {"bank_id": "someone-else" if self.faults.get("get_bank_other") else bank}
             else:
                 payload = None
             result = {"content": [{"type": "text", "text": json.dumps(payload)}], "isError": payload is None,
@@ -151,7 +160,9 @@ class RunTest(FakeServerCase):
 
     def test_each_fault_fails_its_check(self):
         cases = {"leak_rest": "S3 project isolation", "mcp_honours_bank_id": "S4 MCP isolation",
-                 "empty_metadata": "S6 provenance", "retain_fails": "S2 retain", "leak_list": "S9 MCP read tools"}
+                 "empty_metadata": "S6 provenance", "retain_fails": "S2 retain", "leak_list": "S9 MCP read tools",
+                 "get_memory_swaps_text": "S9 MCP read tools", "tags_ignored": "S5 task scope",
+                 "get_bank_other": "S9 MCP read tools", "mcp_recall_empty": "S4 MCP isolation"}
         for fault, check in cases.items():
             with self.subTest(fault=fault):
                 code, rows, _ = self.store(FakeHindsight(**{fault: True}))
@@ -173,6 +184,22 @@ class RunTest(FakeServerCase):
                 fake.tools = (CONTRACT_TOOLS | change) if change else CONTRACT_TOOLS - {"get_bank"}
                 _, rows, _ = self.store(fake)
                 self.assertEqual(rows["S7 MCP allowlist"], "FAIL")
+
+    def test_every_endpoint_is_checked_for_the_tool_set(self):
+        for kind in ("studio", "alpha", "beta"):
+            with self.subTest(endpoint=kind):
+                fake = FakeHindsight()
+                name = {"studio": "gamedev-studio-smoke::studio-r1"}.get(kind, f"gamedev-studio-smoke::project::{kind}-r1")
+                fake.bank_tools[name] = CONTRACT_TOOLS | {"delete_bank"}
+                _, rows, _ = self.store(fake)
+                self.assertEqual(rows["S7 MCP allowlist"], "FAIL")
+
+    def test_a_used_run_id_is_found_past_the_first_page(self):
+        fake = FakeHindsight(extra_banks=250)
+        self.store(fake, "r1")
+        code, _, err = self.call(fake, "--run", "r1")
+        self.assertEqual(code, 2)
+        self.assertIn("was used before", err)
 
     def test_a_used_run_id_is_refused(self):
         fake = FakeHindsight()

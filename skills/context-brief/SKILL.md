@@ -36,8 +36,8 @@ Binding: DEC-102 (#103) give an agent only relevant sources, with revision and p
 
 - It ranks by shared words, so check the decision list. Add any decision the coordinator knows applies.
 - Imports are found for relative JS/TS imports and Godot `res://` loads only.
-- Definitions are found by pattern for JS/TS, Python, GDScript, C# and JSON keys. A name defined some other way, for example by a code generator, is reported as stale: check it before you change the card.
-- Notes come from the archive's wording. A note that never names the piece or an owned file is not found, so read the reviews of the pieces it depends on.
+- Definitions are found by pattern for JS/TS, Python, GDScript, C# and JSON keys, in tracked files outside tests and fixtures, with comments and string contents removed. A name defined some other way (a code generator, an inline object method) or only in a test is reported as stale: check it before you change the card.
+- Notes come from the archive's wording. Each note shows its file and line; a mention inside a sub-item brings its parent item. A note that never names the piece or an owned file is not found, so read the reviews of the pieces it depends on.
 - It is a brief, not a record: status stays on the Issue and the PR.
 
 ## Source

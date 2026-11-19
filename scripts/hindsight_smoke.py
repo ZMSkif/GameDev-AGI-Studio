@@ -15,12 +15,12 @@ Checks:
                        the call names beta's bank_id
   S5 task scope        task memories are found by their task tag and not by another task's tag
   S6 provenance        recalled facts carry this run's provenance values, none of them empty
-  S7 MCP allowlist     the per-bank endpoint exposes exactly the contract's mcp_enabled_tools, so no
+  S7 MCP allowlist     every per-bank endpoint exposes exactly the contract's mcp_enabled_tools, so no
                        delete, clear or unsourced reflect tool (DEC-138, provenance_required)
   S8 persistence       after a server restart (--recall-only --after-restart), this run's facts are
                        still recalled; without --after-restart it is MANUAL
   S9 MCP read tools    list_memories, get_memory and get_bank answer on the per-bank endpoint and
-                       show no other bank's facts
+                       show no other bank's facts; get_memory returns the listed fact's own text
 
 Usage:
   python scripts/hindsight_smoke.py [--url http://127.0.0.1:8888] [--prefix gamedev-studio-smoke]
@@ -183,12 +183,19 @@ def recall(base: str, bank: str, query: str, **extra) -> dict:
     return answer
 
 
-def existing_banks(base: str) -> set[str]:
-    status, _, raw = request(f"{base}/v1/default/banks")
-    answer = as_json(raw)
-    if status != 200 or not isinstance(answer, dict):
-        raise SmokeError(f"list banks: HTTP {status}")
-    return {b.get("bank_id") for b in answer.get("banks", []) if isinstance(b, dict)}
+def existing_banks(base: str, page: int = 100) -> set[str]:
+    """Every bank id on the server, page by page (the server returns at most `limit` at a time)."""
+    found: set[str] = set()
+    for offset in range(0, 1_000_000, page):
+        status, _, raw = request(f"{base}/v1/default/banks?limit={page}&offset={offset}")
+        answer = as_json(raw)
+        if status != 200 or not isinstance(answer, dict):
+            raise SmokeError(f"list banks: HTTP {status}")
+        banks_page = [b.get("bank_id") for b in answer.get("banks", []) if isinstance(b, dict)]
+        found.update(banks_page)
+        if len(banks_page) < page:
+            return found
+    raise SmokeError("list banks: too many pages")
 
 
 def retain_one(base: str, bank: str, item: dict) -> bool:
@@ -213,18 +220,21 @@ def check_read_tools(base: str, names: dict) -> tuple[str, str]:
     session = McpSession(endpoint(base, names["alpha"]))
     listed_ok, listed, listed_text = session.tool("list_memories", {})
     bank_ok, bank, _ = session.tool("get_bank", {})
-    items = listed.get("items", []) if isinstance(listed, dict) else []
-    memory_id = next((i.get("id") for i in items if isinstance(i, dict) and i.get("id")), None)
+    items = [i for i in (listed.get("items", []) if isinstance(listed, dict) else []) if isinstance(i, dict)]
+    # The stored cobalt fact itself (a fact, not an observation), so get_memory can be checked by content.
+    target = next((i for i in items if i.get("id") and "cobalt" in str(i.get("text", "")).lower()
+                   and i.get("fact_type", i.get("type")) in ("world", "experience")), None)
     got_ok = False
-    if memory_id:
-        got_ok, got, _ = session.tool("get_memory", {"memory_id": memory_id})
-        got_ok = got_ok and isinstance(got, dict) and got.get("id") == memory_id
+    if target:
+        got_ok, got, got_text = session.tool("get_memory", {"memory_id": target["id"]})
+        got_ok = (got_ok and isinstance(got, dict) and got.get("id") == target["id"]
+                  and got.get("text") == target.get("text") and "amber" not in got_text)
     own_bank = isinstance(bank, dict) and bank.get("bank_id") == names["alpha"]
     clean = "amber" not in listed_text
-    if listed_ok and bank_ok and got_ok and own_bank and "cobalt" in listed_text and clean:
+    if listed_ok and bank_ok and got_ok and own_bank and clean:
         return "PASS", "list_memories, get_bank and get_memory answered with alpha's data only"
     return "FAIL", (f"list_memories ok={listed_ok} ({len(items)} items), get_bank ok={bank_ok} own={own_bank}, "
-                    f"get_memory ok={got_ok}, other bank's data absent={clean}")
+                    f"get_memory of alpha's fact ok={got_ok}, other bank's data absent={clean}")
 
 
 def run(base: str, prefix: str, run_id: str, recall_only: bool, after_restart: bool,
@@ -278,7 +288,10 @@ def run(base: str, prefix: str, run_id: str, recall_only: bool, after_restart: b
                  f"facts carry this run's {list(PROVENANCE_KEYS)}; {bare} of {len(observations)} derived "
                  "observations have no metadata (unverified hints)"))
     try:
-        rows.append(("S7 MCP allowlist", *judge_tools(mcp_tools(base, names["studio"]), allowed)))
+        judged = [(kind, *judge_tools(mcp_tools(base, names[kind]), allowed)) for kind in ("studio", "alpha", "beta")]
+        bad = [f"{kind}: {why}" for kind, result, why in judged if result != "PASS"]
+        rows.append(("S7 MCP allowlist", "FAIL", "; ".join(bad)) if bad else
+                    ("S7 MCP allowlist", "PASS", f"the studio, alpha and beta endpoints expose exactly {sorted(allowed)}"))
     except SmokeError as exc:
         rows.append(("S7 MCP allowlist", "FAIL", str(exc)))
     if recall_only and after_restart:

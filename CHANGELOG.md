@@ -6,7 +6,7 @@ All notable changes to the `gamedev-studio` plugin. The version lives only in `.
 
 ### Added
 - **Memory** over Hindsight 1.2.2 (MIT) through MCP: the `memory` skill and `scripts/hindsight_smoke.py` ([DEC-024](https://github.com/ZMSkif/GameDev-AGI-Studio/issues/24), DEC-101–DEC-104, [DEC-138](https://github.com/ZMSkif/GameDev-AGI-Studio/issues/140)).
-  - One bank per scope and one MCP endpoint per bank; the multi-bank endpoint crosses banks.
+  - A studio bank and a bank per project; task memories are tagged `task:<n>` in the project bank. Each bank gets its own MCP endpoint, because the multi-bank endpoint crosses banks.
   - Provenance on every memory; facts only as evidence, observations as hints.
   - The four retrieval modes, with Auto as default.
   - Agents never pass `document_id` or `update_mode`, because a repeated id replaces memory.
@@ -22,7 +22,7 @@ All notable changes to the `gamedev-studio` plugin. The version lives only in `.
 - **Learning and Improvement, light** ([DEC-105](https://github.com/ZMSkif/GameDev-AGI-Studio/issues/107), [DEC-106](https://github.com/ZMSkif/GameDev-AGI-Studio/issues/108)): the `lessons` skill, `/gamedev-studio:mine-lessons` and `scripts/mine_lessons.py`.
   - It mines the review archive for recurring failure classes behind a noise guard: 2 independent pieces or 1 blocker.
   - `--drop` leaves out false hits.
-  - It stores lessons with provenance and a new document id per run.
+  - It stores lessons with provenance and without a `document_id`. The run marker is stored only after every lesson was.
   - It proposes plugin changes on a local branch. Push and PR need the owner's yes.
 - Contracts v1.3.0: `knowledge-policy.json` 1.1.0, checked by `validate_contracts.py`. It covers the memory backend, bank naming, storage rules, learning rules with their sources, and the known limits.
 - `validate_plugin.py`: a command may not have a skill's name.

@@ -136,7 +136,7 @@ def parse_card(text: str) -> dict:
                         card["new"].append(path)
             elif current in ("goal", "depends", "reviewer_gate") and line.strip():
                 card[current].append(line.rstrip())
-            elif line.startswith("#"):
+            elif line.startswith("#") or (current in ("goal", "depends", "reviewer_gate") and not line.strip()):
                 current = None
     if not card["goal"] or not card["acceptance"] or not card["owns"]:
         raise BriefError("the card needs Goal, numbered Acceptance lines and an Owns list")
@@ -228,31 +228,50 @@ def reads_of(root: Path, files: list[Path]) -> list[str]:
     return sorted(found)
 
 
+# One pass over the code, leftmost match first, so a "//" inside a string or a quote inside a comment
+# is read correctly. Comments go; string contents go, but the quotes stay.
+_HASH_LANG = re.compile(r'"""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\'|#[^\n]*|"(?:\\.|[^"\\\n])*"|\'(?:\\.|[^\'\\\n])*\'')
+_SLASH_LANG = re.compile(r"//[^\n]*|/\*[\s\S]*?\*/|\"(?:\\.|[^\"\\\n])*\"|'(?:\\.|[^'\\\n])*'|`(?:\\.|[^`\\])*`")
+
+
+def _blank(match: re.Match) -> str:
+    token = match.group(0)
+    if token[0] in "#/":
+        return ""
+    quote = token[:3] if token[:3] in ('"""', "'''") else token[0]
+    return quote + quote
+
+
 def strip_comments(text: str, suffix: str) -> str:
-    """Code without its comments, so a comment that names a removed function does not keep it alive."""
-    if suffix in (".py", ".gd"):
-        return re.sub(r"#[^\n]*", "", text)
+    """Code without its comments and string contents, so a comment or a string such as
+    "function runTraining() {}" that names a removed function does not keep it alive."""
     if suffix == ".json":
         return text
-    text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
-    return re.sub(r"(?<![:\"'\\])//[^\n]*", "", text)
+    return (_HASH_LANG if suffix in (".py", ".gd") else _SLASH_LANG).sub(_blank, text)
 
 
 def definition_re(name: str) -> re.Pattern:
-    """Where code defines, exports or imports `name` (JS/TS, Python, GDScript, C#, JSON keys)."""
+    """Where code defines, exports or imports `name` (JS/TS, Python, GDScript, C#, JSON keys). Every
+    repeat is bounded, so an unclosed brace cannot make the search slow."""
     n = re.escape(name)
+    generic = r"(?:<[^>\n]{0,200}>)?"
     return re.compile("|".join([
         rf"\b(?:function\*?|def|func|class|interface|type|enum|struct|signal|class_name|const|let|var)\s+{n}\b",
-        rf"\bexport\s*\{{[^}}]*\b{n}\b[^}}]*\}}",
-        rf"\bimport\s*\{{[^}}]*\b{n}\b[^}}]*\}}\s*from\b",
+        rf"\bexport\s*\{{[^}}]{{0,4000}}?\b{n}\b",
+        rf"\bimport\b[^;\n{{]{{0,200}}\{{[^}}]{{0,4000}}?\b{n}\b",
         rf"\bimport\s+(?:\*\s+as\s+)?{n}\b",
-        rf"\bfrom\s+\S+\s+import\s+[^\n]*\b{n}\b",
-        rf"^\s*(?:export\s+)?(?:public\s+|private\s+|protected\s+|static\s+|readonly\s+|async\s+|get\s+|set\s+)*"
-        rf"{n}\??\s*(?:[:=]|\([^)]*\)\s*(?::[^{{;]+)?\{{)",
+        rf"\bfrom\s+\S+\s+import\s+[^\n]{{0,500}}?\b{n}\b",
+        rf"^[ \t]*(?:export\s+)?(?:(?:public|private|protected|internal|static|readonly|async|get|set|override|abstract)\s+)*"
+        rf"{n}\??[ \t]*{generic}[ \t]*(?:[:=]|\([^)\n]{{0,500}}\)[ \t]*(?::[^{{;\n]{{0,200}})?\{{)",
         rf"\b{n}\s*:\s*(?:async\s+)?(?:function\b|\()",
         rf"\"{n}\"\s*:",
-        rf"\b\w+(?:<[^>]*>)?\s+{n}\s*\([^)]*\)\s*\{{",
+        rf"\b\w+{generic}\??[ \t]+{n}[ \t]*{generic}[ \t]*\([^)\n]{{0,500}}\)[ \t]*\{{",
+        rf"\b\w+{generic}\??[ \t]+{n}[ \t]*\{{[ \t]*(?:get|set|init)\b",
     ]), re.M)
+
+
+# Tests and fixtures do not keep a name alive: a fixture such as `stepId: 3` is not the game's code.
+TEST_PATH = re.compile(r"(^|/)(tests?|__tests__|e2e|fixtures?|spec)(/|$)|\.(test|spec)\.[A-Za-z]+$", re.I)
 
 
 def source_files(root: Path) -> list[Path]:
@@ -261,9 +280,9 @@ def source_files(root: Path) -> list[Path]:
     listed = git(root, "ls-files", "-z")
     if listed is not None:
         names = [n for n in listed.split("\0") if n]
-        paths = [root / n for n in names if not SKIP_DIRS & set(Path(n).parts)]
+        paths = [root / n for n in names if not SKIP_DIRS & set(Path(n).parts) and not TEST_PATH.search(n)]
     else:
-        paths = list(walk_files(root))
+        paths = [f for f in walk_files(root) if not TEST_PATH.search(f.relative_to(root).as_posix())]
     keep = []
     for path in paths:
         try:
@@ -309,10 +328,23 @@ def note_block(lines: list[str], index: int) -> list[str]:
             break
         if indent_of(follow) <= level and re.match(r"^\s*(?:[-*]|\d+[.)])\s", follow):
             break
-        if indent_of(follow) <= level and re.match(r"^\s*\*\*For [A-Z]", follow):
+        if indent_of(follow) <= level and re.match(r"^\s*(?:[-*]\s+)?\**For [A-Z][A-Za-z0-9-]*\**\s*:", follow):
             break
         block.append(follow.rstrip())
     return block
+
+
+def parent_of(lines: list[str], index: int) -> int | None:
+    """The item an indented line belongs to: the nearest earlier line with less indentation."""
+    level = indent_of(lines[index])
+    if level == 0:
+        return None
+    for back in range(index - 1, -1, -1):
+        if not lines[back].strip() or lines[back].startswith("#"):
+            return None
+        if indent_of(lines[back]) < level:
+            return back
+    return None
 
 
 def review_title(text: str) -> str:
@@ -320,10 +352,11 @@ def review_title(text: str) -> str:
     return match.group(1) if match else ""
 
 
-def review_notes(reviews: Path, piece: str, owned_paths_: list[str]) -> list[tuple[str, list[str]]]:
-    """Verbatim notes: "For <ID>:" blocks, lines in other pieces' reviews naming the piece, and
-    must / block / fix lines about owned files. Each note is (file name, its lines)."""
-    notes: list[tuple[str, list[str]]] = []
+def review_notes(reviews: Path, piece: str, owned_paths_: list[str]) -> list[tuple[str, int, list[str]]]:
+    """Verbatim notes: "For <ID>:" blocks, items in other pieces' reviews that name the piece (with the
+    parent item when the mention sits in a sub-item), and must / block / fix lines about owned files.
+    Each note is (file name, first line number, its lines)."""
+    notes: list[tuple[str, int, list[str]]] = []
     if not reviews.is_dir():
         return notes
     tails = {p.rsplit("/", 1)[-1] for p in owned_paths_ if "." in p.rsplit("/", 1)[-1] and "*" not in p}
@@ -339,13 +372,17 @@ def review_notes(reviews: Path, piece: str, owned_paths_: list[str]) -> list[tup
             if piece and re.search(rf"\*{{0,2}}For {re.escape(piece)}\b", line):
                 block = note_block(lines, index)
                 taken.update(range(index, index + len(block)))
-                notes.append((path.name, block))
+                notes.append((path.name, index + 1, block))
             elif word and not own_review and word.search(line) and not line.startswith("# Review:"):
-                block = note_block(lines, index)
-                taken.update(range(index, index + len(block)))
-                notes.append((path.name, block))
+                start = parent_of(lines, index)
+                start = index if start is None or start in taken else start
+                block = note_block(lines, start)
+                if start < index and len(block) <= index - start:      # the mention lies outside the parent's block
+                    start, block = index, note_block(lines, index)
+                taken.update(range(start, start + len(block)))
+                notes.append((path.name, start + 1, block))
             elif tails and any(t in line for t in tails) and re.search(r"must|block|fix", line, re.I):
-                notes.append((path.name, [line.rstrip()]))
+                notes.append((path.name, index + 1, [line.rstrip()]))
     return notes
 
 
@@ -391,10 +428,13 @@ def usable_memories(answer: dict | None) -> list[dict]:
 
 def git(root: Path, *args: str) -> str | None:
     try:
-        done = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True, timeout=60)
+        done = subprocess.run(["git", "-C", str(root), "-c", "core.quotePath=false", *args], capture_output=True,
+                              text=True, encoding="utf-8", errors="replace", timeout=60)
     except (OSError, subprocess.SubprocessError):
         return None
-    return done.stdout.rstrip("\r\n") if done.returncode == 0 else None  # porcelain lines start with a space
+    if done.returncode != 0 or done.stdout is None:
+        return None
+    return done.stdout.rstrip("\r\n")  # porcelain lines start with a space, so only line ends are cut
 
 
 def sha256_of(path: str | None) -> str:
@@ -403,8 +443,17 @@ def sha256_of(path: str | None) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()[:16]
 
 
-def revisions(args, root: Path, owned: list[Path], reads: list[str]) -> list[str]:
-    """What the brief was built from, with a revision for each source (DEC-102)."""
+def file_sha(path: Path) -> str:
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()[:16]
+    except OSError:
+        return "unreadable"
+
+
+def revisions(args, root: Path, owned: list[Path], reads: list[str],
+              notes: list[tuple[str, int, list[str]]]) -> list[str]:
+    """What the brief was built from, with a revision for each source (DEC-102): commits for committed
+    files, content hashes for uncommitted ones and for every review file the notes quote."""
     head = git(root, "rev-parse", "HEAD")
     status = git(root, "status", "--porcelain") or ""
     touched = {line[3:].strip().strip('"') for line in status.splitlines() if len(line) > 3}
@@ -415,15 +464,19 @@ def revisions(args, root: Path, owned: list[Path], reads: list[str]) -> list[str
     except (OSError, ValueError, KeyError):
         plugin_version = "unknown"
     reviews = Path(args.reviews) if args.reviews else root / "docs" / "reviews"
-    archive = sorted(p.name for p in reviews.glob("*.md")) if reviews.is_dir() else []
+    archive = sorted(reviews.glob("*.md")) if reviews.is_dir() else []
+    digest = hashlib.sha256("\n".join(f"{a.name}:{file_sha(a)}" for a in archive).encode("utf-8")).hexdigest()[:16]
+    quoted = sorted({name for name, _, _ in notes})
     lines = [
         f"- Game repository HEAD: `{head or 'not a git repository'}`"
-        + (f"; uncommitted changes in {', '.join(f'`{m}`' for m in mine)}" if mine else
+        + (f"; uncommitted changes in {', '.join(f'`{m}` (sha256 `{file_sha(root / m)}`)' for m in mine)}" if mine else
            ("; other uncommitted changes exist" if touched else "; clean")),
         f"- Card: sha256 `{sha256_of(args.card)}`" + (f", from {args.card_source}" if args.card_source else ""),
         f"- Decisions: sha256 `{sha256_of(args.decisions)}`",
         f"- Memories: sha256 `{sha256_of(args.memories)}`",
-        f"- Review archive: {len(archive)} files" + (f", last `{archive[-1]}`" if archive else ""),
+        f"- Review archive: {len(archive)} files" + (f", last `{archive[-1].name}`, sha256 of all `{digest}`"
+                                                     if archive else ""),
+        *[f"  - quoted: `{name}` sha256 `{file_sha(reviews / name)}`" for name in quoted],
         f"- Plugin gamedev-studio {plugin_version}" + (f" at `{git(plugin, 'rev-parse', 'HEAD')}`"
                                                        if git(plugin, "rev-parse", "HEAD") else ""),
     ]
@@ -466,12 +519,8 @@ def render(card, decisions, skills, owned, reads, stale, notes, memories, port_n
                 *[f"- `{s}`" for s in stale]]
     if notes:
         out += ["", "## Notes from earlier reviews (verbatim)"]
-        last = None
-        for name, block in notes:
-            if name != last:
-                out += ["", f"From `{name}`:", ""]
-                last = name
-            out += block
+        for name, line_no, block in notes:
+            out += ["", f"From `{name}`, line {line_no}:", "", *block]
     if memories:
         out += ["", "## Memories (verify before use; the source wins, DEC-103)",
                 *[f"- {m.get('text')} — source: {m['metadata'].get('source')} @ {m['metadata'].get('source_rev')}"
@@ -513,7 +562,7 @@ def build(args) -> str:
     notes = review_notes(reviews, card["piece"], [p.relative_to(root).as_posix() for p in owned] + card["owns"])
     memories = usable_memories(load_json(args.memories, "--memories"))
     return render(card, decisions, skills, owned, reads, stale, notes, memories, port_notes, root,
-                  revisions(args, root, owned, reads))
+                  revisions(args, root, owned, reads, notes))
 
 
 def main(argv: list[str] | None = None) -> int:

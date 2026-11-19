@@ -20,8 +20,8 @@ The contract is `contracts/v1/knowledge-policy.json` (`learning`).
 ## The noise guard
 
 A failure class becomes a lesson only with **at least 2 independent occurrences** or **one severe one**. Everything below the guard is listed, not stored.
-- **Independent** means different pieces. The piece is the code in the review's title (CN1, WP0, WA-0). A title without a code counts as its words, minus review words such as "re-review" and "fix round". So a piece and its re-reviews count once.
-- **Severe** means a defect line under a blocker or must-fix heading. A heading such as "No blockers" is not severe. A line that only reports a pass ("music passed all checks") is not an occurrence.
+- **Independent** means different pieces. The piece is the code in the review's title (CN1, WP0, WA-0): the code after "for" or "of" when there is one ("Re-check B1 fix for CN1" is CN1), else the first upper-case code. A version such as v2 is not a code. A title without a code counts as its words, minus review words such as "re-review", "fix round" and "piece". So a piece and its re-reviews count once.
+- **Severe** means a line under a blocker or must-fix heading. Inside such a section every line is read as a defect, even one that mentions a passing test. A section is not severe when its heading says there is none ("No blockers", "Must-fix list: none") or its first line says "None.", as the archive writes it. Outside those sections, a line that only reports a pass ("music passed all checks") or only says a defect is absent ("music is not stuck") is not an occurrence.
 - **The whole archive is always counted**, so repeats spread over several runs add up. `--since N` only limits the report to lessons with a file numbered above N.
 
 ## Procedure
@@ -32,7 +32,8 @@ A failure class becomes a lesson only with **at least 2 independent occurrences*
 2. **Read the report.** Every lesson lists its pieces, its files and two example lines. Drop each class whose examples are false hits, such as "music" in a credits review: run again with `--drop <class>` and say which you dropped and why. A dropped class is neither reported as a lesson nor stored.
 3. **Store** the kept lessons in the studio bank, after the `memory` skill's checks: the same command plus `--retain <base> --bank gamedev-studio::studio --repository <owner/name>`.
    - Each lesson carries provenance (the repository, the review files, the review range) and the tags `lesson`, `lesson:<class>` and `repo:<owner/name>`. A `lessons-run` memory records where the run stopped.
-   - Every document id is new for each run, so a run never replaces an earlier one (DEC-138).
+   - No item names a `document_id`, so Hindsight makes a new document for each and a run never replaces an earlier one (DEC-138).
+   - The `lessons-run` marker (`verified: "false"`, like every lesson) is stored only after every lesson was. If any lesson is refused or fails, the marker is not stored and the next run uses the same `--since`.
    - The whole payload (text, metadata, tags and id) is checked for secret-looking or `--forbid` text first. The script exits 3 when anything is not stored.
 4. **Propose.** For each lesson, change the plugin part the report names: a skill section, a reviewer checklist or a validator.
    - Work in a worktree of `ZMSkif/GameDev-AGI-Studio` on a local branch `lessons/<date>`. Never edit the installed plugin copy or a marketplace clone.

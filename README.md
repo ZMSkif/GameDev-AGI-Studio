@@ -45,7 +45,7 @@ All are short, cite their decisions and name their sources (the Cat Challenge we
 `/gamedev-studio:new-web-game`, `/gamedev-studio:release-gate`, `/gamedev-studio:package-playgama`, `/gamedev-studio:review-piece`, `/gamedev-studio:archive-reviews`, `/gamedev-studio:brief-piece` and `/gamedev-studio:mine-lessons`. Each is a short wrapper over a skill, and no command has a skill's name.
 
 What each CLI was seen to load for 0.4.0:
-- **Claude Code 2.1.325:** `claude --plugin-dir . plugin details gamedev-studio` lists the 17 skills, the 7 commands, the 14 roles and the 2 hooks.
+- **Claude Code 2.1.325:** `claude --plugin-dir . plugin details gamedev-studio` lists 24 skills and commands together (the 17 skills and the 7 commands), the 14 roles and the 2 hooks.
 - **Codex 0.169.0:** with a throwaway `CODEX_HOME`, it installs 0.4.0 with all 17 skills. The Codex manifest declares only skills and hooks. Whether a Codex session offers the commands was not tested, so in Codex use the skills directly.
 
 `python scripts/archive_reviews.py` saves reviewer verdicts verbatim from a session transcript.

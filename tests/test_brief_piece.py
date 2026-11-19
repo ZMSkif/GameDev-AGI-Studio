@@ -5,6 +5,7 @@ import io
 import json
 import subprocess
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -161,6 +162,18 @@ class CatChallengeCases(BriefCase):
         self.assertIn("`stepId`", stale)        # nothing names it
         self.assertNotIn("`startShow`", stale)  # defined
 
+    def test_a_string_that_looks_like_a_definition_does_not_count(self):
+        (self.repo / "src/city/citizens/recipe.ts").write_text(
+            'const recipe = "function runTraining() {}";\nconst tpl = `export const stepId = 1`;\n'
+            "const url = 'http://example.com'; export function startShow2() {}\n", encoding="utf-8")
+        (self.repo / "tool.py").write_text('DOC = """def runTraining(): pass"""\n', encoding="utf-8")
+        self.card.write_text(CARD + "\nAlso `startShow2`.\n", encoding="utf-8")
+        _, text, _ = self.call()
+        stale = self.section(text, "## ⚠ Stale references")
+        self.assertIn("`runTraining`", stale)
+        self.assertIn("`stepId`", stale)
+        self.assertNotIn("`startShow2`", stale)  # defined after a string holding "//"
+
     def test_definitions_exports_and_imports_count(self):
         (self.repo / "src/city/citizens/steps.ts").write_text(
             "export const stepId = 3;\nclass Coach {\n  runTraining(level: number): void {\n  }\n}\n", encoding="utf-8")
@@ -188,6 +201,16 @@ class CatChallengeCases(BriefCase):
         self.assertIn("if CN1 plays `target.emote`", notes)
         self.assertNotIn("the CK2 tests are fine", notes)
         self.assertNotIn("acceptance 3 fails on medium", notes)  # the piece's own review is not a note
+
+    def test_a_plain_for_line_ends_the_block(self):
+        (self.reviews / "2026-11-19_50_agent-review-city-cs2-finished_confirmed.md").write_text(
+            '# Review: Agent "Review city CS2" finished\n\n---\n\n'
+            "For CN1: keep the hold slots,\none per hold.\nFor CK2: rename the lane.\n",
+            encoding="utf-8")
+        _, text, _ = self.call()
+        notes = self.section(text, "## Notes from earlier reviews (verbatim)")
+        self.assertIn("one per hold.", notes)
+        self.assertNotIn("rename the lane", notes)
 
     def test_must_or_fix_lines_about_owned_files_are_pulled_in(self):
         self.card.write_text(CARD.replace("Owns: src/city/citizens/**", "Owns: src/city/citizens/crowd.ts"),
@@ -276,6 +299,15 @@ class BriefContentTest(BriefCase):
         self.assertIn("uncommitted changes in `src/city/citizens/crowd.ts`", built)
         self.assertIn("from issue #42 updated 2026-11-19T10:00Z", built)
         self.assertIn("Review archive: 3 files, last `2026-11-19_64_agent-review-cn1-finished_blocked.md`", built)
+        self.assertRegex(built, r"quoted: `2026-11-19_49_agent-review-city-cs1-finished_confirmed.md` sha256 `[0-9a-f]{16}`")
+        first = built
+        (self.repo / "src/city/citizens/crowd.ts").write_text("export function startShow() { /* v2 */ }\n", encoding="utf-8")
+        _, text, _ = self.call("--card-source", "issue #42 updated 2026-11-19T10:00Z")
+        self.assertNotEqual(self.section(text, "## Built from"), first)  # new content, new hash
+        (self.reviews / "2026-11-19_49_agent-review-city-cs1-finished_confirmed.md").write_text(
+            CS1_REVIEW + "\n- one more line\n", encoding="utf-8")
+        _, again, _ = self.call("--card-source", "issue #42 updated 2026-11-19T10:00Z")
+        self.assertNotEqual(self.section(again, "## Built from"), self.section(text, "## Built from"))
         self.assertRegex(built, r"Card: sha256 `[0-9a-f]{16}`")
 
     def test_brief_inside_the_repository_is_refused(self):
@@ -322,6 +354,114 @@ class BriefContentTest(BriefCase):
         _, text, _ = self.call()
         self.assertIn("`stepId`", self.section(text, "## ⚠ Stale references"))
 
+
+
+class RoundTwoCases(BriefCase):
+    """The second review round's findings: definitions, note context, card prose, non-ASCII paths."""
+
+    def stale(self, text):
+        return self.section(text, "## ⚠ Stale references") if "## ⚠ Stale references" in text else ""
+
+    def test_a_call_is_not_a_definition(self):
+        (self.repo / "src/city/citizens/use.ts").write_text("runTraining();\nconst x = stepId + 1;\n", encoding="utf-8")
+        _, text, _ = self.call()
+        self.assertIn("`runTraining`", self.stale(text))
+        self.assertIn("`stepId`", self.stale(text))
+
+    def test_more_definition_shapes_count(self):
+        (self.repo / "src/city/citizens/more.ts").write_text(
+            "import React, { useMemo } from 'react';\n"
+            "const glob = 'assets/*.glb';\n"
+            "class Coach {\n  runTraining<T>(level: T): void {\n  }\n}\n", encoding="utf-8")
+        (self.repo / "src/city/citizens/Step.cs").write_text("class S {\n  public int stepId { get; set; }\n}\n",
+                                                             encoding="utf-8")
+        self.card.write_text(CARD + "\nAlso `useMemo`.\n", encoding="utf-8")
+        _, text, _ = self.call()
+        self.assertEqual(self.stale(text), "")
+
+    def test_import_and_export_lists_count(self):
+        (self.repo / "src/city/citizens/index.ts").write_text(
+            "import { stepId } from './steps';\nexport { runTraining } from './coach';\n", encoding="utf-8")
+        _, text, _ = self.call()
+        self.assertEqual(self.stale(text), "")
+
+    def test_tests_and_fixtures_do_not_keep_a_name_alive(self):
+        for rel in ("tests/fixtures/steps.ts", "e2e/flow.mjs", "src/city/coach.test.ts"):
+            (self.repo / rel).parent.mkdir(parents=True, exist_ok=True)
+            (self.repo / rel).write_text("export const stepId = 3;\nexport function runTraining() {}\n",
+                                         encoding="utf-8")
+        _, text, _ = self.call()
+        self.assertIn("`stepId`", self.stale(text))
+        self.assertIn("`runTraining`", self.stale(text))
+        subprocess.run(["git", "init", "-q", str(self.repo)], check=True)   # the same through git's file list
+        subprocess.run(["git", "-C", str(self.repo), "add", "-A"], check=True)
+        _, text, _ = self.call()
+        self.assertIn("`stepId`", self.stale(text))
+        self.assertIn("`runTraining`", self.stale(text))
+
+    def test_an_unclosed_export_list_stays_fast(self):
+        (self.repo / "src/city/citizens/big.ts").write_text(("export { stepId, " * 3000) + "\n", encoding="utf-8")
+        self.card.write_text(CARD + "\nAlso `missingName`.\n", encoding="utf-8")
+        started = time.monotonic()
+        _, text, _ = self.call()
+        self.assertLess(time.monotonic() - started, 5)
+        self.assertIn("`missingName`", self.stale(text))
+
+    def test_a_for_block_in_the_pieces_own_review_is_pulled_in(self):
+        (self.reviews / "2026-11-19_65_agent-review-cn1-finished_blocked.md").write_text(
+            OWN_REVIEW + "\n- **For CN1:** re-run the soak on medium.\n", encoding="utf-8")
+        _, text, _ = self.call()
+        notes = self.section(text, "## Notes from earlier reviews (verbatim)")
+        self.assertIn("re-run the soak on medium", notes)
+        self.assertNotIn("acceptance 3 fails on medium", notes)
+
+    def test_a_blank_line_ends_a_block(self):
+        (self.reviews / "2026-11-19_50_agent-review-city-cs2-finished_confirmed.md").write_text(
+            '# Review: Agent "Review city CS2" finished\n\n---\n\n'
+            "- **For CN1:** keep the hold slots.\n\n  - an unrelated indented line.\n", encoding="utf-8")
+        _, text, _ = self.call()
+        notes = self.section(text, "## Notes from earlier reviews (verbatim)")
+        self.assertIn("keep the hold slots", notes)
+        self.assertNotIn("an unrelated indented line", notes)
+
+    def test_a_mention_in_a_sub_item_brings_its_parent_and_a_line_number(self):
+        (self.reviews / "2026-11-19_58_agent-review-city-ck2-finished_confirmed.md").write_text(
+            '# Review: Agent "Review city CK2 NPC package" finished\n\n---\n\n'
+            "4. **`holding: true` carrying motion.**\n"
+            "   - Either expose the flag or document it.\n"
+            "   - A CN1 that follows the contract would start the emote too often.\n", encoding="utf-8")
+        _, text, _ = self.call()
+        notes = self.section(text, "## Notes from earlier reviews (verbatim)")
+        self.assertIn("From `2026-11-19_58_agent-review-city-ck2-finished_confirmed.md`, line 5:", notes)
+        self.assertIn("4. **`holding: true` carrying motion.**", notes)
+        self.assertIn("   - Either expose the flag or document it.", notes)
+
+    def test_prose_after_the_last_field_is_not_part_of_it(self):
+        _, text, _ = self.call()
+        self.assertNotIn("Merge note", self.section(text, "## Reviewer gate"))
+
+    def test_non_ascii_paths_in_git(self):
+        base = Path(self._tmp.name) / "игры"
+        repo = base / "game"
+        (repo / "src").mkdir(parents=True)
+        (repo / "src/Карта.ts").write_text("export function runTraining() {}\nexport const stepId = 1;\n",
+                                          encoding="utf-8")
+        (repo / "src/Игра.ts").write_text("export function startShow() {}\n", encoding="utf-8")
+        subprocess.run(["git", "init", "-q", str(repo)], check=True)
+        subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True)
+        subprocess.run(["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "x"],
+                       check=True)
+        (repo / "src/Игра.ts").write_text("export function startShow() { }\n", encoding="utf-8")
+        out = self.outside / "brief-ru.md"
+        args = ["--card", str(self.card), "--repo-root", str(repo), "--out", str(out),
+                "--port-range", "5303-5305"]
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            code = bp.main(args)
+        self.assertEqual(code, 0, stderr.getvalue())
+        text = out.read_text(encoding="utf-8")
+        self.assertNotIn("## ⚠ Stale references", text)
+        self.assertIn("uncommitted changes", self.section(text, "## Built from"))
 
 if __name__ == "__main__":
     unittest.main()

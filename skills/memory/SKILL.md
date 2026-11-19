@@ -60,7 +60,7 @@ Every retain carries `metadata` with:
 
 A memory without provenance is not stored.
 
-**Never pass `document_id` or `update_mode`.** In Hindsight 1.2.2, a retain whose `document_id` already exists replaces that document: its earlier memories are deleted (the default `update_mode` is `replace`). That would delete memory, which only the owner may do (DEC-138). Leave the id out, and Hindsight makes a new one. A script that needs an id makes it unique for every run, as `mine_lessons.py` does.
+**Never pass `document_id` or `update_mode`.** In Hindsight 1.2.2, a retain whose `document_id` already exists replaces that document: its earlier memories are deleted (the default `update_mode` is `replace`). That would delete memory, which only the owner may do (DEC-138). Leave both out, and Hindsight makes a new document for each item. The plugin's scripts (`mine_lessons.py`, `hindsight_smoke.py`) never send them either.
 
 **Never store:**
 - secrets, tokens, keys or passwords;
