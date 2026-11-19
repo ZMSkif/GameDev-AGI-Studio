@@ -36,10 +36,17 @@ All are short, cite their decisions and name their sources (the Cat Challenge we
 | `web-audio-lifecycle` | music after pauses, the Howler trap, iOS, ads |
 | `orchestration-playbook` | piece cards, independent reviewers with mutants, review archive, board, resume, three-way decisions |
 | `gamekit` | the reusable TypeScript packages and their extraction spec |
+| `memory` | studio and project memory in Hindsight over MCP: banks, what to store, the four modes, the start recipe |
+| `context-brief` | one worker brief per piece card: decisions, skills, files, review notes, memories, ports |
+| `lessons` | recurring failure classes from the review archive, stored as lessons, with proposed plugin changes |
 
 ### Commands (Claude Code)
 
-`/gamedev-studio:new-web-game`, `/gamedev-studio:release-gate`, `/gamedev-studio:package-playgama`, `/gamedev-studio:review-piece` and `/gamedev-studio:archive-reviews`. Each is a short wrapper over a skill. The Codex manifest declares only skills and hooks: Codex 0.169.0 installs this version with all 14 skills (checked with a throwaway `CODEX_HOME`), but whether a Codex session offers the commands was not tested, so in Codex use the skills directly. Claude Code 2.1.325 with `--plugin-dir` loads the 14 skills, the 14 roles and the 5 commands. `python scripts/archive_reviews.py` saves reviewer verdicts verbatim from a session transcript.
+`/gamedev-studio:new-web-game`, `/gamedev-studio:release-gate`, `/gamedev-studio:package-playgama`, `/gamedev-studio:review-piece`, `/gamedev-studio:archive-reviews`, `/gamedev-studio:brief-piece` and `/gamedev-studio:lessons`. Each is a short wrapper over a skill. The Codex manifest declares only skills and hooks: Codex 0.169.0 installs this version with all 14 skills (checked with a throwaway `CODEX_HOME`), but whether a Codex session offers the commands was not tested, so in Codex use the skills directly. Claude Code 2.1.325 with `--plugin-dir` loads the 14 skills, the 14 roles and the 5 commands. `python scripts/archive_reviews.py` saves reviewer verdicts verbatim from a session transcript.
+
+### Memory (Hindsight)
+
+Long-term memory runs on [Hindsight](https://hindsight.vectorize.io) 1.2.2 (MIT) over MCP, as [DEC-024](../../issues/24) and [DEC-101](../../issues/102)–[DEC-104](../../issues/106) ask. It is not part of the plugin itself. Each game repository wires one MCP endpoint per bank (`memory` skill), and whether the server runs on the owner's PC or on a server is the owner's choice ([#150](../../issues/150)). `python scripts/hindsight_smoke.py` checks a running server: isolation, provenance, the MCP allowlist and persistence. It passed on the owner's PC on 19.11.2026. The rules live in `contracts/v1/knowledge-policy.json` 1.1.0.
 
 Layout: `.claude-plugin/` (Claude manifest and marketplace), `.codex-plugin/` (Codex manifest), `.agents/plugins/marketplace.json` (Codex marketplace), `skills/`, `agents/`, `hooks/`. The version is set only in the two `plugin.json` files and must match; `python scripts/validate_plugin.py` checks this.
 

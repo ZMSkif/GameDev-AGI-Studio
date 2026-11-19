@@ -62,6 +62,7 @@ Before a retain, check the content as `scripts/archive_reviews.py` checks a verd
 | **Manual** | the owner asked for it, or no memory server is wired | Do not recall; ask the owner. |
 
 - Recall facts with `types: ["world", "experience"]`. Derived observations come back without provenance, so they are hints, never evidence.
+- **The bank is the scope.** Recall from both the project bank and the studio bank, and do not filter by `scope:` tags. A tag filter hid a project memory in the smoke test. Filter only by `task:<n>` when you want one task's memories.
 - `reflect` is not used: its answers carry no sources, and the server's MCP allowlist leaves it out.
 - **The approved source of truth always wins** (DEC-103). That means the decision issues, then the approved GDD, Art Bible and architecture, then memory. When a memory contradicts a source, follow the source. Report the stale memory to the owner; never delete or "fix" it yourself.
 

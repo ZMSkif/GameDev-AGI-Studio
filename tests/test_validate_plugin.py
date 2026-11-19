@@ -852,7 +852,7 @@ class TeamIndexTest(FixtureCase):
 class RealCommandsTest(unittest.TestCase):
     def test_repository_ships_the_commands(self):
         names = {p.stem for p in (REPO_ROOT / "commands").glob("*.md")}
-        self.assertTrue({"new-web-game", "release-gate", "package-playgama", "review-piece", "archive-reviews"} <= names)
+        self.assertTrue({"new-web-game", "release-gate", "package-playgama", "review-piece", "archive-reviews", "brief-piece", "lessons"} <= names)
 
     def test_every_specialist_cites_on_demand_and_proposal(self):
         base = set(SLUGS)
