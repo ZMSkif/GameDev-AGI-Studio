@@ -76,18 +76,18 @@ class ManifestRules(FixtureCase):
         vc.validate(self.root)
 
     def test_old_manifest_versions_rejected(self):
-        for old in ("1.0.0", "1.1.0"):
+        for old in ("1.0.0", "1.1.0", "1.2.0"):
             with self.subTest(version=old):
                 m = self.read("manifest.json")
                 m["version"] = old
                 self.write("manifest.json", m)
-                self.assertFails("manifest version must be 1.2.0")
+                self.assertFails("manifest version must be 1.3.0")
 
     def test_any_other_manifest_version_rejected(self):
         m = self.read("manifest.json")
-        m["version"] = "1.3.0"
+        m["version"] = "1.4.0"
         self.write("manifest.json", m)
-        self.assertFails("manifest version must be 1.2.0")
+        self.assertFails("manifest version must be 1.3.0")
 
     def test_each_changed_contract_must_link_decision_146(self):
         for name in vc.DEFERRAL_CONTRACTS:
@@ -420,6 +420,109 @@ class EngineProfileRules(FixtureCase):
     def test_empty_use_for_rejected(self):
         self.add_web(profile=dict(WEB_PROFILE, use_for=[]))
         self.assertFails(PROFILE + "'web': use_for must be a non-empty list of strings")
+
+
+KP = "knowledge-policy.json: "
+
+
+class KnowledgePolicyRules(FixtureCase):
+    def edit_kp(self, fn):
+        p = self.read("knowledge-policy.json")
+        fn(p)
+        self.write("knowledge-policy.json", p)
+
+    def backend(self, p):
+        return p["memory_backend"]
+
+    def test_real_policy_passes_and_keeps_the_decisions(self):
+        p = json.loads((REPO / "contracts/v1/knowledge-policy.json").read_text(encoding="utf-8"))
+        self.assertEqual(p["scopes"], ["studio", "project", "task"])
+        self.assertEqual(p["default_retrieval_mode"], "auto")
+        self.assertFalse(p["memory_backend"]["capability"]["paid"])
+        vc.validate(self.root)
+
+    def test_scopes_are_the_three_levels(self):
+        self.edit_kp(lambda p: p.update(scopes=["studio", "project"]))
+        self.assertFails(KP + "scopes must be")
+
+    def test_memory_never_ranks_above_decisions(self):
+        def fn(p):
+            p["authority_order"] = ["verified_context_memory", "binding_decision_issues",
+                                    "approved_versioned_gdd_art_bible_architecture"]
+        self.edit_kp(fn)
+        self.assertFails("must rank above memory (DEC-103)")
+
+    def test_only_the_owner_deletes(self):
+        self.edit_kp(lambda p: p.update(persistent_project_knowledge_deletion="agent_cleanup_allowed"))
+        self.assertFails("only the owner deletes memory (DEC-138)")
+
+    def test_the_four_modes_with_auto_default(self):
+        self.edit_kp(lambda p: p.update(default_retrieval_mode="memory_first"))
+        self.assertFails("retrieval_modes must be")
+        self.edit_kp(lambda p: p.update(default_retrieval_mode="auto", retrieval_modes=["auto", "manual"]))
+        self.assertFails("retrieval_modes must be")
+
+    def test_capability_follows_the_tool_capability_contract(self):
+        self.edit_kp(lambda p: self.backend(p)["capability"].update(availability="ready"))
+        self.assertFails("availability: 'ready' is not one of")
+
+    def test_capability_without_required_field_fails(self):
+        self.edit_kp(lambda p: self.backend(p)["capability"].pop("license"))
+        self.assertFails("memory_backend.capability: missing ['license']")
+
+    def test_paid_backend_fails(self):
+        self.edit_kp(lambda p: self.backend(p)["capability"].update(paid=True))
+        self.assertFails("must not be a paid service")
+
+    def test_verified_needs_a_date(self):
+        self.edit_kp(lambda p: self.backend(p)["capability"].update(last_verified_at=None))
+        self.assertFails("a verified backend needs last_verified_at")
+
+    def test_destructive_or_unsourced_tools_fail(self):
+        for tool in ("delete_bank", "clear_memories", "reflect"):
+            with self.subTest(tool=tool):
+                def fn(p, tool=tool):
+                    self.backend(p)["mcp_enabled_tools"].append(tool)
+                    self.backend(p)["capability"]["supported_actions"].append(tool)
+                self.edit_kp(fn)
+                self.assertFails("mcp_enabled_tools must not include")
+                shutil.copy(REPO / "contracts/v1/knowledge-policy.json", self.dir / "knowledge-policy.json")
+
+    def test_tool_outside_supported_actions_fails(self):
+        self.edit_kp(lambda p: self.backend(p)["mcp_enabled_tools"].append("list_banks"))
+        self.assertFails("must be a non-empty subset of the capability's supported_actions")
+
+    def test_reflect_flag_and_endpoint_per_bank(self):
+        self.edit_kp(lambda p: self.backend(p).update(reflect_allowed=True))
+        self.assertFails("reflect_allowed must be false")
+        shutil.copy(REPO / "contracts/v1/knowledge-policy.json", self.dir / "knowledge-policy.json")
+        self.edit_kp(lambda p: self.backend(p).update(endpoint_per_bank=False))
+        self.assertFails("one MCP endpoint per bank")
+
+    def test_endpoint_is_not_hard_coded(self):
+        self.edit_kp(lambda p: self.backend(p).update(endpoint="http://127.0.0.1:8888/mcp/"))
+        self.assertFails("the endpoint is the owner's choice")
+
+    def test_bank_naming_needs_the_repository(self):
+        self.edit_kp(lambda p: self.backend(p)["bank_naming"].update(project="gamedev-studio::project"))
+        self.assertFails("bank_naming must name")
+
+    def test_never_store_and_metadata(self):
+        self.edit_kp(lambda p: p["storage_rules"]["never_store"].remove("secrets"))
+        self.assertFails("never_store must include")
+        shutil.copy(REPO / "contracts/v1/knowledge-policy.json", self.dir / "knowledge-policy.json")
+        self.edit_kp(lambda p: p["storage_rules"]["required_metadata"].remove("source_rev"))
+        self.assertFails("required_metadata must include")
+
+    def test_learning_guards(self):
+        self.edit_kp(lambda p: p["learning"].update(noise_guard_min_independent_occurrences=1))
+        self.assertFails("at least 2 independent occurrences")
+        shutil.copy(REPO / "contracts/v1/knowledge-policy.json", self.dir / "knowledge-policy.json")
+        self.edit_kp(lambda p: p["learning"].update(push_pr_or_issue_requires_owner_yes=False))
+        self.assertFails("need the owner's yes")
+        shutil.copy(REPO / "contracts/v1/knowledge-policy.json", self.dir / "knowledge-policy.json")
+        self.edit_kp(lambda p: p["learning"].update(notify_every_automatic_change=False))
+        self.assertFails("every automatic change is notified (DEC-100)")
 
 
 class CliFailurePath(FixtureCase):

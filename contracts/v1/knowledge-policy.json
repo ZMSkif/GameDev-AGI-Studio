@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "scopes": [
     "studio",
     "project",
@@ -15,5 +15,100 @@
   "memory_cannot_override_owner_decisions": true,
   "provenance_required": true,
   "context_revision_required": true,
-  "web_reverification_for_uncertain_provider_claims": true
+  "web_reverification_for_uncertain_provider_claims": true,
+  "retrieval_modes": [
+    "auto",
+    "always_verify",
+    "memory_first",
+    "manual"
+  ],
+  "default_retrieval_mode": "auto",
+  "memory_backend": {
+    "capability": {
+      "capability_id": "hindsight-memory",
+      "tool_kind": "mcp",
+      "provider": "hindsight",
+      "version": "1.2.2",
+      "supported_actions": [
+        "retain",
+        "recall",
+        "list_memories",
+        "get_memory",
+        "get_bank"
+      ],
+      "worker_constraints": [
+        "one MCP endpoint per bank",
+        "bind the server to loopback or put it behind auth"
+      ],
+      "permission_scopes": [
+        "bank:gamedev-studio::studio",
+        "bank:gamedev-studio::project::{repository}"
+      ],
+      "paid": false,
+      "availability": "verified",
+      "last_verified_at": "2026-11-19T16:40:00Z",
+      "evidence_url": null,
+      "license": "MIT",
+      "recovery_policy": "manual_recovery"
+    },
+    "verified_environment": "local smoke test on the owner's Windows PC, embedded PostgreSQL, LLM via the owner's Claude subscription",
+    "placement": "owner_decision_pending",
+    "placement_task": "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/150",
+    "bank_naming": {
+      "studio": "gamedev-studio::studio",
+      "project": "gamedev-studio::project::{repository}",
+      "task": "tag task:{issue_number} in the project bank"
+    },
+    "endpoint_per_bank": true,
+    "mcp_enabled_tools": [
+      "retain",
+      "recall",
+      "list_memories",
+      "get_memory",
+      "get_bank"
+    ],
+    "reflect_allowed": false,
+    "recall_types_for_facts": [
+      "world",
+      "experience"
+    ],
+    "observations": "unverified_hints",
+    "llm_for_extraction": "subscription_or_local_model_never_paid_api"
+  },
+  "storage_rules": {
+    "store": [
+      "verified_lessons_with_sources",
+      "decision_provenance_pointers",
+      "recurring_failure_classes",
+      "piece_outcomes_with_review_files"
+    ],
+    "never_store": [
+      "secrets",
+      "personal_data",
+      "unverified_claims_as_facts",
+      "whole_transcripts",
+      "copyrighted_text"
+    ],
+    "required_metadata": [
+      "source_type",
+      "source",
+      "source_rev",
+      "recorded_by",
+      "verified"
+    ],
+    "verified_default": "false",
+    "scope_tags": [
+      "scope:studio",
+      "scope:project",
+      "scope:task"
+    ]
+  },
+  "learning": {
+    "evidence": "verbatim_review_archive_and_qa_failures",
+    "noise_guard_min_independent_occurrences": 2,
+    "noise_guard_single_severe": "blocker",
+    "safe_noncreative_auto_apply": true,
+    "notify_every_automatic_change": true,
+    "push_pr_or_issue_requires_owner_yes": true
+  }
 }

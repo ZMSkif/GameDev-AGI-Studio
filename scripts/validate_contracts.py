@@ -5,7 +5,7 @@ import json
 import re
 import sys
 
-SUPPORTED_VERSION = "1.2.0"
+SUPPORTED_VERSION = "1.3.0"
 REPO_ISSUES = "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/"
 ISSUE_URL = re.compile(re.escape(REPO_ISSUES) + r"[1-9][0-9]*")
 # Engine profiles (game-production-policy.json). DEC-012 (#12) made Godot 4.x the studio engine;
@@ -183,6 +183,87 @@ def validate_profile_modules(boundaries, profile_ids):
               f"system-boundaries.json: profile {pid!r} needs the active module {PROFILE_MODULES[pid]!r} with engine_profile {pid!r}")
 
 
+KNOWLEDGE_POLICY = "knowledge-policy.json"
+KNOWLEDGE_SCOPES = ["studio", "project", "task"]                              # DEC-101
+RETRIEVAL_MODES = ["auto", "always_verify", "memory_first", "manual"]        # DEC-104
+# Tools an agent may never reach in the memory backend: deletion is the owner's (DEC-138), and
+# reflect answers carry no sources (provenance_required).
+FORBIDDEN_MEMORY_TOOLS = {"delete_bank", "clear_memories", "delete_document", "delete_mental_model",
+                          "delete_memory", "invalidate_memory", "reflect"}
+NEVER_STORE = {"secrets", "personal_data", "unverified_claims_as_facts"}
+REQUIRED_MEMORY_METADATA = {"source_type", "source", "source_rev", "recorded_by", "verified"}
+PLACEMENT_VALUES = {"owner_decision_pending", "local", "server"}
+
+
+def check_against_schema(value, schema, where):
+    """The subset of JSON Schema the tool-capability contract uses: required, properties, enums, types."""
+    check(isinstance(value, dict), f"{where}: must be an object")
+    missing = sorted(set(schema.get("required", [])) - set(value))
+    check(not missing, f"{where}: missing {missing}")
+    extra = sorted(set(value) - set(schema.get("properties", {})))
+    check(not extra or schema.get("additionalProperties", True), f"{where}: properties outside the schema {extra}")
+    for key, rule in schema.get("properties", {}).items():
+        if key not in value:
+            continue
+        item = value[key]
+        if "enum" in rule:
+            check(item in rule["enum"], f"{where}.{key}: {item!r} is not one of {rule['enum']}")
+        if rule.get("type") == "boolean":
+            check(isinstance(item, bool), f"{where}.{key}: must be true or false")
+        if rule.get("type") == "array":
+            check(isinstance(item, list) and len(item) >= rule.get("minItems", 0), f"{where}.{key}: must be a list")
+        if rule.get("type") == "string":
+            check(isinstance(item, str) and len(item) >= rule.get("minLength", 0), f"{where}.{key}: must be a string")
+
+
+def validate_knowledge_policy(policy, tool_schema):
+    """Memory and learning rules: DEC-024, DEC-046, DEC-101 to DEC-106, DEC-125, DEC-138."""
+    where = KNOWLEDGE_POLICY
+    check(policy.get("scopes") == KNOWLEDGE_SCOPES, f"{where}: scopes must be {KNOWLEDGE_SCOPES} (DEC-101)")
+    order = policy.get("authority_order", [])
+    check(order[:1] == ["binding_decision_issues"] and "verified_context_memory" in order
+          and order.index("verified_context_memory") > order.index("approved_versioned_gdd_art_bible_architecture"),
+          f"{where}: decisions and approved documents must rank above memory (DEC-103)")
+    check(policy.get("memory_cannot_override_owner_decisions") is True, f"{where}: memory must not override decisions (DEC-024)")
+    check(policy.get("persistent_project_knowledge_deletion") == "manual_owner_action_only",
+          f"{where}: only the owner deletes memory (DEC-138)")
+    check(policy.get("provenance_required") is True, f"{where}: provenance_required must be true (DEC-102)")
+    check(policy.get("retrieval_modes") == RETRIEVAL_MODES and policy.get("default_retrieval_mode") == "auto",
+          f"{where}: retrieval_modes must be {RETRIEVAL_MODES} with default auto (DEC-104)")
+    backend = policy.get("memory_backend")
+    check(isinstance(backend, dict), f"{where}: memory_backend missing")
+    capability = backend.get("capability")
+    check_against_schema(capability, tool_schema, f"{where} memory_backend.capability")
+    check(capability["paid"] is False, f"{where}: the memory backend must not be a paid service (DEC-019, DEC-085)")
+    if capability["availability"] == "verified":
+        check(isinstance(capability.get("last_verified_at"), str) and capability["last_verified_at"],
+              f"{where}: a verified backend needs last_verified_at (DEC-046, DEC-125)")
+    check(backend.get("placement") in PLACEMENT_VALUES, f"{where}: placement must be one of {sorted(PLACEMENT_VALUES)}")
+    check("endpoint" not in backend and "url" not in backend,
+          f"{where}: the endpoint is the owner's choice (task #150) and lives in each game's MCP config, not here")
+    tools = set(backend.get("mcp_enabled_tools", []))
+    check(tools and tools <= set(capability["supported_actions"]),
+          f"{where}: mcp_enabled_tools must be a non-empty subset of the capability's supported_actions")
+    banned = sorted(tools & FORBIDDEN_MEMORY_TOOLS)
+    check(not banned, f"{where}: mcp_enabled_tools must not include {banned}")
+    check(backend.get("reflect_allowed") is False, f"{where}: reflect has no sources; reflect_allowed must be false")
+    check(backend.get("endpoint_per_bank") is True, f"{where}: one MCP endpoint per bank keeps projects apart (DEC-101)")
+    naming = backend.get("bank_naming", {})
+    check(set(naming) == set(KNOWLEDGE_SCOPES) and "{repository}" in naming.get("project", ""),
+          f"{where}: bank_naming must name the studio, project ({{repository}}) and task scopes")
+    rules = policy.get("storage_rules", {})
+    check(NEVER_STORE <= set(rules.get("never_store", [])), f"{where}: never_store must include {sorted(NEVER_STORE)}")
+    check(REQUIRED_MEMORY_METADATA <= set(rules.get("required_metadata", [])),
+          f"{where}: required_metadata must include {sorted(REQUIRED_MEMORY_METADATA)}")
+    learning = policy.get("learning", {})
+    check(isinstance(learning.get("noise_guard_min_independent_occurrences"), int)
+          and learning["noise_guard_min_independent_occurrences"] >= 2,
+          f"{where}: a lesson needs at least 2 independent occurrences (or one severe)")
+    check(learning.get("notify_every_automatic_change") is True, f"{where}: every automatic change is notified (DEC-100)")
+    check(learning.get("push_pr_or_issue_requires_owner_yes") is True,
+          f"{where}: pushes, PRs and Issues from lessons need the owner's yes")
+
+
 def validate(root):
     """Validate the contract set under root; return the number of contracts."""
     directory = Path(root) / "contracts" / "v1"
@@ -211,6 +292,7 @@ def validate(root):
     links = {name: manifest_links(manifest, name) for name in (PRODUCTION_POLICY, BOUNDARIES)}
     profile_ids = validate_engine_profiles(load(directory / PRODUCTION_POLICY), links)
     validate_profile_modules(boundaries, profile_ids)
+    validate_knowledge_policy(load(directory / KNOWLEDGE_POLICY), load(directory / "tool-capability.schema.json"))
     validate_orchestration(load(directory / "orchestration-policy.json"))
     validate_openapi(load(directory / "coordinator.openapi.json"))
     return len(manifest["contracts"])
