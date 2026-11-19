@@ -1,6 +1,6 @@
 ---
 name: orchestration-playbook
-description: The coordinator's playbook for running a game with many agents in Claude Code or Codex - piece cards with file ownership, one independent reviewer per piece with mutants and soaks, a verbatim review archive, a visual progress board, a resume file for usage limits and restarts, port ranges, commit as you go, a separate pre-publish check, three-way decisions with Codex and the advisor, and owner questions with options. Use when you coordinate agents or sessions, split work, assign reviewers, recover after a limit or restart, or prepare an owner checkpoint.
+description: The coordinator's playbook for running a game with many agents in Claude Code or Codex - piece cards with file ownership, one independent reviewer per piece with mutants and soaks, a verbatim review archive, a visual progress board, resume notes on the tracking Issue for usage limits and restarts, port ranges, commit as you go, a separate pre-publish check, three-way decisions with Codex and the advisor, and owner questions with options. Use when you coordinate agents or sessions, split work, assign reviewers, recover after a limit or restart, or prepare an owner checkpoint.
 ---
 
 # Orchestration playbook

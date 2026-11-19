@@ -125,11 +125,34 @@ class ExtractionTest(ArchiveCase):
         self.assertEqual(ar.verdict_label("VERDICT: BLOCKED\nVERDICT: CONFIRMED\nVERDICT: BLOCKED"),
                          "BLOCKED-CONFIRMED")
 
-    def test_record_without_timestamp_takes_the_last_one_seen(self):
+    def test_record_without_timestamp_is_dated_by_inference_and_says_so(self):
         blob = {"type": "api-request-blob", "message": {"content": notification("VERDICT: CONFIRMED blob")}}
         t = self.transcript([user_record("plain text", ts="2026-11-18T09:00:00Z"), blob])
         written, _ = self.run_archive(t)
         self.assertEqual(written, ["2026-11-18_01_agent-review-piece-x-finished_confirmed.md"])
+        header = (self.out / written[0]).read_text(encoding="utf-8").split(ar.HEADER_END)[0]
+        self.assertIn("- Received: n/a (the record has no time; the previous record's is 2026-11-18T09:00:00Z)", header)
+
+    def test_a_later_explicit_timestamp_wins_over_an_inferred_one(self):
+        body = "VERDICT: CONFIRMED same"
+        blob = {"type": "api-request-blob", "message": {"content": notification(body)}}
+        t = self.transcript([user_record("x", ts="2020-01-01T00:00:00Z"), blob,
+                             user_record(notification(body), ts="2026-11-19T12:00:00Z")])
+        written, _ = self.run_archive(t)
+        self.assertEqual(written, ["2026-11-19_01_agent-review-piece-x-finished_confirmed.md"])
+        self.assertIn("- Received: 2026-11-19T12:00:00Z\n", (self.out / written[0]).read_text(encoding="utf-8"))
+
+    def test_inference_never_crosses_transcripts(self):
+        first = self.transcript([user_record("x", ts="2020-01-01T00:00:00Z")], name="a.jsonl")
+        blob = {"type": "api-request-blob", "message": {"content": notification("VERDICT: BLOCKED y")}}
+        second = self.transcript([blob], name="b.jsonl")
+        written, _ = self.run_archive(first, second)
+        self.assertEqual(written, ["2026-11-20_01_agent-review-piece-x-finished_blocked.md"])
+
+    def test_choice_line_is_not_a_verdict(self):
+        self.assertIsNone(ar.verdict_label("- VERDICT: CONFIRMED or VERDICT: BLOCKED"))
+        self.assertIsNone(ar.verdict_label("Answer with **VERDICT: CONFIRMED** or `VERDICT: BLOCKED`"))
+        self.assertEqual(ar.verdict_label("VERDICT: BLOCKED. Fix it or ship nothing."), "BLOCKED")
 
     def test_summary_is_one_line_and_rerun_still_dedupes(self):
         t = self.transcript([user_record(notification("VERDICT: CONFIRMED x", summary="Review\n---\n\npiece"))])
@@ -222,6 +245,14 @@ class CliTest(ArchiveCase):
         code, out, _ = self.call("--transcript", str(folder), "--out", str(self.out))
         self.assertEqual(code, 0)
         self.assertIn("2 new verdict(s), 0 skipped", out)
+
+    def test_skipped_verdict_never_echoes_the_secret(self):
+        token = "ghp_" + "B" * 30
+        t = self.transcript([user_record(notification("VERDICT: CONFIRMED ok", summary="fix " + token))])
+        code, out, err = self.call("--transcript", str(t), "--out", str(self.out))
+        self.assertEqual(code, 3)
+        self.assertNotIn(token, out + err)
+        self.assertIn("CONFIRMED verdict, body SHA-256", err)
 
     def test_skipped_verdict_gives_exit_three(self):
         t = self.transcript([user_record(notification("VERDICT: CONFIRMED\n-----BEGIN RSA PRIVATE KEY-----"))])

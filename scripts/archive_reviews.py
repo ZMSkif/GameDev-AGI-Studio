@@ -45,6 +45,7 @@ NOTIFICATION_RE = re.compile(r"<task-notification>(.*?)</task-notification>", re
 RESULT_RE = re.compile(r"<result>(.*)</result>", re.S)
 SUMMARY_RE = re.compile(r"<summary>(.*?)</summary>", re.S)
 VERDICT_RE = re.compile(r"(?m)^[ \t>*#_-]*VERDICT[^:\n]{0,30}:\s*\**\s*([A-Z][A-Z_]*)")
+CHOICE_RE = re.compile(r"\bor\b[\s`*]*VERDICT")
 ARCHIVE_NAME_RE = re.compile(r"^\d{4}-\d{2}-\d{2}_(\d+)_")
 HASH_LINE_RE = re.compile(r"^- Body SHA-256: ([0-9a-f]{64})\s*$", re.M)
 HEADER_END = "\n---\n\n"
@@ -64,10 +65,16 @@ SECRET_PATTERNS = _load_secret_patterns()
 
 
 class Verdict:
-    """One reviewer verdict: when it arrived, the task summary, its label and the body."""
+    """One reviewer verdict: when it arrived, the task summary, its label and the body.
 
-    def __init__(self, timestamp: str, summary: str, label: str, body: str):
+    `timestamp` is the record's own time. When the record had none, it stays empty and
+    `inferred` holds the time of the previous record in the same transcript, used only
+    for the file name's date and shown as an inference in the header.
+    """
+
+    def __init__(self, timestamp: str, summary: str, label: str, body: str, inferred: str = ""):
         self.timestamp, self.summary, self.label, self.body = timestamp, summary, label, body
+        self.inferred = inferred
 
     @property
     def digest(self) -> str:
@@ -88,8 +95,17 @@ def body_digest(body: str) -> str:
 
 
 def verdict_label(body: str) -> str | None:
-    """One verdict -> its name; several different ones -> the last two joined."""
-    found = VERDICT_RE.findall(body)
+    """One verdict -> its name; several different ones -> the last two joined.
+
+    A line that offers a choice ("VERDICT: CONFIRMED or VERDICT: BLOCKED") is an instruction,
+    not a verdict.
+    """
+    found = []
+    for match in VERDICT_RE.finditer(body):
+        line_end = body.find("\n", match.end())
+        rest = body[match.end(): len(body) if line_end < 0 else line_end]
+        if not CHOICE_RE.search(rest):
+            found.append(match.group(1))
     if not found:
         return None
     unique = list(dict.fromkeys(found))
@@ -145,8 +161,8 @@ def extract(files: list[Path]) -> list[Verdict]:
     """Verdicts in transcript order, without repeats of the same body."""
     seen: dict[str, Verdict] = {}
     verdicts: list[Verdict] = []
-    last_stamp = ""
     for file in files:
+        last_stamp = ""  # never carried from one transcript to the next
         with file.open(encoding="utf-8", errors="replace") as handle:
             for line in handle:
                 try:
@@ -155,10 +171,11 @@ def extract(files: list[Path]) -> list[Verdict]:
                     continue
                 if not isinstance(record, dict):
                     continue
-                # Some records (API request copies) carry no timestamp: use the last one seen.
+                # Some records (API request copies) carry no timestamp; remember the last one
+                # seen, but only as an inference, never as the record's own time.
                 own_stamp = record.get("timestamp") if isinstance(record.get("timestamp"), str) else ""
+                inferred = "" if own_stamp else last_stamp
                 last_stamp = own_stamp or last_stamp
-                stamp = last_stamp
                 for text in texts_of(record):
                     for block in NOTIFICATION_RE.finditer(text):
                         result = RESULT_RE.search(block.group(1))
@@ -172,12 +189,12 @@ def extract(files: list[Path]) -> list[Verdict]:
                             continue
                         digest = body_digest(body)
                         if digest in seen:
-                            if not seen[digest].timestamp and stamp:
-                                seen[digest].timestamp = stamp
+                            if not seen[digest].timestamp and own_stamp:
+                                seen[digest].timestamp, seen[digest].inferred = own_stamp, ""
                             continue
                         summary = SUMMARY_RE.search(block.group(1))
                         one_line = " ".join(unescape(summary.group(1)).split()) if summary else ""
-                        verdict = Verdict(stamp, one_line, label, body)
+                        verdict = Verdict(own_stamp, one_line, label, body, inferred)
                         seen[digest] = verdict
                         verdicts.append(verdict)
     return verdicts
@@ -217,10 +234,18 @@ def blocked_reason(body: str, forbid: list[re.Pattern]) -> str | None:
     return None
 
 
+def received(verdict: Verdict) -> str:
+    if verdict.timestamp:
+        return verdict.timestamp
+    if verdict.inferred:
+        return f"n/a (the record has no time; the previous record's is {verdict.inferred})"
+    return "n/a"
+
+
 def render(verdict: Verdict) -> str:
     return (
         f"# Review: {verdict.summary or 'reviewer report'}\n\n"
-        f"- Received: {verdict.timestamp or 'n/a'}\n"
+        f"- Received: {received(verdict)}\n"
         f"- Verdict: {verdict.label}\n"
         f"- Body SHA-256: {verdict.digest}\n"
         "- Source: independent reviewer agent report, saved verbatim by the coordinator.\n"
@@ -240,10 +265,12 @@ def archive(files: list[Path], out: Path, *, dry_run: bool = False, forbid=(), t
             continue
         reason = blocked_reason(verdict.summary + chr(10) + verdict.body, list(forbid))
         if reason:
-            skipped.append((verdict.summary or verdict.label, reason))
+            # Never echo the summary or body: it is what holds the secret.
+            skipped.append((f"{verdict.label} verdict, body SHA-256 {verdict.digest[:12]}", reason))
             continue
         highest += 1
-        day = verdict.timestamp[:10] if re.match(r"^\d{4}-\d{2}-\d{2}", verdict.timestamp) else fallback_day
+        when = verdict.timestamp or verdict.inferred
+        day = when[:10] if re.match(r"^\d{4}-\d{2}-\d{2}", when) else fallback_day
         name = f"{day}_{highest:02d}_{slugify(verdict.summary)}_{verdict.label.lower()}.md"
         if not dry_run:
             out.mkdir(parents=True, exist_ok=True)
@@ -278,8 +305,8 @@ def main(argv: list[str] | None = None) -> int:
     verb = "would write" if args.dry_run else "wrote"
     for name in written:
         print(f"{verb} {name}")
-    for summary, reason in skipped:
-        print(f"SKIPPED {summary!r}: {reason}; check it by hand", file=sys.stderr)
+    for which, reason in skipped:
+        print(f"SKIPPED {which}: {reason}; check it by hand", file=sys.stderr)
     print(f"{len(written)} new verdict(s), {len(skipped)} skipped")
     return 3 if skipped else 0
 

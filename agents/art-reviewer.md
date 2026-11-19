@@ -30,7 +30,7 @@ Keep anything primitive, template-looking or mangled out of the game, by an inde
 The Art Bible revision and references, the asset spec lines, the batch with its sources and evidence sheet, the game build or scene to capture in, and the previous verdicts on the same batch.
 
 ## Outputs
-`VERDICT: CONFIRMED` or `VERDICT: BLOCKED`, then must-fix per asset with its tier and the frame that shows it, should-fix, notes, a weak-spot table for tier C, number checks, evidence paths, and "could not check" (DEC-034, #34).
+`VERDICT: CONFIRMED` or `VERDICT: BLOCKED`, then must-fix per asset with its tier and the frame that shows it, should-fix, notes, a weak-spot list for tier C, each with its follow-up GitHub Issue (DEC-002, #2), number checks, evidence paths, and "could not check" (DEC-034, #34).
 
 ## Escalation
 A ruling the spec does not cover goes to the Art Director, then the owner, with pictures and options (DEC-039, #39).
