@@ -14,7 +14,8 @@ What it does:
     against every file already in the archive (a re-run writes nothing new);
   * numbers new files after the highest number already in the archive, so existing names
     never shift: <YYYY-MM-DD>_<NN>_<slug>_<verdict>.md;
-  * writes the body verbatim under a small header;
+  * writes the body verbatim under a small header: only the notification's XML escaping
+    (&lt; &gt; &amp;) is undone, and a final newline is added when the body has none;
   * never writes a body that looks like it holds a secret (patterns shared with
     scripts/validate_plugin.py) or that matches a --forbid pattern (for example the
     owner's e-mail or a local path); such bodies are reported and the exit code is 3.
@@ -140,7 +141,9 @@ def extract(files: list[Path]) -> list[Verdict]:
                         result = RESULT_RE.search(block.group(1))
                         if not result:
                             continue
-                        body = normalise(unescape(result.group(1)))
+                        # Verbatim: only the transport escaping is undone. Normalising is for
+                        # the de-duplication key alone (body_digest).
+                        body = unescape(result.group(1))
                         label = verdict_label(body)
                         if label is None:
                             continue
@@ -194,7 +197,8 @@ def render(verdict: Verdict) -> str:
         f"- Verdict: {verdict.label}\n"
         f"- Body SHA-256: {verdict.digest}\n"
         "- Source: independent reviewer agent report, saved verbatim by the coordinator.\n"
-        f"{HEADER_END}{verdict.body}\n"
+        f"{HEADER_END}{verdict.body}"
+        f"{'' if verdict.body.endswith(chr(10)) else chr(10)}"
     )
 
 

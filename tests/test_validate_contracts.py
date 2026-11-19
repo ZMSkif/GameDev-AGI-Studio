@@ -277,6 +277,18 @@ class EngineProfileRules(FixtureCase):
         self.edit_policy(lambda p: p.update(engine="Godot 4.x"))
         self.assertFails(POLICY + ": the top-level engine moved")
 
+    def test_policy_major_version_required(self):
+        for bad in ("1.0.0", "1.2.0", None):
+            with self.subTest(version=bad):
+                self.edit_policy(lambda p: p.update(version=bad))
+                self.assertFails(POLICY + ": version must be 2.0.0 (removing engine is a breaking change)")
+
+    def test_migration_note_required(self):
+        self.edit_policy(lambda p: p.pop("migration_from_1_0_0"))
+        self.assertFails(POLICY + ": migration_from_1_0_0 must tell readers of engine where it moved")
+        self.edit_policy(lambda p: p.update(migration_from_1_0_0={"breaking": True, "removed": "engine", "read_instead": "x"}))
+        self.assertFails(POLICY + ": migration_from_1_0_0")
+
     def test_missing_profiles_rejected(self):
         self.edit_policy(lambda p: p.pop("engine_profiles"))
         self.assertFails(POLICY + ": engine_profiles.profiles missing")

@@ -63,6 +63,14 @@ class ExtractionTest(ArchiveCase):
         self.assertIn("- Body SHA-256: " + ar.body_digest(body), text)
         self.assertTrue(text.endswith(body + "\n"))
 
+    def test_body_is_kept_verbatim_with_its_whitespace_and_line_endings(self):
+        body = "\n  VERDICT: CONFIRMED\r\nline two  \n\n"
+        t = self.transcript([user_record(notification(body))])
+        written, _ = self.run_archive(t)
+        raw = (self.out / written[0]).read_bytes().decode("utf-8")
+        self.assertTrue(raw.endswith(ar.HEADER_END + body))
+        self.assertEqual(self.run_archive(t), ([], []))
+
     def test_notification_without_verdict_is_ignored(self):
         t = self.transcript([user_record(notification("Done. All tests pass."))])
         self.assertEqual(self.run_archive(t), ([], []))

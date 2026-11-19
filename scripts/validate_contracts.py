@@ -11,6 +11,12 @@ ISSUE_URL = re.compile(re.escape(REPO_ISSUES) + r"[1-9][0-9]*")
 # Engine profiles (game-production-policy.json). DEC-012 (#12) made Godot 4.x the studio engine;
 # the godot profile keeps it. Any other profile needs its own owner decision issue.
 PRODUCTION_POLICY = "game-production-policy.json"
+PRODUCTION_POLICY_VERSION = "2.0.0"
+PRODUCTION_POLICY_MIGRATION = {
+    "breaking": True,
+    "removed": "engine",
+    "read_instead": "engine_profiles.profiles.godot.engine",
+}
 PROFILE_IDS = {"godot", "web"}
 GODOT_ENGINE = "Godot 4.x"
 DEC_012_URL = REPO_ISSUES + "12"
@@ -97,6 +103,10 @@ def validate_engine_profiles(policy, linked):
     """Profile-aware engine choice; returns the profile ids."""
     where = PRODUCTION_POLICY
     check("engine" not in policy, f"{where}: the top-level engine moved to engine_profiles.profiles")
+    check(policy.get("version") == PRODUCTION_POLICY_VERSION,
+          f"{where}: version must be {PRODUCTION_POLICY_VERSION} (removing engine is a breaking change)")
+    check(policy.get("migration_from_1_0_0") == PRODUCTION_POLICY_MIGRATION,
+          f"{where}: migration_from_1_0_0 must tell readers of engine where it moved")
     profiles = policy.get("engine_profiles", {}).get("profiles")
     check(isinstance(profiles, dict) and profiles, f"{where}: engine_profiles.profiles missing")
     unknown = sorted(set(profiles) - PROFILE_IDS)
