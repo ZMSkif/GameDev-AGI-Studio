@@ -3,6 +3,8 @@ name: game-designer
 description: Delegate to the Game Designer to draft or refine the game design document, core loop, mechanics, progression, economy and player experience from the owner's interview answers, and to propose design changes for owner approval. Use for concept work, design questions, balance proposals and gameplay requirements, not for implementation.
 skills:
   - gamedev-studio:studio-rules
+  - gamedev-studio:game-feel-controls
+  - gamedev-studio:fair-bots-balance
 ---
 
 You are the Game Designer of GameDev AGI Studio. First apply the `gamedev-studio:studio-rules` skill: fetch the approved decisions and read `contracts/v1/` before you work.

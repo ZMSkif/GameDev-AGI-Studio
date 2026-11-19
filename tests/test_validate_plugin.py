@@ -551,7 +551,11 @@ class AgentRolesTest(FixtureCase):
         self.assertFails("agents/: directory is missing")
 
     def test_extra_role_is_allowed(self):
+        # An extra role is allowed (DEC-142 extends, never reduces); it must be indexed for Codex.
         self.agent("integration-engineer", AGENT.format(role="Integration Engineer", slug="integration-engineer"))
+        team = self.root / "skills" / "studio-team" / "SKILL.md"
+        team.write_text(team.read_text(encoding="utf-8") + "| Integration Engineer | `agents/integration-engineer.md` |\n",
+                        encoding="utf-8")
         self.assertEqual(self.errors(), [])
 
     def test_removing_a_role_from_the_policy_is_not_followed_blindly(self):
@@ -730,6 +734,135 @@ class TeamSkillTest(FixtureCase):
         path.write_text(team_skill_text(), encoding="utf-8")
         (self.root / "agents" / "qa-engineer.md").unlink()
         self.assertFails("referenced role file 'agents/qa-engineer.md' does not exist")
+
+
+COMMAND = """---
+description: Demo command.
+argument-hint: "[x]"
+---
+
+Apply the `demo-skill` skill, then delegate to `demo-plugin:producer`.
+"""
+
+
+class CommandsTest(FixtureCase):
+    def write_command(self, name="demo-cmd", text=COMMAND):
+        (self.root / "commands").mkdir(exist_ok=True)
+        (self.root / "commands" / f"{name}.md").write_text(text, encoding="utf-8")
+
+    def test_valid_command_passes(self):
+        self.write_command()
+        self.assertEqual(self.errors(), [])
+
+    def test_absent_commands_directory_is_allowed(self):
+        self.assertEqual(self.errors(), [])
+
+    def test_command_without_description_fails(self):
+        self.write_command(text="---\nargument-hint: x\n---\n\nDo it.\n")
+        self.assertFails("commands/demo-cmd.md: frontmatter 'description' is missing or empty")
+
+    def test_command_without_frontmatter_fails(self):
+        self.write_command(text="Do it.\n")
+        self.assertFails("commands/demo-cmd.md: missing or invalid YAML frontmatter")
+
+    def test_command_with_unknown_key_fails(self):
+        self.write_command(text="---\ndescription: d\nhooks: x\n---\n\nDo it.\n")
+        self.assertFails("commands/demo-cmd.md: unknown command frontmatter keys: hooks")
+
+    def test_command_without_body_fails(self):
+        self.write_command(text="---\ndescription: d\n---\n\n")
+        self.assertFails("commands/demo-cmd.md: has no instructions")
+
+    def test_command_file_name_must_be_kebab_case(self):
+        self.write_command(name="Demo_Cmd")
+        self.assertFails("commands/Demo_Cmd.md: file name must be kebab-case")
+
+    def test_secret_in_command_fails(self):
+        self.write_command(text=COMMAND + "token ghp_" + "A" * 30 + "\n")
+        self.assertFails("commands/demo-cmd.md: contains a secret-looking value")
+
+
+class ReferenceTest(FixtureCase):
+    def write_skill(self, body):
+        (self.root / "skills" / "demo-skill" / "SKILL.md").write_text(SKILL + body, encoding="utf-8")
+
+    def test_missing_skill_reference_fails(self):
+        self.write_skill("Use the `no-such-skill` skill.\n")
+        self.assertFails("skills/demo-skill/SKILL.md: names the skill 'no-such-skill'")
+
+    def test_existing_skill_reference_passes(self):
+        self.write_skill("Use the `studio-rules` and `demo-skill` skills.\n")
+        self.assertEqual(self.errors(), [])
+
+    def test_missing_role_file_reference_fails(self):
+        self.write_skill("Read `agents/no-such-role.md`.\n")
+        self.assertFails("points to 'agents/no-such-role.md', which does not exist")
+
+    def test_missing_namespaced_agent_fails(self):
+        self.write_skill("Delegate to `demo-plugin:no-such-agent`.\n")
+        self.assertFails("names 'demo-plugin:no-such-agent', which is neither a skill nor an agent")
+
+    def test_missing_command_reference_fails(self):
+        self.write_skill("Run `/demo-plugin:no-such-cmd`.\n")
+        self.assertFails("names the command '/demo-plugin:no-such-cmd', which does not exist")
+
+    def test_existing_command_reference_passes(self):
+        CommandsTest.write_command(self)
+        self.write_skill("Run `/demo-plugin:demo-cmd`.\n")
+        self.assertEqual(self.errors(), [])
+
+    def test_references_in_skill_reference_files_are_checked(self):
+        refs = self.root / "skills" / "demo-skill" / "references"
+        refs.mkdir()
+        (refs / "notes.md").write_text("See the `ghost` skill.\n", encoding="utf-8")
+        self.assertFails("skills/demo-skill/references/notes.md: names the skill 'ghost'")
+
+    def test_missing_local_reference_file_fails(self):
+        self.write_skill("Tables: `references/tables.md`.\n")
+        self.assertFails("skills/demo-skill/SKILL.md: points to 'references/tables.md', which does not exist")
+
+    def test_existing_local_and_sibling_reference_files_pass(self):
+        refs = self.root / "skills" / "demo-skill" / "references"
+        refs.mkdir()
+        (refs / "tables.md").write_text("Back to `../SKILL.md`.\n", encoding="utf-8")
+        (self.root / "skills" / "studio-rules" / "SKILL.md").write_text(
+            STUDIO_RULES_SKILL + "See `../demo-skill/references/tables.md`.\n", encoding="utf-8")
+        self.write_skill("Tables: `references/tables.md`.\n")
+        self.assertEqual(self.errors(), [])
+
+    def test_missing_sibling_reference_file_fails(self):
+        self.write_skill("See `../studio-rules/references/none.md`.\n")
+        self.assertFails("points to '../studio-rules/references/none.md', which does not exist")
+
+
+class TeamIndexTest(FixtureCase):
+    def test_unindexed_specialist_fails(self):
+        (self.root / "agents" / "art-reviewer.md").write_text(
+            agent_text(slug="art-reviewer", role="Art Reviewer"), encoding="utf-8")
+        self.assertFails("skills/studio-team/SKILL.md: does not index 'agents/art-reviewer.md'")
+
+    def test_indexed_specialist_passes(self):
+        (self.root / "agents" / "art-reviewer.md").write_text(
+            agent_text(slug="art-reviewer", role="Art Reviewer"), encoding="utf-8")
+        team = self.root / "skills" / "studio-team" / "SKILL.md"
+        team.write_text(team.read_text(encoding="utf-8") + "| Art Reviewer | `agents/art-reviewer.md` |\n", encoding="utf-8")
+        self.assertEqual(self.errors(), [])
+
+
+class RealCommandsTest(unittest.TestCase):
+    def test_repository_ships_the_commands(self):
+        names = {p.stem for p in (REPO_ROOT / "commands").glob("*.md")}
+        self.assertTrue({"new-web-game", "release-gate", "package-playgama", "review-piece", "archive-reviews"} <= names)
+
+    def test_every_specialist_cites_on_demand_and_proposal(self):
+        base = set(SLUGS)
+        for path in (REPO_ROOT / "agents").glob("*.md"):
+            if path.stem in base:
+                continue
+            text = path.read_text(encoding="utf-8")
+            with self.subTest(agent=path.stem):
+                self.assertIn("DEC-032", text)
+                self.assertIn("not an owner decision", text)
 
 
 if __name__ == "__main__":

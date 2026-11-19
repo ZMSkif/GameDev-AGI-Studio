@@ -15,7 +15,12 @@ Checks:
     ignores for plugin agents, a kebab-case name, a `skills` YAML list that contains
     <plugin>:studio-rules (every entry must exist under skills/), the headings
     Responsibilities / Does not do / Reviewed by, and at least one DEC-nnn reference;
-  * skills/studio-team/SKILL.md names every minimum role and the role files it points to exist;
+  * skills/studio-team/SKILL.md names every minimum role and the role files it points to exist,
+    and indexes every agents/*.md file (base roles and specialists);
+  * commands/*.md (Claude Code only, optional): kebab-case names, a `description`, only known
+    frontmatter keys, a non-empty body;
+  * in skills (incl. references/), agents and commands, every "`<name>` skill",
+    `agents/<role>.md`, `<plugin>:<name>` and `/<plugin>:<command>` reference exists;
   * no manifest, agent or skill contains a secret-looking value.
 
 Usage: python scripts/validate_plugin.py [repo_root]
@@ -374,6 +379,96 @@ def check_team_skill(root: Path, roles: list[str] | None, errors: list[str]) -> 
             errors.append(f"{TEAM_SKILL}: referenced role file '{role_file}' does not exist")
 
 
+def check_team_index(root: Path, errors: list[str]) -> None:
+    """Every role file, base or specialist, is indexed in the studio-team skill (Codex reaches roles only there)."""
+    path = root / TEAM_SKILL
+    agents_dir = root / "agents"
+    if not path.is_file() or not agents_dir.is_dir():
+        return  # reported elsewhere
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return
+    for role_file in sorted(agents_dir.glob("*.md")):
+        rel = f"agents/{role_file.name}"
+        if rel not in text:
+            errors.append(f"{TEAM_SKILL}: does not index '{rel}'")
+
+
+COMMANDS_DIR = PurePosixPath("commands")
+ALLOWED_COMMAND_FRONTMATTER = {"description", "argument-hint", "allowed-tools", "model", "disable-model-invocation"}
+SKILL_REF_RE = re.compile(r"`([a-z0-9]+(?:-[a-z0-9]+)*)` skills?\b")
+ROLE_FILE_REF_RE = re.compile(r"`(agents/[a-z0-9-]+\.md)`")
+# Plugin-internal file references: `references/x.md` or `../skill/references/x.md`, relative to the file.
+LOCAL_FILE_REF_RE = re.compile(r"`((?:\.\./)*(?:[a-z0-9-]+/)*references/[a-z0-9._-]+\.md|\.\./SKILL\.md|\.\./[a-z0-9-]+/SKILL\.md)`")
+
+
+def check_references(root: Path, rel: PurePosixPath, text: str, plugin_name: str | None, errors: list[str]) -> None:
+    """Names of skills, roles and commands that a file points to must exist in this plugin."""
+    skills = {p.parent.name for p in (root / "skills").glob("*/SKILL.md")}
+    agents = {p.stem for p in (root / "agents").glob("*.md")}
+    commands = {p.stem for p in (root / COMMANDS_DIR).glob("*.md")}
+    for name in SKILL_REF_RE.findall(text):
+        if name not in skills:
+            errors.append(f"{rel}: names the skill '{name}', which is not in skills/")
+    for path in ROLE_FILE_REF_RE.findall(text):
+        if not (root / path).is_file():
+            errors.append(f"{rel}: points to '{path}', which does not exist")
+    here = (root / rel).parent
+    for path in LOCAL_FILE_REF_RE.findall(text):
+        if not (here / path).resolve().is_file():
+            errors.append(f"{rel}: points to '{path}', which does not exist")
+    if plugin_name:
+        for name in re.findall(rf"(?<![/\w]){re.escape(plugin_name)}:([a-z0-9]+(?:-[a-z0-9]+)*)", text):
+            if name not in skills | agents:
+                errors.append(f"{rel}: names '{plugin_name}:{name}', which is neither a skill nor an agent")
+        for name in re.findall(rf"/{re.escape(plugin_name)}:([a-z0-9]+(?:-[a-z0-9]+)*)", text):
+            if name not in commands | skills:
+                errors.append(f"{rel}: names the command '/{plugin_name}:{name}', which does not exist")
+
+
+def check_commands(root: Path, errors: list[str]) -> None:
+    """Claude Code commands: thin Markdown wrappers with a description; Codex reaches the same skills."""
+    directory = root / COMMANDS_DIR
+    if not directory.is_dir():
+        return
+    for path in sorted(directory.glob("*.md")):
+        rel = COMMANDS_DIR / path.name
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            errors.append(f"{rel}: cannot read ({exc})")
+            continue
+        scan_text_for_secrets(rel, text, errors)
+        if not NAME_RE.match(path.stem):
+            errors.append(f"{rel}: file name must be kebab-case")
+        fields, body = parse_frontmatter(text)
+        if fields is None or "__invalid__" in (fields or {}):
+            errors.append(f"{rel}: missing or invalid YAML frontmatter")
+            continue
+        if not isinstance(fields.get("description"), str) or not fields["description"].strip():
+            errors.append(f"{rel}: frontmatter 'description' is missing or empty")
+        extra = sorted(set(fields) - ALLOWED_COMMAND_FRONTMATTER)
+        if extra:
+            errors.append(f"{rel}: unknown command frontmatter keys: {', '.join(extra)}")
+        if not body.strip():
+            errors.append(f"{rel}: has no instructions")
+
+
+def check_all_references(root: Path, plugin_name: str | None, errors: list[str]) -> None:
+    folders = [("skills", "**/*.md"), ("agents", "*.md"), (str(COMMANDS_DIR), "*.md")]
+    for folder, pattern in folders:
+        base = root / folder
+        if not base.is_dir():
+            continue
+        for path in sorted(base.glob(pattern)):
+            try:
+                text = path.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError):
+                continue  # reported by the component checks
+            check_references(root, PurePosixPath(path.relative_to(root).as_posix()), text, plugin_name, errors)
+
+
 def check_hooks(root: Path, errors: list[str]) -> None:
     rel = PurePosixPath("hooks/hooks.json")
     if not (root / rel).is_file():
@@ -448,6 +543,10 @@ def validate(root) -> list[str]:
     roles = load_minimum_roles(root, errors)
     check_agents(root, roles, plugin_name if isinstance(plugin_name, str) else None, errors)
     check_team_skill(root, roles, errors)
+    check_team_index(root, errors)
+    name = plugin_name if isinstance(plugin_name, str) else None
+    check_commands(root, errors)
+    check_all_references(root, name, errors)
     check_hooks(root, errors)
     return errors
 
@@ -460,7 +559,7 @@ def main(argv: list[str]) -> int:
     if errors:
         print(f"Plugin validation failed with {len(errors)} error(s)")
         return 1
-    print("Plugin manifests, marketplaces, skills and agents are valid")
+    print("Plugin manifests, marketplaces, skills, agents and commands are valid")
     return 0
 
 
