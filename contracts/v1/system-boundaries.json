@@ -59,6 +59,12 @@
       "engine_profile": "godot"
     },
     {
+      "id": "web-game",
+      "status": "active",
+      "responsibility": "independently_buildable_web_game_client_with_platform_adapters",
+      "engine_profile": "web"
+    },
+    {
       "id": "qa-release",
       "status": "active",
       "responsibility": "independent_verification_and_owner_release_gates"

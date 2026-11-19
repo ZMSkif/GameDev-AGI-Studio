@@ -5,7 +5,7 @@ description: Procedure for choosing the renderer and libraries of a web-profile 
 
 # Web stack choice
 
-> **Status: DEC-145, not yet registered.** The owner chose both engine profiles on 19.11.2026. Until the DEC-145 issue exists, the binding contract names only the Godot profile, so the web-profile text here is information, not a rule.
+> **Decided by DEC-145 (#161):** the web profile for HTML5 portal games and the Godot 4.x profile for heavy and desktop games; the owner approves each game's profile with its architecture.
 
 The tables (renderer by game type, versions, the 16 subsystems, physics fallback, start-up metrics, bench) live in one place: `../engine-profiles/references/web-profile.md`. This skill is the procedure. Use `engine-profiles` first to confirm the game is in the web profile at all.
 

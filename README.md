@@ -14,9 +14,9 @@ This repository is a plugin for Claude Code and Codex named `gamedev-studio` (di
 
 ### Engine profiles
 
-`contracts/v1/game-production-policy.json` 2.0.0 names the engine per profile (`engine_profiles`). Today it holds only the Godot profile: Godot 4.x, [DEC-012](../../issues/12). Readers of the old top-level `engine` key read `engine_profiles.profiles.godot.engine` instead.
+`contracts/v1/game-production-policy.json` 2.0.0 names the engine per profile (`engine_profiles`). It holds the web profile ([DEC-145](../../issues/161)) and the Godot profile (Godot 4.x, [DEC-012](../../issues/12)). Readers of the old top-level `engine` key read `engine_profiles.profiles.godot.engine` instead.
 
-The owner chose two profiles on 19.11.2026: web for HTML5 portal games (Three.js for 3D, 2.5D and light 2D; PixiJS v8 for rich 2D) and Godot 4.x for heavy or desktop games. The skill `engine-profiles` describes both. The web profile enters the contract only once the owner's decision issue DEC-145 exists; until then the skills mark the web text "DEC-145, not yet registered".
+The owner chose two profiles on 19.11.2026: web for HTML5 portal games (Three.js for 3D, 2.5D and light 2D; PixiJS v8 for rich 2D) and Godot 4.x for heavy or desktop games. The skill `engine-profiles` describes both. The decision is [DEC-145](../../issues/161).
 
 ### Production skills
 

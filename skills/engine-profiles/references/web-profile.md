@@ -1,6 +1,6 @@
 # Web profile: stack, versions, subsystems, physics, startup, bench
 
-> **Status: DEC-145, not yet registered.** The owner chose both engine profiles on 19.11.2026. Until the DEC-145 issue exists, the binding contract names only the Godot profile, so the web-profile text here is information, not a rule.
+> **Decided by DEC-145 (#161):** the web profile for HTML5 portal games and the Godot 4.x profile for heavy and desktop games; the owner approves each game's profile with its architecture.
 
 This file is the single source of the web stack tables. Other skills link here instead of copying them.
 

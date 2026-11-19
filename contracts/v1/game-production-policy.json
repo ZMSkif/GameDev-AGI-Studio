@@ -6,16 +6,50 @@
     "read_instead": "engine_profiles.profiles.godot.engine"
   },
   "engine_profiles": {
+    "selection": "per_game_with_the_owner_approved_architecture",
     "profiles": {
       "godot": {
         "engine": "Godot 4.x",
         "decided_by": [
-          "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/12"
+          "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/12",
+          "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/161"
         ],
         "profile_decision_issue_urls": [
           "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/47",
           "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/70",
           "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/118"
+        ],
+        "use_for": [
+          "heavy_games",
+          "desktop_games"
+        ]
+      },
+      "web": {
+        "engine": "Three.js (3D, 2.5D, light 2D) or PixiJS v8 (rich 2D), by game type",
+        "decided_by": [
+          "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/161"
+        ],
+        "use_for": [
+          "html5_portal_games"
+        ],
+        "language": "typescript",
+        "build": "vite",
+        "render": {
+          "3d": "threejs_webglrenderer_webgl2",
+          "2.5d": "threejs",
+          "2d_lite": "threejs_orthographic_camera_dom_ui",
+          "2d_rich": "pixijs_v8"
+        },
+        "version_policy": {
+          "exact_versions": true,
+          "single_threejs_copy": true,
+          "upgrade_only_when_all_peer_ranges_cover": true
+        },
+        "evidence": [
+          "vitest_deterministic_game_logic",
+          "playwright_production_build",
+          "physical_device",
+          "blender_where_3d_assets_are_made"
         ]
       }
     }

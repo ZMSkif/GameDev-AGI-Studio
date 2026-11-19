@@ -5,7 +5,7 @@ description: How to use gamekit, the reusable TypeScript game packages built for
 
 # gamekit
 
-> **Status: DEC-145, not yet registered.** The owner chose both engine profiles on 19.11.2026. Until the DEC-145 issue exists, the binding contract names only the Godot profile, so the web-profile text here is information, not a rule.
+> **Decided by DEC-145 (#161):** the web profile for HTML5 portal games and the Godot 4.x profile for heavy and desktop games; the owner approves each game's profile with its architecture.
 
 **Where it is (19.11.2026):** `gamekit/packages/*` inside the Cat Challenge repository. Every package is `0.1.0`, `private: true`, scope `@gamekit`, and exports raw `src/*.ts` (no build step), so only a Vite consumer in the same workspace can use it. **Do not move or copy the code now:** the game is still changing these packages. The extraction is specified in `references/extraction-spec.md`.
 

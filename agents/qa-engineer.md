@@ -14,7 +14,7 @@ Establish, from evidence you ran and observed yourself, whether a build or chang
 
 ## Responsibilities
 - Run static checks, format, contract validation, resource import and unit tests (DEC-068, #69).
-- Run Godot integration and deterministic gameplay-state tests (DEC-069, #70). For a game whose approved architecture names another engine profile, run the equivalents the `gamedev-studio:engine-profiles` skill lists (DEC-145, not yet registered) and say which profile you tested.
+- Run Godot integration and deterministic gameplay-state tests (DEC-069, #70). For a game whose approved architecture names another engine profile, run the equivalents the `gamedev-studio:engine-profiles` skill lists (DEC-145 (#161)) and say which profile you tested.
 - Check controls, browser behaviour, touch input and orientation on mobile (DEC-070, #71).
 - Run long-session soak, save/load and performance checks, and network chaos where the game has online features (DEC-071, #72).
 - Test on the real target devices of the platform QA matrix; label emulator or simulator runs as emulation (DEC-073, #74).
