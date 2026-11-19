@@ -71,6 +71,25 @@ codex plugin marketplace add ZMSkif/GameDev-AGI-Studio
 codex plugin add gamedev-studio@gamedev-studio
 ```
 
+### Releases
+
+Each release is a tag `vX.Y.Z` with a GitHub release. Its notes are the matching section of [`CHANGELOG.md`](CHANGELOG.md).
+
+1. In the pull request that changes the plugin, set the new `version` in both `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`, and add a `## [X.Y.Z] - YYYY-MM-DD` section to `CHANGELOG.md`. `python scripts/release_check.py --tag vX.Y.Z` checks both.
+2. After the pull request is merged, and only with the owner's yes (DEC-009), tag the merge commit and push the tag: `git tag vX.Y.Z <merge-commit>`, then `git push origin vX.Y.Z`.
+3. The `Release` workflow (`.github/workflows/release.yml`) runs the validators and the tests on the tagged commit again. It checks the tag against both versions and the CHANGELOG, then creates the GitHub release from that section. A release that already exists is left unchanged.
+
+To update an installed copy:
+
+```
+claude plugin marketplace update gamedev-studio
+claude plugin update gamedev-studio@gamedev-studio
+
+codex plugin marketplace upgrade
+```
+
+These commands exist in Claude Code 2.1.325 and Codex 0.169.0 (checked with `--help`). An update from one release to the next has not been run yet.
+
 ## Agent Team
 
 The base team is the `minimum_roles` list in [`contracts/v1/agent-team-policy.json`](contracts/v1/agent-team-policy.json) ([DEC-031](../../issues/31), [DEC-142](../../issues/144)). It can be extended with specialists but never reduced. Each role is defined once, in `agents/<role>.md`: mission, responsibilities, what it does not do, required inputs, outputs with evidence, escalation, and which role reviews its work.

@@ -1,0 +1,37 @@
+name: Release
+
+# Runs when a maintainer pushes a tag vX.Y.Z (pushing a tag needs the owner's yes, DEC-009).
+# It re-runs every check on the tagged commit, checks the tag against both plugin.json files and the
+# CHANGELOG, and creates the GitHub release from the CHANGELOG section. An existing release is left as is.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Validate JSON contracts and decision manifest
+        run: python3 scripts/validate_contracts.py
+      - name: Validate plugin manifests, marketplaces, skills, agents and commands
+        run: python3 scripts/validate_plugin.py
+      - name: Run the unit tests
+        run: python3 -m unittest discover -s tests -v
+      - name: Check the tag against the versions and the CHANGELOG
+        run: python3 scripts/release_check.py --tag "$GITHUB_REF_NAME" --notes-out "$RUNNER_TEMP/release-notes.md"
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists; leaving it unchanged."
+          else
+            gh release create "$GITHUB_REF_NAME" --verify-tag --title "gamedev-studio ${GITHUB_REF_NAME#v}" --notes-file "$RUNNER_TEMP/release-notes.md"
+          fi
