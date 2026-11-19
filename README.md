@@ -39,7 +39,7 @@ All are short, cite their decisions and name their sources (the Cat Challenge we
 
 ### Commands (Claude Code)
 
-`/gamedev-studio:new-web-game`, `/gamedev-studio:release-gate`, `/gamedev-studio:package-playgama`, `/gamedev-studio:review-piece` and `/gamedev-studio:archive-reviews`. Each is a short wrapper over a skill; Codex does not load plugin commands, so in Codex use the skills directly. `python scripts/archive_reviews.py` saves reviewer verdicts verbatim from a session transcript.
+`/gamedev-studio:new-web-game`, `/gamedev-studio:release-gate`, `/gamedev-studio:package-playgama`, `/gamedev-studio:review-piece` and `/gamedev-studio:archive-reviews`. Each is a short wrapper over a skill. The Codex manifest declares only skills and hooks: Codex 0.169.0 installs this version with all 14 skills (checked with a throwaway `CODEX_HOME`), but whether a Codex session offers the commands was not tested, so in Codex use the skills directly. Claude Code 2.1.325 with `--plugin-dir` loads the 14 skills, the 14 roles and the 5 commands. `python scripts/archive_reviews.py` saves reviewer verdicts verbatim from a session transcript.
 
 Layout: `.claude-plugin/` (Claude manifest and marketplace), `.codex-plugin/` (Codex manifest), `.agents/plugins/marketplace.json` (Codex marketplace), `skills/`, `agents/`, `hooks/`. The version is set only in the two `plugin.json` files and must match; `python scripts/validate_plugin.py` checks this.
 
