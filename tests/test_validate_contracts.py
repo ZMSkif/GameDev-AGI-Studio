@@ -244,6 +244,18 @@ WEB_PROFILE = {
 
 
 class EngineProfileRules(FixtureCase):
+    def setUp(self):
+        """Start from a Godot-only copy, so these rules hold before and after the web profile is registered."""
+        super().setUp()
+
+        def godot_only(p):
+            profiles = p["engine_profiles"]["profiles"]
+            profiles.pop("web", None)
+            profiles["godot"].pop("use_for", None)
+        self.edit_policy(godot_only)
+        self.edit_boundaries(lambda b: b.update(modules=[m for m in b["modules"] if m["id"] != "web-game"]))
+        vc.validate(self.root)
+
     def edit_policy(self, fn):
         p = self.read(POLICY)
         fn(p)
