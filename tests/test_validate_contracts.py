@@ -75,17 +75,19 @@ class ManifestRules(FixtureCase):
     def test_fixture_copy_passes(self):
         vc.validate(self.root)
 
-    def test_old_manifest_version_rejected(self):
-        m = self.read("manifest.json")
-        m["version"] = "1.0.0"
-        self.write("manifest.json", m)
-        self.assertFails("manifest version must be 1.1.0")
+    def test_old_manifest_versions_rejected(self):
+        for old in ("1.0.0", "1.1.0"):
+            with self.subTest(version=old):
+                m = self.read("manifest.json")
+                m["version"] = old
+                self.write("manifest.json", m)
+                self.assertFails("manifest version must be 1.2.0")
 
     def test_any_other_manifest_version_rejected(self):
         m = self.read("manifest.json")
-        m["version"] = "1.2.0"
+        m["version"] = "1.3.0"
         self.write("manifest.json", m)
-        self.assertFails("manifest version must be 1.1.0")
+        self.assertFails("manifest version must be 1.2.0")
 
     def test_each_changed_contract_must_link_decision_146(self):
         for name in vc.DEFERRAL_CONTRACTS:
@@ -227,6 +229,132 @@ class OpenApiRules(FixtureCase):
     def test_trailing_newline_deferred_by(self):
         self.edit(lambda i: i.update({"x-deferred-by": URL_146 + "\n"}))
         self.assertFails(OPENAPI + NOT_REPO_ISSUE)
+
+
+POLICY = "game-production-policy.json"
+PROFILE = POLICY + " profile "
+URL_12 = "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/12"
+# A dummy decision for fixtures only; the real web profile cites its own owner decision issue.
+URL_DUMMY = "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/999"
+WEB_PROFILE = {
+    "decided_by": [URL_DUMMY],
+    "use_for": ["html5_portal_games"],
+    "render": {"3d": "threejs", "2.5d": "threejs", "2d_lite": "threejs_orthographic_dom_ui", "2d_rich": "pixijs_v8"},
+}
+
+
+class EngineProfileRules(FixtureCase):
+    def edit_policy(self, fn):
+        p = self.read(POLICY)
+        fn(p)
+        self.write(POLICY, p)
+
+    def godot(self, p):
+        return p["engine_profiles"]["profiles"]["godot"]
+
+    def add_web(self, *, module=True, link=True, profile=None):
+        """Add a web profile (fixture decision URL), its module and the manifest link."""
+        def fn(p):
+            p["engine_profiles"]["profiles"]["web"] = json.loads(json.dumps(profile or WEB_PROFILE))
+            self.godot(p)["use_for"] = ["heavy_games", "desktop_games"]
+        self.edit_policy(fn)
+        if module:
+            self.edit_boundaries(lambda b: b["modules"].append(
+                {"id": "web-game", "status": "active", "responsibility": "x", "engine_profile": "web"}))
+        if link:
+            m = self.read("manifest.json")
+            m["contracts"][POLICY]["decision_issue_urls"].append(URL_DUMMY)
+            self.write("manifest.json", m)
+
+    def test_real_policy_has_only_the_godot_profile_with_dec_012(self):
+        p = json.loads((REPO / "contracts/v1" / POLICY).read_text(encoding="utf-8"))
+        profiles = p["engine_profiles"]["profiles"]
+        self.assertNotIn("engine", p)
+        self.assertEqual(profiles["godot"]["engine"], "Godot 4.x")
+        self.assertIn(URL_12, profiles["godot"]["decided_by"])
+
+    def test_top_level_engine_rejected(self):
+        self.edit_policy(lambda p: p.update(engine="Godot 4.x"))
+        self.assertFails(POLICY + ": the top-level engine moved")
+
+    def test_missing_profiles_rejected(self):
+        self.edit_policy(lambda p: p.pop("engine_profiles"))
+        self.assertFails(POLICY + ": engine_profiles.profiles missing")
+
+    def test_unknown_profile_rejected(self):
+        self.edit_policy(lambda p: p["engine_profiles"]["profiles"].update(unity={"decided_by": [URL_12]}))
+        self.assertFails(POLICY + ": unknown engine profile(s) ['unity']")
+
+    def test_godot_profile_required(self):
+        def fn(p):
+            p["engine_profiles"]["profiles"] = {"web": dict(WEB_PROFILE)}
+        self.edit_policy(fn)
+        self.assertFails("the godot profile is required (DEC-012)")
+
+    def test_godot_engine_must_stay(self):
+        self.edit_policy(lambda p: self.godot(p).update(engine="Godot 5"))
+        self.assertFails(PROFILE + "'godot': engine must stay Godot 4.x (DEC-012)")
+
+    def test_godot_must_cite_dec_012(self):
+        def fn(p):
+            self.godot(p)["decided_by"] = ["https://github.com/ZMSkif/GameDev-AGI-Studio/issues/47"]
+        self.edit_policy(fn)
+        self.assertFails(PROFILE + "'godot': decided_by must include " + URL_12)
+
+    def test_decided_by_must_be_repo_issue_urls(self):
+        for bad in ([], "DEC-012", ["https://github.com/other/repo/issues/12"], [URL_12 + "\n"], ["pending:DEC-145"]):
+            with self.subTest(decided_by=bad):
+                self.edit_policy(lambda p: self.godot(p).update(decided_by=bad))
+                self.assertFails(PROFILE + "'godot': decided_by must be a non-empty list of issue URLs")
+                shutil.copy(REPO / "contracts/v1" / POLICY, self.dir / POLICY)
+
+    def test_decision_must_be_linked_in_manifest(self):
+        self.edit_policy(lambda p: self.godot(p)["profile_decision_issue_urls"].append(URL_DUMMY))
+        self.assertFails(PROFILE + "'godot': manifest must link " + URL_DUMMY)
+
+    def test_godot_module_must_name_its_profile(self):
+        self.edit_boundaries(lambda b: self.module(b, "godot-game").pop("engine_profile"))
+        self.assertFails("profile 'godot' needs the active module 'godot-game'")
+
+    def test_module_naming_a_missing_profile_rejected(self):
+        self.edit_boundaries(lambda b: b["modules"].append(
+            {"id": "web-game", "status": "active", "responsibility": "x", "engine_profile": "web"}))
+        self.assertFails("module 'web-game': engine_profile 'web' is not in " + POLICY)
+
+    def test_module_with_the_wrong_profile_rejected(self):
+        self.edit_boundaries(lambda b: self.module(b, "github").update(engine_profile="godot"))
+        self.assertFails("module 'github': engine_profile 'godot' belongs to module 'godot-game'")
+
+    def test_web_profile_with_its_own_decision_passes(self):
+        self.add_web()
+        vc.validate(self.root)
+
+    def test_web_profile_needs_its_own_decision(self):
+        self.add_web(link=False, profile=dict(WEB_PROFILE, decided_by=[URL_12]))
+        self.assertFails(PROFILE + "'web': needs its own owner decision, not only DEC-012")
+
+    def test_web_decision_must_be_linked_in_manifest(self):
+        self.add_web(link=False)
+        self.assertFails(PROFILE + "'web': manifest must link " + URL_DUMMY)
+
+    def test_web_profile_needs_its_module(self):
+        self.add_web(module=False)
+        self.assertFails("profile 'web' needs the active module 'web-game'")
+
+    def test_web_render_must_cover_every_game_type(self):
+        render = dict(WEB_PROFILE["render"])
+        del render["2d_rich"]
+        self.add_web(profile=dict(WEB_PROFILE, render=render))
+        self.assertFails(PROFILE + "'web': render must name a renderer for each of")
+
+    def test_two_profiles_each_state_use_for(self):
+        self.add_web()
+        self.edit_policy(lambda p: self.godot(p).pop("use_for"))
+        self.assertFails(PROFILE + "'godot': with several profiles each must state use_for")
+
+    def test_empty_use_for_rejected(self):
+        self.add_web(profile=dict(WEB_PROFILE, use_for=[]))
+        self.assertFails(PROFILE + "'web': use_for must be a non-empty list of strings")
 
 
 class CliFailurePath(FixtureCase):

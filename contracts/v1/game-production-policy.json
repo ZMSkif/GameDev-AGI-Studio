@@ -1,6 +1,20 @@
 {
-  "version": "1.0.0",
-  "engine": "Godot 4.x",
+  "version": "1.2.0",
+  "engine_profiles": {
+    "profiles": {
+      "godot": {
+        "engine": "Godot 4.x",
+        "decided_by": [
+          "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/12"
+        ],
+        "profile_decision_issue_urls": [
+          "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/47",
+          "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/70",
+          "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/118"
+        ]
+      }
+    }
+  },
   "initial_platforms": [
     "Playgama HTML5",
     "YouTube Playables when accepted"
@@ -23,7 +37,7 @@
     "smooth stylized 2D concept",
     "high-quality stylized PBR 3D",
     "rig and animation",
-    "Godot in-engine independent visual review"
+    "in-engine independent visual review"
   ],
   "asset_quality": {
     "art_director_review": true,

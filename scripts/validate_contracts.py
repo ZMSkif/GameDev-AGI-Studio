@@ -5,9 +5,17 @@ import json
 import re
 import sys
 
-SUPPORTED_VERSION = "1.1.0"
+SUPPORTED_VERSION = "1.2.0"
 REPO_ISSUES = "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/"
 ISSUE_URL = re.compile(re.escape(REPO_ISSUES) + r"[1-9][0-9]*")
+# Engine profiles (game-production-policy.json). DEC-012 (#12) made Godot 4.x the studio engine;
+# the godot profile keeps it. Any other profile needs its own owner decision issue.
+PRODUCTION_POLICY = "game-production-policy.json"
+PROFILE_IDS = {"godot", "web"}
+GODOT_ENGINE = "Godot 4.x"
+DEC_012_URL = REPO_ISSUES + "12"
+WEB_RENDER_KEYS = {"3d", "2.5d", "2d_lite", "2d_rich"}
+PROFILE_MODULES = {"godot": "godot-game", "web": "web-game"}
 # The only decision allowed to defer modules so far: owner decision #146 (DEC-143).
 PLUGIN_DECISION_URL = REPO_ISSUES + "146"
 MODULE_STATUSES = {"active", "deferred"}
@@ -77,6 +85,66 @@ def validate_openapi(spec):
     check_deferred_by(info.get("x-deferred-by"), "coordinator.openapi.json info")
 
 
+def check_issue_list(value, where, field, linked):
+    check(isinstance(value, list) and value
+          and all(isinstance(u, str) and ISSUE_URL.fullmatch(u) for u in value),
+          f"{where}: {field} must be a non-empty list of issue URLs of this repository")
+    for url in value:
+        check(url in linked, f"{where}: manifest must link {url} for {PRODUCTION_POLICY}")
+
+
+def validate_engine_profiles(policy, linked):
+    """Profile-aware engine choice; returns the profile ids."""
+    where = PRODUCTION_POLICY
+    check("engine" not in policy, f"{where}: the top-level engine moved to engine_profiles.profiles")
+    profiles = policy.get("engine_profiles", {}).get("profiles")
+    check(isinstance(profiles, dict) and profiles, f"{where}: engine_profiles.profiles missing")
+    unknown = sorted(set(profiles) - PROFILE_IDS)
+    check(not unknown, f"{where}: unknown engine profile(s) {unknown}")
+    check("godot" in profiles, f"{where}: the godot profile is required (DEC-012)")
+    for pid, profile in profiles.items():
+        at = f"{where} profile {pid!r}"
+        check(isinstance(profile, dict), f"{at}: must be an object")
+        check_issue_list(profile.get("decided_by"), at, "decided_by", linked)
+        if "profile_decision_issue_urls" in profile:
+            check_issue_list(profile["profile_decision_issue_urls"], at, "profile_decision_issue_urls", linked)
+        if "use_for" in profile:
+            use_for = profile["use_for"]
+            check(isinstance(use_for, list) and use_for and all(isinstance(u, str) and u for u in use_for),
+                  f"{at}: use_for must be a non-empty list of strings")
+    godot = profiles["godot"]
+    check(godot.get("engine") == GODOT_ENGINE, f"{where} profile 'godot': engine must stay {GODOT_ENGINE} (DEC-012)")
+    check(DEC_012_URL in godot["decided_by"], f"{where} profile 'godot': decided_by must include {DEC_012_URL}")
+    if "web" in profiles:
+        web = profiles["web"]
+        check(any(u != DEC_012_URL for u in web["decided_by"]),
+              f"{where} profile 'web': needs its own owner decision, not only DEC-012")
+        render = web.get("render")
+        check(isinstance(render, dict) and set(render) == WEB_RENDER_KEYS
+              and all(isinstance(v, str) and v for v in render.values()),
+              f"{where} profile 'web': render must name a renderer for each of {sorted(WEB_RENDER_KEYS)}")
+    if len(profiles) > 1:
+        for pid, profile in profiles.items():
+            check("use_for" in profile, f"{where} profile {pid!r}: with several profiles each must state use_for")
+    return set(profiles)
+
+
+def validate_profile_modules(boundaries, profile_ids):
+    """Each engine profile has exactly its game module, and no module names a missing profile."""
+    modules = {m["id"]: m for m in boundaries["modules"]}
+    for module in boundaries["modules"]:
+        named = module.get("engine_profile")
+        if named is not None:
+            check(named in profile_ids,
+                  f"system-boundaries.json module {module['id']!r}: engine_profile {named!r} is not in {PRODUCTION_POLICY}")
+            check(PROFILE_MODULES.get(named) == module["id"],
+                  f"system-boundaries.json module {module['id']!r}: engine_profile {named!r} belongs to module {PROFILE_MODULES.get(named)!r}")
+    for pid in sorted(profile_ids):
+        module = modules.get(PROFILE_MODULES[pid])
+        check(module is not None and module.get("engine_profile") == pid and module.get("status") == "active",
+              f"system-boundaries.json: profile {pid!r} needs the active module {PROFILE_MODULES[pid]!r} with engine_profile {pid!r}")
+
+
 def validate(root):
     """Validate the contract set under root; return the number of contracts."""
     directory = Path(root) / "contracts" / "v1"
@@ -100,7 +168,12 @@ def validate(root):
         check(PLUGIN_DECISION_URL in manifest["contracts"][filename]["decision_issue_urls"],
               f"manifest: {filename} must link {PLUGIN_DECISION_URL}")
 
-    validate_boundaries(load(directory / "system-boundaries.json"))
+    boundaries = load(directory / "system-boundaries.json")
+    validate_boundaries(boundaries)
+    check(PRODUCTION_POLICY in manifest["contracts"], f"manifest must list {PRODUCTION_POLICY}")
+    linked = set(manifest["contracts"][PRODUCTION_POLICY]["decision_issue_urls"])
+    profile_ids = validate_engine_profiles(load(directory / PRODUCTION_POLICY), linked)
+    validate_profile_modules(boundaries, profile_ids)
     validate_orchestration(load(directory / "orchestration-policy.json"))
     validate_openapi(load(directory / "coordinator.openapi.json"))
     return len(manifest["contracts"])
