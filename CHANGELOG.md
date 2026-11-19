@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to the `gamedev-studio` plugin. The version lives only in `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`, and a release tag `vX.Y.Z` must match it. Each section below is the release notes for its tag (see "Releases" in `README.md`).
+All notable changes to the `gamedev-studio` plugin. The version lives only in `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`, and a release tag `vX.Y.Z` must match it. From the next release on, each section is the release notes for its tag (see "Releases" in `README.md`). 0.1.0 and 0.2.0 were not tagged. The v0.3.0 release notes were written by hand, in Russian and English, before this file existed.
 
 ## [Unreleased]
 
@@ -25,7 +25,7 @@ All notable changes to the `gamedev-studio` plugin. The version lives only in `.
 
 ### Added
 - The nine base Agent Team roles as Claude Code subagents, and the `studio-team` skill that indexes them for Codex (PLUGIN-02, #158).
-- Quality-gate hooks scoped to studio projects: no commit or push to `main`, no files with secret-looking values, git and gh preflight (PLUGIN-05, #159).
+- Quality-gate hooks scoped to studio projects: no commit or push to `main`, no commit of credential-like files such as `.env`, `*.pem` and `*.key`, and a git and gh preflight (PLUGIN-05, #159).
 
 ### Fixed
 - Hooks fail open on an invalid working directory; tests no longer depend on the runner's branch (#160).

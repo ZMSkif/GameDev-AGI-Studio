@@ -61,7 +61,7 @@ To try the plugin in a single Claude Code session without installing it: `claude
 
 ### Install from GitHub
 
-These commands install the default branch and need GitHub access to the private repository.
+These commands install the default branch and need GitHub access to the private repository. Updates follow `main`, not the release tags.
 
 ```
 claude plugin marketplace add ZMSkif/GameDev-AGI-Studio
@@ -73,11 +73,11 @@ codex plugin add gamedev-studio@gamedev-studio
 
 ### Releases
 
-Each release is a tag `vX.Y.Z` with a GitHub release. Its notes are the matching section of [`CHANGELOG.md`](CHANGELOG.md).
+Each release is a tag `vX.Y.Z` on a commit of `main`, with a GitHub release whose notes are the matching section of [`CHANGELOG.md`](CHANGELOG.md). A release version is plain X.Y.Z. This applies from the next release: 0.1.0 and 0.2.0 were not tagged, and the v0.3.0 notes were written by hand.
 
 1. In the pull request that changes the plugin, set the new `version` in both `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`, and add a `## [X.Y.Z] - YYYY-MM-DD` section to `CHANGELOG.md`. `python scripts/release_check.py --tag vX.Y.Z` checks both.
 2. After the pull request is merged, and only with the owner's yes (DEC-009), tag the merge commit and push the tag: `git tag vX.Y.Z <merge-commit>`, then `git push origin vX.Y.Z`.
-3. The `Release` workflow (`.github/workflows/release.yml`) runs the validators and the tests on the tagged commit again. It checks the tag against both versions and the CHANGELOG, then creates the GitHub release from that section. A release that already exists is left unchanged.
+3. The `Release` workflow (`.github/workflows/release.yml`) fails unless the tagged commit is on `main`. It runs the validators and the tests on that commit again and checks the tag against both versions and the CHANGELOG. Then a separate job, the only one with write access, creates the GitHub release from that section. A release that already exists is left unchanged.
 
 To update an installed copy:
 
