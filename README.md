@@ -94,7 +94,7 @@ On-demand specialists (DEC-032, DEC-142):
 | Release QA Engineer | `gamedev-studio:release-qa-engineer` |
 | Pre-publish Reviewer | `gamedev-studio:pre-publish-reviewer` |
 | Art Reviewer | `gamedev-studio:art-reviewer` |
-| i18n Language Reviewer | `gamedev-studio:i18n-native-reviewer` |
+| i18n Language Reviewer | `gamedev-studio:i18n-language-reviewer` |
 | Crowd and NPC Soak Reviewer | `gamedev-studio:crowd-soak-reviewer` |
 
 Reviewer and duty assignments are a proposal under DEC-040 and DEC-072, not an owner decision; the owner may change them.

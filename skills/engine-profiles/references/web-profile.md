@@ -4,7 +4,7 @@
 
 This file is the single source of the web stack tables. Other skills link here instead of copying them.
 
-Source: Cat Challenge `STACK_PLAYBOOK.md`, agreed by Claude, Codex (round 8 «ПОДТВЕРЖДАЮ») and an advisor on 16.11.2026. Labels: **shipped** = imported by the Cat Challenge r17 build (checked in its code on 19.11.2026); **decided** = agreed but not imported by a shipped build. All timings are emulation, not devices.
+Source: Cat Challenge `STACK_PLAYBOOK.md`, agreed by Claude, Codex (round 8 «ПОДТВЕРЖДАЮ») and an advisor on 16.11.2026. Labels: **shipped** = imported by the Cat Challenge r17 build, published to the Playgama sandbox (checked in its code on 19.11.2026); **decided** = agreed but not imported by a shipped build. All timings are emulation, not devices.
 
 ## 1. Criteria, in this order
 

@@ -28,7 +28,7 @@ Added on demand, never instead of a base role (DEC-032, #32; DEC-142, #144). Mos
 | Release QA Engineer | `agents/release-qa-engineer.md` | the full release gate of one build for one platform, by requirement number |
 | Pre-publish Reviewer | `agents/pre-publish-reviewer.md` | the last independent check of the exact archive before any publish |
 | Art Reviewer | `agents/art-reviewer.md` | a strict art review: no primitives, tiers A/B/C, posed fit |
-| i18n Language Reviewer | `agents/i18n-native-reviewer.md` | an AI language review of every language; not a human native read |
+| i18n Language Reviewer | `agents/i18n-language-reviewer.md` | an AI language review of every language; not a human native read |
 | Crowd and NPC Soak Reviewer | `agents/crowd-soak-reviewer.md` | long soaks, mutants and determinism hashes for crowds, NPCs and bots |
 
 ## In Claude Code

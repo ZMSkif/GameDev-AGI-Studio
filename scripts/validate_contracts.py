@@ -22,6 +22,11 @@ GODOT_ENGINE = "Godot 4.x"
 DEC_012_URL = REPO_ISSUES + "12"
 WEB_RENDER_KEYS = {"3d", "2.5d", "2d_lite", "2d_rich"}
 PROFILE_MODULES = {"godot": "godot-game", "web": "web-game"}
+BOUNDARIES = "system-boundaries.json"
+# Godot-scoped decisions the godot profile must list: DEC-047 (#47), DEC-069 (#70), DEC-116 (#118).
+GODOT_SCOPED_URLS = {REPO_ISSUES + "47", REPO_ISSUES + "70", REPO_ISSUES + "118"}
+# The decision that splits the engine into profiles; a web profile, and any use_for limit, cite it.
+PROFILE_SPLIT_DECISION = "DEC-145"
 # The only decision allowed to defer modules so far: owner decision #146 (DEC-143).
 PLUGIN_DECISION_URL = REPO_ISSUES + "146"
 MODULE_STATUSES = {"active", "deferred"}
@@ -91,16 +96,32 @@ def validate_openapi(spec):
     check_deferred_by(info.get("x-deferred-by"), "coordinator.openapi.json info")
 
 
-def check_issue_list(value, where, field, linked):
+def manifest_links(manifest, filename):
+    """URL -> decision id for one contract entry; the two lists must pair up one to one."""
+    entry = manifest["contracts"].get(filename)
+    check(entry is not None, f"manifest must list {filename}")
+    urls, ids = entry.get("decision_issue_urls", []), entry.get("decision_ids", [])
+    check(len(urls) == len(ids), f"manifest {filename}: decision_issue_urls and decision_ids differ in length")
+    return dict(zip(urls, ids))
+
+
+def check_issue_list(value, where, field, links):
+    """Issue URLs of this repository, each linked in the manifest for every contract in links."""
     check(isinstance(value, list) and value
           and all(isinstance(u, str) and ISSUE_URL.fullmatch(u) for u in value),
           f"{where}: {field} must be a non-empty list of issue URLs of this repository")
-    for url in value:
-        check(url in linked, f"{where}: manifest must link {url} for {PRODUCTION_POLICY}")
+    for filename, linked in links.items():
+        for url in value:
+            check(url in linked, f"{where}: manifest must link {url} for {filename}")
 
 
-def validate_engine_profiles(policy, linked):
-    """Profile-aware engine choice; returns the profile ids."""
+def validate_engine_profiles(policy, links):
+    """Profile-aware engine choice; returns the profile ids.
+
+    links maps each contract that carries profile data to its manifest URL -> decision id map.
+    """
+    policy_links = links[PRODUCTION_POLICY]
+    split_urls = {u for u, d in policy_links.items() if d == PROFILE_SPLIT_DECISION}
     where = PRODUCTION_POLICY
     check("engine" not in policy, f"{where}: the top-level engine moved to engine_profiles.profiles")
     check(policy.get("version") == PRODUCTION_POLICY_VERSION,
@@ -115,20 +136,27 @@ def validate_engine_profiles(policy, linked):
     for pid, profile in profiles.items():
         at = f"{where} profile {pid!r}"
         check(isinstance(profile, dict), f"{at}: must be an object")
-        check_issue_list(profile.get("decided_by"), at, "decided_by", linked)
+        check(isinstance(profile.get("engine"), str) and profile["engine"].strip(), f"{at}: engine must name the engine")
+        check_issue_list(profile.get("decided_by"), at, "decided_by", links)
         if "profile_decision_issue_urls" in profile:
-            check_issue_list(profile["profile_decision_issue_urls"], at, "profile_decision_issue_urls", linked)
+            check_issue_list(profile["profile_decision_issue_urls"], at, "profile_decision_issue_urls",
+                             {PRODUCTION_POLICY: policy_links})
         if "use_for" in profile:
             use_for = profile["use_for"]
             check(isinstance(use_for, list) and use_for and all(isinstance(u, str) and u for u in use_for),
                   f"{at}: use_for must be a non-empty list of strings")
+            # The web profile's own check below covers it.
+            check(pid == "web" or split_urls & set(profile["decided_by"]),
+                  f"{at}: a use_for limit needs {PROFILE_SPLIT_DECISION} in decided_by (DEC-012 alone names one engine)")
     godot = profiles["godot"]
     check(godot.get("engine") == GODOT_ENGINE, f"{where} profile 'godot': engine must stay {GODOT_ENGINE} (DEC-012)")
     check(DEC_012_URL in godot["decided_by"], f"{where} profile 'godot': decided_by must include {DEC_012_URL}")
+    check(GODOT_SCOPED_URLS <= set(godot.get("profile_decision_issue_urls", [])),
+          f"{where} profile 'godot': profile_decision_issue_urls must list {sorted(GODOT_SCOPED_URLS)}")
     if "web" in profiles:
         web = profiles["web"]
-        check(any(u != DEC_012_URL for u in web["decided_by"]),
-              f"{where} profile 'web': needs its own owner decision, not only DEC-012")
+        check(split_urls & set(web["decided_by"]),
+              f"{where} profile 'web': decided_by must cite {PROFILE_SPLIT_DECISION}, its own owner decision")
         render = web.get("render")
         check(isinstance(render, dict) and set(render) == WEB_RENDER_KEYS
               and all(isinstance(v, str) and v for v in render.values()),
@@ -180,9 +208,8 @@ def validate(root):
 
     boundaries = load(directory / "system-boundaries.json")
     validate_boundaries(boundaries)
-    check(PRODUCTION_POLICY in manifest["contracts"], f"manifest must list {PRODUCTION_POLICY}")
-    linked = set(manifest["contracts"][PRODUCTION_POLICY]["decision_issue_urls"])
-    profile_ids = validate_engine_profiles(load(directory / PRODUCTION_POLICY), linked)
+    links = {name: manifest_links(manifest, name) for name in (PRODUCTION_POLICY, BOUNDARIES)}
+    profile_ids = validate_engine_profiles(load(directory / PRODUCTION_POLICY), links)
     validate_profile_modules(boundaries, profile_ids)
     validate_orchestration(load(directory / "orchestration-policy.json"))
     validate_openapi(load(directory / "coordinator.openapi.json"))

@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 """Archive independent reviewer verdicts verbatim from Claude Code session transcripts.
 
-Generalised from the coordinator script of the Cat Challenge project, which saved 66
-verdicts to docs/reviews/ (orchestration-playbook skill). Stdlib only.
+Generalised from the coordinator script of the Cat Challenge project, which kept its
+reviewers' verdicts in docs/reviews/ (orchestration-playbook skill). Stdlib only.
 
 What it does:
   * reads one or more session transcripts (JSONL; a directory means every *.jsonl in it,
     oldest first);
   * finds <task-notification> blocks in message text (never in tool results) whose
-    <result> contains a verdict line such as "VERDICT: BLOCKED" or
-    "VERDICT (round 2): CONFIRMED";
+    <result> has a verdict line: a line that starts with "VERDICT: BLOCKED" or
+    "VERDICT (round 2): CONFIRMED" (bold or a heading mark allowed); a verdict only quoted
+    inside a sentence does not count;
   * de-duplicates by content: the SHA-256 of the normalised body, within this run and
     against every file already in the archive (a re-run writes nothing new);
   * numbers new files after the highest number already in the archive, so existing names
@@ -18,11 +19,14 @@ What it does:
     (&lt; &gt; &amp;) is undone, and a final newline is added when the body has none;
   * never writes a body that looks like it holds a secret (patterns shared with
     scripts/validate_plugin.py) or that matches a --forbid pattern (for example the
-    owner's e-mail or a local path); such bodies are reported and the exit code is 3.
+    owner's e-mail or a local path) in its body or its task summary; such verdicts are
+    reported and the exit code is 3.
 
 Usage:
-  python scripts/archive_reviews.py --transcript <file-or-dir> [--transcript ...]
+  python scripts/archive_reviews.py (--transcript <file-or-dir> ... | --session <id>)
                                     --out docs/reviews [--dry-run] [--forbid REGEX ...]
+  --session finds <id>.jsonl under the Claude Code projects folder (CLAUDE_CONFIG_DIR or
+  ~/.claude), so a command can pass ${CLAUDE_SESSION_ID} and never pick another session.
 Exit codes: 0 ok, 2 bad arguments, 3 some verdicts were skipped for review by a human.
 """
 from __future__ import annotations
@@ -32,6 +36,7 @@ import datetime as _dt
 import hashlib
 import importlib.util
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -39,7 +44,7 @@ from pathlib import Path
 NOTIFICATION_RE = re.compile(r"<task-notification>(.*?)</task-notification>", re.S)
 RESULT_RE = re.compile(r"<result>(.*)</result>", re.S)
 SUMMARY_RE = re.compile(r"<summary>(.*?)</summary>", re.S)
-VERDICT_RE = re.compile(r"VERDICT[^:\n]{0,30}:\s*\**\s*([A-Z][A-Z_]*)")
+VERDICT_RE = re.compile(r"(?m)^[ \t>*#_-]*VERDICT[^:\n]{0,30}:\s*\**\s*([A-Z][A-Z_]*)")
 ARCHIVE_NAME_RE = re.compile(r"^\d{4}-\d{2}-\d{2}_(\d+)_")
 HASH_LINE_RE = re.compile(r"^- Body SHA-256: ([0-9a-f]{64})\s*$", re.M)
 HEADER_END = "\n---\n\n"
@@ -90,7 +95,7 @@ def verdict_label(body: str) -> str | None:
     unique = list(dict.fromkeys(found))
     if len(unique) == 1:
         return unique[0]
-    return "-".join(found[-2:])
+    return "-".join(unique[-2:])
 
 
 def texts_of(record: dict) -> list[str]:
@@ -98,7 +103,7 @@ def texts_of(record: dict) -> list[str]:
 
     Tool results are not read: background agents report in message text, and a tool result
     can quote a notification-shaped block (a `cat` of a test fixture) that is no report.
-    On the Cat Challenge coordinator transcript all 68 verdicts were in message text.
+    On the Cat Challenge coordinator transcript every verdict was in message text.
     """
     message = record.get("message") or {}
     content = message.get("content") if isinstance(message, dict) else None
@@ -122,10 +127,25 @@ def transcript_files(paths: list[str]) -> list[Path]:
     return files
 
 
+SESSION_ID_RE = re.compile(r"^[0-9A-Za-z-]{8,64}$")
+
+
+def session_transcript(session_id: str) -> Path:
+    """The transcript of one Claude Code session: exactly one <id>.jsonl under the projects folder."""
+    if not SESSION_ID_RE.match(session_id or ""):
+        raise ValueError(f"not a session id: {session_id!r}")
+    base = Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude") / "projects"
+    found = sorted(base.glob(f"*/{session_id}.jsonl"))
+    if len(found) != 1:
+        raise FileNotFoundError(f"expected one {session_id}.jsonl under {base}, found {len(found)}")
+    return found[0]
+
+
 def extract(files: list[Path]) -> list[Verdict]:
     """Verdicts in transcript order, without repeats of the same body."""
-    seen: set[str] = set()
+    seen: dict[str, Verdict] = {}
     verdicts: list[Verdict] = []
+    last_stamp = ""
     for file in files:
         with file.open(encoding="utf-8", errors="replace") as handle:
             for line in handle:
@@ -135,7 +155,10 @@ def extract(files: list[Path]) -> list[Verdict]:
                     continue
                 if not isinstance(record, dict):
                     continue
-                stamp = record.get("timestamp") if isinstance(record.get("timestamp"), str) else ""
+                # Some records (API request copies) carry no timestamp: use the last one seen.
+                own_stamp = record.get("timestamp") if isinstance(record.get("timestamp"), str) else ""
+                last_stamp = own_stamp or last_stamp
+                stamp = last_stamp
                 for text in texts_of(record):
                     for block in NOTIFICATION_RE.finditer(text):
                         result = RESULT_RE.search(block.group(1))
@@ -149,10 +172,14 @@ def extract(files: list[Path]) -> list[Verdict]:
                             continue
                         digest = body_digest(body)
                         if digest in seen:
+                            if not seen[digest].timestamp and stamp:
+                                seen[digest].timestamp = stamp
                             continue
-                        seen.add(digest)
                         summary = SUMMARY_RE.search(block.group(1))
-                        verdicts.append(Verdict(stamp, unescape(summary.group(1)).strip() if summary else "", label, body))
+                        one_line = " ".join(unescape(summary.group(1)).split()) if summary else ""
+                        verdict = Verdict(stamp, one_line, label, body)
+                        seen[digest] = verdict
+                        verdicts.append(verdict)
     return verdicts
 
 
@@ -211,7 +238,7 @@ def archive(files: list[Path], out: Path, *, dry_run: bool = False, forbid=(), t
     for verdict in extract(files):
         if verdict.digest in known:
             continue
-        reason = blocked_reason(verdict.body, list(forbid))
+        reason = blocked_reason(verdict.summary + chr(10) + verdict.body, list(forbid))
         if reason:
             skipped.append((verdict.summary or verdict.label, reason))
             continue
@@ -228,7 +255,9 @@ def archive(files: list[Path], out: Path, *, dry_run: bool = False, forbid=(), t
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("--transcript", action="append", required=True, help="a session .jsonl file or a folder of them")
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--transcript", action="append", help="a session .jsonl file or a folder of them")
+    source.add_argument("--session", help="a Claude Code session id; its <id>.jsonl is found under the projects folder")
     parser.add_argument("--out", required=True, help="the archive folder, for example docs/reviews")
     parser.add_argument("--dry-run", action="store_true", help="list what would be written, write nothing")
     parser.add_argument("--forbid", action="append", default=[], help="regex; a body that matches is not written")
@@ -238,9 +267,12 @@ def main(argv: list[str] | None = None) -> int:
         return 2 if exc.code else 0
     try:
         forbid = [re.compile(p) for p in args.forbid]
-        files = transcript_files(args.transcript)
-    except (re.error, FileNotFoundError) as exc:
+        files = [session_transcript(args.session)] if args.session else transcript_files(args.transcript)
+    except (re.error, FileNotFoundError, ValueError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
+    if not files:
+        print("ERROR: no transcript (*.jsonl) found", file=sys.stderr)
         return 2
     written, skipped = archive(files, Path(args.out), dry_run=args.dry_run, forbid=forbid)
     verb = "would write" if args.dry_run else "wrote"

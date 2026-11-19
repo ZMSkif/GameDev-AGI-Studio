@@ -34,7 +34,7 @@ Check one-hand passability of every level with the `fair-bots-balance` procedure
 
 ## 4. Keyboard and pause
 
-- WASD and arrows move, Space jumps, P pauses. **Esc does nothing** (Playgama 1.5.2). Read `KeyboardEvent.code` so AZERTY works.
+- **Esc does nothing** (Playgama 1.5.2). Cat Challenge's keys, a sound default: WASD and arrows move, Space jumps, P pauses. Read `KeyboardEvent.code` so AZERTY works.
 - Any pause (platform, after an ad, a hidden tab, lost focus) shows a clear "Paused, tap to continue" screen; the game never just stands still. During the ad itself the ad covers the screen. Focus the card so Space or Enter resumes.
 - Popups have a ✕; every press has a sound; controls are at least 44 px (primary 48).
 
@@ -44,7 +44,7 @@ Check one-hand passability of every level with the `fair-bots-balance` procedure
 - Teach inside the first match: a pictogram card with 2–4 words and a short demo with the game's real effects (the tile turns red and falls; the hammer hits), skippable, not affecting the match.
 - Teach **where and how**: hints before the places that need a jump, and a short lesson with practice right before the round that first needs it.
 - Hints advance on the real action; separate desktop (keys) and touch hints; the "seen" flag is saved.
-- A separate training mode lives behind a settings button.
+- Cat Challenge put a separate training mode behind a settings button.
 
 ## Source
 

@@ -9,7 +9,9 @@ Binding: DEC-139 (#141) no primitive or template look; DEC-065 (#66) assets matc
 
 ## 1. Nothing primitive ships
 
-A primitive is anything that reads as its building blocks: code-built spheres, cylinders and boxes for items; flat or glyph icons for items, rewards or currency; basic-shape props; flat CSS stand-ins; emoji as icons. Placeholders may exist only on a branch or in a mockup, clearly labelled, never in a sandbox or release build. Keep a **primitive allowlist** file that only shrinks: a cell leaves it in the commit that ships its real model. The reviewer rejects any primitive on the piece's screens. UI pictograms (gear, ✕, sound, lock) are a separate drawn set, consistent in one style.
+**Studio rule, every game and both engine profiles** (DEC-139, #141; DEC-015, #15; `default_primitive_visuals_cannot_pass` in `contracts/v1/game-production-policy.json`): no primitive or template visual ships. Anything that depicts an item, reward, currency, prize or prop is a detailed real asset in the game's approved art direction (DEC-065, #66), judged at the game camera and at the close-up (§2). A primitive is anything that reads as its building blocks or as a stand-in: code-built spheres, cylinders and boxes; basic-shape props; glyph or emoji pictures of items, rewards or currency; flat CSS stand-ins; template UI. Placeholders exist only on a branch or in a mockup, clearly labelled, never in a sandbox or release build. The reviewer rejects any primitive on the piece's screens.
+
+**Cat Challenge decision** (owner answer OQ9, 17.11.2026): items, rewards, currency, prizes and props are shown as renders of their real 3D models (§5), while UI service glyphs (gear, ✕, sound, lock) stay one drawn set in one style. It is the recommended default for 3D and 2.5D web games; a 2D game uses detailed 2D art in its own style, not 3D renders. Cat Challenge also kept a **primitive allowlist** data file that only shrinks (a cell leaves it in the commit that ships its real model), checked by a test: a useful practice.
 
 Cat Challenge owner, 17.11.2026: «Любое место с примитивом равно то что это не понравится игрокам. Это критически важно».
 
@@ -23,13 +25,13 @@ Check every asset at both distances; the worse one wins:
 |---|---|---|
 | **A** | the defect shows at 1:1 in the desktop or phone game frame, layout pose included | blocks |
 | **B** | at the close-up the asset reads as mangled, with several artefacts on the face the player uses | blocks |
-| **C (WEAK)** | one small spot, or a face the fixed camera never shows | ships with a named follow-up in the batch's weak-spot table |
+| **C (WEAK)** | one small spot, or a face the fixed camera never shows | ships with a follow-up GitHub Issue (DEC-002, #2), linked from the asset's spec |
 
 Check it yourself: both themes or lighting setups, wireframe, raw source next to the rework, the layout pose, phone tier without shadows (shadow patches are not facets). Parse the shipped files to confirm triangle counts, bytes and colliders; never trust the report's numbers. Collider vs mesh: measure the overhang at character height (0.3–1.2 m for Cat Challenge's chibi), not only at the foot.
 
 ## 3. Nothing passes into anything
 
-The Cat Challenge owner asked that nothing flickers or sinks into anything. Coplanar faces at least 10 mm apart; overlays through one layer rule (fixed lift and `polygonOffset` tiers, `depthWrite: false`) instead of ad-hoc offsets; near and far planes chosen by measurement; a visual radius equal to the physics radius. A separate audit agent sweeps the whole game for z-fighting and intersections.
+The Cat Challenge owner asked that nothing flickers or sinks into anything. What worked there (Cat Challenge practice, recommended): coplanar faces at least 10 mm apart; overlays through one layer rule (fixed lift and `polygonOffset` tiers, `depthWrite: false`) instead of ad-hoc offsets; near and far planes chosen by measurement; a visual radius equal to the physics radius. A separate audit agent sweeps the whole game for z-fighting and intersections.
 
 ## 4. Reworking ready-made or AI blanks "as your own"
 
@@ -43,16 +45,15 @@ Only where the owner allowed it for the game (Cat Challenge: «можешь и �
 
 ## 5. Item icons
 
-Cat Challenge rule (owner, 17.11.2026): items, rewards, currency, prizes and props show only 3D renders of their real models on rarity backdrops. The icon scene uses the same material contract as the game (a review found the scene's room light leaking into the coin because three.js r187 ignores `envMapIntensity` on a material without its own map, so the currency rendered pale). Coin piles grow with the amount, never shrink. A held item shows a name card, not a stuck shimmer. Names fit their tiles in every language (a German compound overflowed a 64 px tile). Mind the atlas memory on phones.
+For a game that uses the 3D-render rule of §1 (Cat Challenge, owner, 17.11.2026): renders of the real models on rarity backdrops. The icon scene uses the same material contract as the game (a review found the scene's room light leaking into the coin because three.js r187 ignores `envMapIntensity` on a material without its own map, so the currency rendered pale). Coin piles grow with the amount, never shrink. A held item shows a name card, not a stuck shimmer. Names fit their tiles in every language (a German compound overflowed a 64 px tile). Mind the atlas memory on phones.
 
 ## 6. The wearables posed-fit gate
 
-For anything worn on an animated character (Cat Challenge `assets/characters/wearables/ASSET_SPEC.md` §3.1, unmerged WA-1 branch):
+For anything worn on an animated character. Source: Cat Challenge `assets/characters/wearables/ASSET_SPEC.md` §3.1 on the unmerged WA-1 branch, as of the evening of 19.11.2026; it was still changing, so re-read it before use.
 - **Rest fit:** 10 mm clear of the body and every hair style it is worn with; shoes replace the base shoe.
-- **Posed fit:** through every gameplay clip, including push and shove, each item point stays outside the body, **part by part** (head, torso, arms, legs, each hair style), using the part's own surface with a winding-number test near open rims. Limits: under 1.5 cm into the item's own region, under 3 cm into any other part; where the body's own 12 mm skin shell is already deeper, the shell depth sets the baseline. Roll, hit and eliminated clips are reported, not gated.
-- **Still unsettled (19.11.2026):** gate v2 lets an item go shell + 1.5 cm deep. Review 68 of the Cat Challenge archive rules for a continuous `allowed = max(limit, shell + 1.5 cm)`, 12 frames per clip, a pass only at a worst excess of −0.2 cm or less, on LOD0 and LOD1. Use the stricter reading until the game's coordinator settles it.
-- **Poke-through check:** a pass on the numbers with a visible poke-through is a fail. The v2 pixel check judged frames against the idle pose, so a defect already present at idle counted as "layering" (wide capes cut by the arms passed). Review 68 proposes rendering body and item depth separately and failing where both surfaces are visible within 5 mm of each other, over 20 px per part per frame and view at 640 px, in all views and all gated frames including idle.
-- **Controls:** the rule is one function with its numbers under test; a known-bad item (the shipped backpack) must FAIL; mutants of the rule (baseline removed, margins ×10) must fail tests; a "test every shipped item" loop over an empty list proves nothing, so assert the expected set.
+- **Posed fit:** through every gameplay clip, including push and shove, each item point stays outside the body, **part by part** (head, torso, arms, legs, each hair style), using the part's own surface with a winding-number test near open rims. Limits: 1.5 cm into the item's own region, 3 cm into any other part. The body's own 12 mm skin shell, skinned like the body, is the baseline: `allowed = max(limit, shell depth + 1.5 cm)`, a continuous rule (an earlier stepped rule flipped results on a millimetre). 12 frames per clip; the worst excess, unrounded, must be −0.2 cm or less in every gated clip, on LOD0 and LOD1. Roll, hit and eliminated clips are reported, not gated.
+- **Crossing check:** a pass on the numbers with a visible poke-through is a fail. Render the body's (and hair's) depth and the item's depth separately; a pixel where both lie within 5 mm of each other is a crossing. Check the bind pose and every gated clip's extreme frames, idle included, in 7 views, per LOD and hair style, with no rest-pose subtraction (an earlier check judged frames against idle, so a defect present at idle passed). A crossing on a part is excused only within 20 mm of another part's skin, where the body nearly touches itself; never into the item's own base part and never in open air. Fail above 20 unexcused px of one part in any frame-view at 640 px. Pin these constants in tests.
+- **Controls:** the rule is one function with its numbers under test; known-bad items must FAIL (in Cat Challenge the shipped backpack and a wide cape fail, an on-skin band passes); mutants of the rule (baseline removed, margins ×10, views cut, idle dropped) must fail tests; a "test every shipped item" loop over an empty list proves nothing, so assert the expected set.
 - If no design passes, do not loosen the gate: ask the owner with pictures and options (another garment, or own swing bones).
 
 ## 7. Characters
@@ -61,4 +62,4 @@ New 3D characters follow DEC-064 in either engine profile. The ten-step process 
 
 ## Source
 
-Cat Challenge: `assets/city/ASSET_SPEC.md` (recipe notes), `assets/characters/wearables/ASSET_SPEC.md` (§1; §3.1 on the unmerged WA-1 branch, 19.11.2026), `STACK_PLAYBOOK.md` §6.2, reviews 05, 09, 24, 37, 41, 63, 66 and 68 of `docs/reviews/`, and the owner's rules in its `OWNER_DECISIONS.md` and memory (no primitives, 17.11.2026).
+Cat Challenge: `assets/city/ASSET_SPEC.md` (recipe notes), `assets/characters/wearables/ASSET_SPEC.md` (§1; §3.1 on the unmerged WA-1 branch, 19.11.2026), `STACK_PLAYBOOK.md` §6.2, reviews 05, 09, 18, 24, 37, 41, 63, 66 and 68 of `docs/reviews/`, and the owner's rules in its `OWNER_DECISIONS.md` (no primitives and OQ9, 17.11.2026).

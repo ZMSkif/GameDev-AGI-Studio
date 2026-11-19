@@ -399,6 +399,8 @@ COMMANDS_DIR = PurePosixPath("commands")
 ALLOWED_COMMAND_FRONTMATTER = {"description", "argument-hint", "allowed-tools", "model", "disable-model-invocation"}
 SKILL_REF_RE = re.compile(r"`([a-z0-9]+(?:-[a-z0-9]+)*)` skills?\b")
 ROLE_FILE_REF_RE = re.compile(r"`(agents/[a-z0-9-]+\.md)`")
+# Plugin-internal file references: `references/x.md` or `../skill/references/x.md`, relative to the file.
+LOCAL_FILE_REF_RE = re.compile(r"`((?:\.\./)*(?:[a-z0-9-]+/)*references/[a-z0-9._-]+\.md|\.\./SKILL\.md|\.\./[a-z0-9-]+/SKILL\.md)`")
 
 
 def check_references(root: Path, rel: PurePosixPath, text: str, plugin_name: str | None, errors: list[str]) -> None:
@@ -412,6 +414,10 @@ def check_references(root: Path, rel: PurePosixPath, text: str, plugin_name: str
     for path in ROLE_FILE_REF_RE.findall(text):
         if not (root / path).is_file():
             errors.append(f"{rel}: points to '{path}', which does not exist")
+    here = (root / rel).parent
+    for path in LOCAL_FILE_REF_RE.findall(text):
+        if not (here / path).resolve().is_file():
+            errors.append(f"{rel}: points to '{path}', which does not exist")
     if plugin_name:
         for name in re.findall(rf"(?<![/\w]){re.escape(plugin_name)}:([a-z0-9]+(?:-[a-z0-9]+)*)", text):
             if name not in skills | agents:
@@ -421,7 +427,7 @@ def check_references(root: Path, rel: PurePosixPath, text: str, plugin_name: str
                 errors.append(f"{rel}: names the command '/{plugin_name}:{name}', which does not exist")
 
 
-def check_commands(root: Path, plugin_name: str | None, errors: list[str]) -> None:
+def check_commands(root: Path, errors: list[str]) -> None:
     """Claude Code commands: thin Markdown wrappers with a description; Codex reaches the same skills."""
     directory = root / COMMANDS_DIR
     if not directory.is_dir():
@@ -539,7 +545,7 @@ def validate(root) -> list[str]:
     check_team_skill(root, roles, errors)
     check_team_index(root, errors)
     name = plugin_name if isinstance(plugin_name, str) else None
-    check_commands(root, name, errors)
+    check_commands(root, errors)
     check_all_references(root, name, errors)
     check_hooks(root, errors)
     return errors
@@ -553,7 +559,7 @@ def main(argv: list[str]) -> int:
     if errors:
         print(f"Plugin validation failed with {len(errors)} error(s)")
         return 1
-    print("Plugin manifests, marketplaces, skills and agents are valid")
+    print("Plugin manifests, marketplaces, skills, agents and commands are valid")
     return 0
 
 

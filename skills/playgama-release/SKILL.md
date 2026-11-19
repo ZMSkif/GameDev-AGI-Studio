@@ -87,11 +87,11 @@ Relay a tool's refusal `message` word for word. A permission one game got (Cat C
 ## Store texts and credits
 
 - Credits at the legal minimum; Cat Challenge's owner also ruled: the developer credit first, others in small collapsible text, never list technologies or track titles on screens, store pages or update notes. Confirm this rule per game.
-- The one technology name that must stay on screen is "Playgama Bridge … LGPL-3.0-or-later" inside the Licenses view, without "SDK" or a version (a review blocked a build showing the version).
+- The one technology name that must stay on screen is "Playgama Bridge … LGPL-3.0-or-later" inside the Licenses view. Cat Challenge, following its owner's no-technologies rule, also left out "SDK" and the version there (review 17: LGPL needs the name, the copyright, the licence and a pointer to the texts, not the version).
 
 ## Other platforms through Bridge
 
-YouTube Playables (initial download ≤ 30 MiB, recommended < 15 MiB; files < 30 MiB; pause only via its SDK, Page Visibility forbidden) is **UNVERIFIED** through Bridge 2.4.2 (see `../engine-profiles/references/web-profile.md` §8). CrazyGames requirements are **UNVERIFIED**; on 16.11.2026 the Playgama wiki said Playgama does not publish there. Partner sieves seen on 16.11.2026: MSN < 50 MB; Facebook needs two of purchases, leaderboards, multiplayer, sharing; Discord needs purchases and multiplayer; GameSnacks files < 10 MiB, start < 15 MiB, total < 100 MiB.
+YouTube Playables (initial download < 30 MiB, recommended < 15 MiB; files < 30 MiB; pause only via its SDK, Page Visibility forbidden) is **UNVERIFIED** through Bridge 2.4.2 (see `../engine-profiles/references/web-profile.md` §8). CrazyGames requirements are **UNVERIFIED**; on 16.11.2026 the Playgama wiki said Playgama does not publish there. Partner sieves seen on 16.11.2026: MSN < 50 MB; Facebook needs two of purchases, leaderboards, multiplayer, sharing; Discord needs purchases and multiplayer; GameSnacks files < 10 MiB, start < 15 MiB, total < 100 MiB.
 
 ## Source
 

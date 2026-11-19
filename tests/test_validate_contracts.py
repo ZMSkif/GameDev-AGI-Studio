@@ -237,6 +237,7 @@ URL_12 = "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/12"
 # A dummy decision for fixtures only; the real web profile cites its own owner decision issue.
 URL_DUMMY = "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/999"
 WEB_PROFILE = {
+    "engine": "Three.js or PixiJS v8 by game type",
     "decided_by": [URL_DUMMY],
     "use_for": ["html5_portal_games"],
     "render": {"3d": "threejs", "2.5d": "threejs", "2d_lite": "threejs_orthographic_dom_ui", "2d_rich": "pixijs_v8"},
@@ -252,6 +253,7 @@ class EngineProfileRules(FixtureCase):
             profiles = p["engine_profiles"]["profiles"]
             profiles.pop("web", None)
             profiles["godot"].pop("use_for", None)
+            profiles["godot"]["decided_by"] = [URL_12]
         self.edit_policy(godot_only)
         self.edit_boundaries(lambda b: b.update(modules=[m for m in b["modules"] if m["id"] != "web-game"]))
         vc.validate(self.root)
@@ -264,19 +266,22 @@ class EngineProfileRules(FixtureCase):
     def godot(self, p):
         return p["engine_profiles"]["profiles"]["godot"]
 
-    def add_web(self, *, module=True, link=True, profile=None):
-        """Add a web profile (fixture decision URL), its module and the manifest link."""
+    def add_web(self, *, module=True, link=(POLICY, "system-boundaries.json"), profile=None, godot_cites=True):
+        """Add a web profile, its module, the limit on godot and the fixture decision in the manifest."""
         def fn(p):
             p["engine_profiles"]["profiles"]["web"] = json.loads(json.dumps(profile or WEB_PROFILE))
             self.godot(p)["use_for"] = ["heavy_games", "desktop_games"]
+            if godot_cites:
+                self.godot(p)["decided_by"].append(URL_DUMMY)
         self.edit_policy(fn)
         if module:
             self.edit_boundaries(lambda b: b["modules"].append(
                 {"id": "web-game", "status": "active", "responsibility": "x", "engine_profile": "web"}))
-        if link:
-            m = self.read("manifest.json")
-            m["contracts"][POLICY]["decision_issue_urls"].append(URL_DUMMY)
-            self.write("manifest.json", m)
+        m = self.read("manifest.json")
+        for name in link:
+            m["contracts"][name]["decision_issue_urls"].append(URL_DUMMY)
+            m["contracts"][name]["decision_ids"].append("DEC-145")
+        self.write("manifest.json", m)
 
     def test_real_policy_keeps_godot_and_any_web_profile_has_its_own_decision(self):
         p = json.loads((REPO / "contracts/v1" / POLICY).read_text(encoding="utf-8"))
@@ -286,9 +291,11 @@ class EngineProfileRules(FixtureCase):
         self.assertIn(URL_12, profiles["godot"]["decided_by"])
         self.assertLessEqual(set(profiles), {"godot", "web"})
         if "web" in profiles:
-            own = [u for u in profiles["web"]["decided_by"] if u != URL_12]
-            self.assertTrue(own, "the web profile cites its own owner decision")
-            self.assertNotEqual(own, [URL_DUMMY], "the fixture URL never reaches the real contract")
+            m = json.loads((REPO / "contracts/v1/manifest.json").read_text(encoding="utf-8"))["contracts"][POLICY]
+            ids = dict(zip(m["decision_issue_urls"], m["decision_ids"]))
+            own = [u for u in profiles["web"]["decided_by"] if ids.get(u) == "DEC-145"]
+            self.assertTrue(own, "the web profile cites DEC-145")
+            self.assertNotIn(URL_DUMMY, own, "the fixture URL never reaches the real contract")
 
     def test_top_level_engine_rejected(self):
         self.edit_policy(lambda p: p.update(engine="Godot 4.x"))
@@ -359,12 +366,41 @@ class EngineProfileRules(FixtureCase):
         vc.validate(self.root)
 
     def test_web_profile_needs_its_own_decision(self):
-        self.add_web(link=False, profile=dict(WEB_PROFILE, decided_by=[URL_12]))
-        self.assertFails(PROFILE + "'web': needs its own owner decision, not only DEC-012")
+        self.add_web(profile=dict(WEB_PROFILE, decided_by=[URL_12]))
+        self.assertFails(PROFILE + "'web': decided_by must cite DEC-145")
 
-    def test_web_decision_must_be_linked_in_manifest(self):
-        self.add_web(link=False)
-        self.assertFails(PROFILE + "'web': manifest must link " + URL_DUMMY)
+    def test_web_profile_citing_another_linked_decision_fails(self):
+        url_11 = "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/11"  # linked for both contracts
+        self.add_web(profile=dict(WEB_PROFILE, decided_by=[url_11]))
+        self.assertFails(PROFILE + "'web': decided_by must cite DEC-145")
+
+    def test_web_decision_must_be_linked_for_the_policy(self):
+        self.add_web(link=("system-boundaries.json",))
+        self.assertFails("manifest must link " + URL_DUMMY + " for " + POLICY)
+
+    def test_web_decision_must_be_linked_for_the_boundaries(self):
+        self.add_web(link=(POLICY,))
+        self.assertFails("manifest must link " + URL_DUMMY + " for system-boundaries.json")
+
+    def test_godot_limit_needs_the_split_decision(self):
+        self.add_web(godot_cites=False)
+        self.assertFails(PROFILE + "'godot': a use_for limit needs DEC-145 in decided_by")
+
+    def test_godot_scoped_decisions_required(self):
+        self.edit_policy(lambda p: self.godot(p).update(profile_decision_issue_urls=[URL_12]))
+        self.assertFails(PROFILE + "'godot': profile_decision_issue_urls must list")
+
+    def test_every_profile_names_its_engine(self):
+        web = dict(WEB_PROFILE)
+        web.pop("engine")
+        self.add_web(profile=web)
+        self.assertFails(PROFILE + "'web': engine must name the engine")
+
+    def test_manifest_lists_must_pair_up(self):
+        m = self.read("manifest.json")
+        m["contracts"][POLICY]["decision_ids"].pop()
+        self.write("manifest.json", m)
+        self.assertFails("decision_issue_urls and decision_ids differ in length")
 
     def test_web_profile_needs_its_module(self):
         self.add_web(module=False)

@@ -28,7 +28,7 @@ Keep one glossary of the game's terms per language and write every wording chang
 
 ## 3. Layout on small screens
 
-Capture every touched state in the longest languages (de, fr, ru, uk; tr for glyphs) at 1280×720, 405×720, **360×640**, 640×360 and a 1:1 window; for anything shown in landscape, also 568×320, 667×375, 740×360 and 844×390. Measure where the letters themselves end, not the pill behind them. Fail on any clip, mid-word break, overlap, page scroll or control outside the viewport. Watch the smallest font size (a 360×640 card dropped to 8 px in r17, against 10.8 px before).
+Capture every touched state in the longest languages (de, fr, ru, uk; tr for glyphs). Cat Challenge's sizes, a good default: 1280×720, 405×720, **360×640**, 640×360 and a 1:1 window; for anything shown in landscape, also 568×320, 667×375, 740×360 and 844×390. Measure where the letters themselves end, not the pill behind them. Fail on any clip, mid-word break, overlap, page scroll or control outside the viewport. Watch the smallest font size (a 360×640 card dropped to 8 px in r17, against 10.8 px before).
 
 Seen in Cat Challenge: countdown words (READY / SET / GO) ran off the right edge in landscape in six languages while portrait was fine; a German compound overflowed a 64 px tile by 4 px on each side.
 

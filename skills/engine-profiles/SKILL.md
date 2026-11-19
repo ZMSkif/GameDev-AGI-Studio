@@ -18,7 +18,7 @@ The binding contract is `contracts/v1/game-production-policy.json` (`engine_prof
 
 ## Choose the profile
 
-1. Ask what the game is for at preproduction (the adaptive interview, DEC-078, #79). Portal HTML5 first → `web`. A large 3D world, a desktop store release or editor-heavy content → `godot`.
+1. Ask what the game is for at preproduction (the adaptive interview, DEC-078, #79). Portal HTML5 first → `web`. A large 3D world, a desktop store release or editor-heavy content → `godot`. Until the DEC-145 issue exists only the Godot profile may be proposed; for a portal game, ask the owner to register DEC-145 first.
 2. Propose the profile with the reason in the architecture document (DEC-080, #81). The owner approves it; never switch a game's profile on your own (DEC-017, #17).
 3. Inside the web profile, pick the renderer and libraries with the `web-stack-choice` skill.
 4. Record the choice in the game repository (its architecture or ADR), not in this plugin.
@@ -31,7 +31,7 @@ The binding contract is `contracts/v1/game-production-policy.json` (`engine_prof
 | DEC-069 (#70) Godot integration and deterministic tests | binding | proposed in DEC-145: deterministic Vitest tests of game logic and Playwright checks of the production build |
 | DEC-116 (#118) no WebDAV editing of the Godot project | binding | not applicable |
 | DEC-129 (#131) real Godot, Blender, browser and device evidence | binding | browser, device and Blender evidence bind; DEC-145 proposes the built web game in the browser in place of Godot evidence |
-| DEC-064 (#65) 3D character pipeline, in-engine validation | binding for new 3D characters | binding for new 3D characters; not for 2D assets or static props. An open question to the owner is in the DEC-145 draft |
+| DEC-064 (#65) 3D character pipeline, in-engine validation | binding for new 3D characters | binding for new 3D characters; not for 2D assets or static props. An exception for portal games would need its own owner decision |
 | DEC-054 (#54), DEC-056 (#56) logic apart from view and input; platform adapters | binding | binding |
 | DEC-057 (#57), DEC-058 (#58), DEC-059 (#59) platform build profiles, Bridge docs, YouTube rules | binding | binding; Playgama Bridge belongs to the Playgama platform profile, not to every web game |
 | DEC-068 (#69), DEC-070 to DEC-075 (#71 to #76) QA | binding | binding |
@@ -39,7 +39,7 @@ The binding contract is `contracts/v1/game-production-policy.json` (`engine_prof
 
 ## Evidence words
 
-- **shipped**: present in the code of a released build (Cat Challenge r17 is in the Playgama sandbox, 19.11.2026).
+- **shipped**: present in the code of a build that players can open (Cat Challenge r17, published to the Playgama sandbox on 19.11.2026; not yet through moderation).
 - **decided, not shipped**: agreed in a playbook but never imported by a shipped build. Say so when you recommend it.
 - **emulation**: a bench or a browser device profile. It is never a physical-device result (DEC-073, #74).
 

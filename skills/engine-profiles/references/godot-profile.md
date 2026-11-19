@@ -23,4 +23,4 @@ The binding entry is `engine_profiles.profiles.godot` in `contracts/v1/game-prod
 
 - Godot MCP connector selection is task PLUGIN-04 (#151); until it is done, report editor and export steps you could not run as `not_run`.
 - The installed `godot-prompter` plugin has Godot skills and agents (architecture, GDScript, shaders, UI, testing). Use them for engine craft; this plugin keeps the studio rules.
-- Web export of a Godot game: check the size and start-up path against the platform limits (Playgama: archive ≤ 300 MB, start-up memory under 2 GB; YouTube: initial download ≤ 30 MiB) before choosing Godot for a portal game. The owner's choice of a web profile for portal games waits for its decision issue (see `../SKILL.md`, Status).
+- Web export of a Godot game: check the size and start-up path against the platform limits (Playgama: archive ≤ 300 MB, start-up memory under 2 GB; YouTube: initial download < 30 MiB) before choosing Godot for a portal game. The owner's choice of a web profile for portal games waits for its decision issue (see `../SKILL.md`, Status).

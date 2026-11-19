@@ -13,7 +13,7 @@ Revenue = traffic × play time × impressions × eCPM × share + purchases. Traf
 
 ## Step 0: re-check live numbers
 
-Shares, eCPM and rules change. With the Playgama MCP, read `get_game_checklist`, `get_game_guides` (monetization and first-session guides) and `get_bridge_sdk_docs`. Label every number: [O] official, [S] self-reported or second-hand, [C] calculated. Anything older than 6 months is "re-check". Numbers below are from 17.11.2026.
+Shares, eCPM and rules change. With the Playgama MCP, read `get_game_checklist`, `get_game_guides` (monetization and first-session guides) and `get_bridge_sdk_docs`. Label every number: [O] official, [S] self-reported or second-hand, [C] calculated, [W] a working target the source set for itself. Anything older than 6 months is "re-check". Numbers below are from 17.11.2026.
 
 ## Ads
 
@@ -40,10 +40,10 @@ The platform already counts sessions, time, ads and purchases. Add 5–7 events 
 | KPI | Red | Yellow | Green |
 |---|---|---|---|
 | Click-to-play | < 55 % | 55–65 % | ≥ 65 % (Poki Web Fit [O]) |
-| Play time per player per day | < 5 min | 5–10 | ≥ 10 (≥ 20 for CrazyGames) |
-| Sessions under 60 s | > 40 % | 25–40 % | < 25 % |
-| D1 | < 18 % | 18–25 % | ≥ 25 % (mobile median ≈ 22 % [S]) |
-| D7 | < 3 % | 3–5 % | ≥ 5 % |
+| Play time per player per day | < 5 min | 5–10 | ≥ 10 (≥ 20 for CrazyGames) [W]; Poki asks ≥ 5 min [O] |
+| Sessions under 60 s | > 40 % | 25–40 % | < 25 % [W] |
+| D1 | < 18 % | 18–25 % | ≥ 25 % [W] (mobile median ≈ 22 % [S]) |
+| D7 | < 3 % | 3–5 % | ≥ 5 % [W] (mobile median < 4 % [S]) |
 | Rewarded watched per session | < 1 | 1–3 | 3–5 [O] |
 | Rewarded taken / offered | < 15 % | 15–30 % | 30–40 % [O] |
 
@@ -61,7 +61,7 @@ Never promise income. Give three scenarios with inputs, formulas and monthly tot
 
 ## Platforms and platform risk
 
-Choose the first portal by its sieve, not its audience size: Playgama and its network for games clear in 30 s; CrazyGames wants a unique twist, polish, 20+ minutes and English; Yandex wants Russian and ≥ 10 minutes of content; YouTube Playables wants ≤ 30 MB at start and long sessions, with no purchases. Poki requires a web exclusive, which blocks the other portals: always the owner's decision. Prove metrics on one platform, then widen with the same Bridge build and a per-platform storefront and QA. Keep a second exit ready.
+Choose the first portal by its sieve, not its audience size: Playgama and its network for games clear in 30 s; CrazyGames wants a unique twist, polish, 20+ minutes and English; Yandex wants Russian and ≥ 10 minutes of content; YouTube Playables wants under 30 MiB at start and long sessions, with no purchases. Poki requires a web exclusive, which blocks the other portals: always the owner's decision. Prove metrics on one platform, then widen with the same Bridge build and a per-platform storefront and QA. Keep a second exit ready.
 
 ## Ask the owner
 

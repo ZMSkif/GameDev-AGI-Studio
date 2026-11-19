@@ -817,6 +817,23 @@ class ReferenceTest(FixtureCase):
         (refs / "notes.md").write_text("See the `ghost` skill.\n", encoding="utf-8")
         self.assertFails("skills/demo-skill/references/notes.md: names the skill 'ghost'")
 
+    def test_missing_local_reference_file_fails(self):
+        self.write_skill("Tables: `references/tables.md`.\n")
+        self.assertFails("skills/demo-skill/SKILL.md: points to 'references/tables.md', which does not exist")
+
+    def test_existing_local_and_sibling_reference_files_pass(self):
+        refs = self.root / "skills" / "demo-skill" / "references"
+        refs.mkdir()
+        (refs / "tables.md").write_text("Back to `../SKILL.md`.\n", encoding="utf-8")
+        (self.root / "skills" / "studio-rules" / "SKILL.md").write_text(
+            STUDIO_RULES_SKILL + "See `../demo-skill/references/tables.md`.\n", encoding="utf-8")
+        self.write_skill("Tables: `references/tables.md`.\n")
+        self.assertEqual(self.errors(), [])
+
+    def test_missing_sibling_reference_file_fails(self):
+        self.write_skill("See `../studio-rules/references/none.md`.\n")
+        self.assertFails("points to '../studio-rules/references/none.md', which does not exist")
+
 
 class TeamIndexTest(FixtureCase):
     def test_unindexed_specialist_fails(self):

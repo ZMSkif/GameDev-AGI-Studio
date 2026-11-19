@@ -91,7 +91,7 @@ class ExtractionTest(ArchiveCase):
         self.assertEqual(ar.verdict_label("VERDICT (round 2): CONFIRMED"), "CONFIRMED")
 
     def test_two_different_verdicts_use_the_last_two(self):
-        body = "Part A VERDICT: BLOCKED\nPart B VERDICT: CONFIRMED"
+        body = "# Part A\nVERDICT: BLOCKED\n# Part B\n**VERDICT: CONFIRMED**"
         self.assertEqual(ar.verdict_label(body), "BLOCKED-CONFIRMED")
         t = self.transcript([user_record(notification(body))])
         written, _ = self.run_archive(t)
@@ -110,6 +110,32 @@ class ExtractionTest(ArchiveCase):
         t = self.transcript([record])
         written, _ = self.run_archive(t)
         self.assertEqual(written, ["2026-11-20_01_review_blocked.md"])
+
+
+    def test_verdict_quoted_inside_a_sentence_is_not_a_report(self):
+        body = "Done. The reviewer should answer `VERDICT: CONFIRMED` or `VERDICT: BLOCKED`."
+        self.assertIsNone(ar.verdict_label(body))
+        self.assertEqual(self.run_archive(self.transcript([user_record(notification(body))])), ([], []))
+
+    def test_label_ignores_a_quoted_verdict_in_a_real_report(self):
+        body = "VERDICT: BLOCKED\n\nA report quoting `VERDICT: CONFIRMED` or `VERDICT: BLOCKED` is no verdict."
+        self.assertEqual(ar.verdict_label(body), "BLOCKED")
+
+    def test_label_uses_distinct_verdicts(self):
+        self.assertEqual(ar.verdict_label("VERDICT: BLOCKED\nVERDICT: CONFIRMED\nVERDICT: BLOCKED"),
+                         "BLOCKED-CONFIRMED")
+
+    def test_record_without_timestamp_takes_the_last_one_seen(self):
+        blob = {"type": "api-request-blob", "message": {"content": notification("VERDICT: CONFIRMED blob")}}
+        t = self.transcript([user_record("plain text", ts="2026-11-18T09:00:00Z"), blob])
+        written, _ = self.run_archive(t)
+        self.assertEqual(written, ["2026-11-18_01_agent-review-piece-x-finished_confirmed.md"])
+
+    def test_summary_is_one_line_and_rerun_still_dedupes(self):
+        t = self.transcript([user_record(notification("VERDICT: CONFIRMED x", summary="Review\n---\n\npiece"))])
+        written, _ = self.run_archive(t)
+        self.assertIn("# Review: Review --- piece\n", (self.out / written[0]).read_text(encoding="utf-8"))
+        self.assertEqual(self.run_archive(t), ([], []))
 
 
 class DedupTest(ArchiveCase):
@@ -156,6 +182,17 @@ class SafetyTest(ArchiveCase):
         self.assertIn("GitHub token", skipped[0][1])
         self.assertFalse(self.out.exists())
 
+    def test_secret_or_forbidden_text_in_the_summary_is_skipped(self):
+        import re
+        t = self.transcript([user_record(notification("VERDICT: CONFIRMED ok", summary="fix ghp_" + "A" * 30))])
+        written, skipped = self.run_archive(t)
+        self.assertEqual(written, [])
+        self.assertIn("GitHub token", skipped[0][1])
+        t2 = self.transcript([user_record(notification("VERDICT: CONFIRMED ok", summary="see C:\\Users\\x"))], name="b.jsonl")
+        written, skipped = self.run_archive(t2, forbid=[re.compile(r"C:\\Users\\")])
+        self.assertEqual(written, [])
+        self.assertIn("--forbid", skipped[0][1])
+
     def test_forbid_pattern_is_skipped(self):
         import re
         t = self.transcript([user_record(notification("VERDICT: CONFIRMED\nlogs in C:\\Users\\someone\\tmp"))])
@@ -200,6 +237,39 @@ class CliTest(ArchiveCase):
     def test_bad_forbid_regex_gives_exit_two(self):
         t = self.transcript([])
         code, _, _ = self.call("--transcript", str(t), "--out", str(self.out), "--forbid", "(")
+        self.assertEqual(code, 2)
+
+    def test_empty_transcript_folder_gives_exit_two(self):
+        folder = self.root / "none"
+        folder.mkdir()
+        code, _, err = self.call("--transcript", str(folder), "--out", str(self.out))
+        self.assertEqual(code, 2)
+        self.assertIn("no transcript", err)
+
+    def test_session_id_finds_exactly_that_transcript(self):
+        import os
+        from unittest import mock
+        config = self.root / "config"
+        (config / "projects" / "proj-a").mkdir(parents=True)
+        (config / "projects" / "proj-b").mkdir(parents=True)
+        sid = "0123abcd-0000-1111-2222-333344445555"
+        (config / "projects" / "proj-a" / f"{sid}.jsonl").write_text(
+            json.dumps(user_record(notification("VERDICT: CONFIRMED mine"))) + "\n", encoding="utf-8")
+        (config / "projects" / "proj-b" / "other-session-0000.jsonl").write_text(
+            json.dumps(user_record(notification("VERDICT: BLOCKED not mine"))) + "\n", encoding="utf-8")
+        with mock.patch.dict(os.environ, {"CLAUDE_CONFIG_DIR": str(config)}):
+            code, out, _ = self.call("--session", sid, "--out", str(self.out))
+            self.assertEqual(code, 0)
+            self.assertIn("1 new verdict(s)", out)
+            self.assertEqual([p.name.endswith("_confirmed.md") for p in self.out.glob("*.md")], [True])
+            code, _, _ = self.call("--session", "missing-session-id", "--out", str(self.out))
+            self.assertEqual(code, 2)
+            code, _, _ = self.call("--session", "../../etc", "--out", str(self.out))
+            self.assertEqual(code, 2)
+
+    def test_session_and_transcript_are_exclusive(self):
+        t = self.transcript([])
+        code, _, _ = self.call("--session", "0123abcd-0000", "--transcript", str(t), "--out", str(self.out))
         self.assertEqual(code, 2)
 
     def test_missing_required_argument_gives_exit_two(self):

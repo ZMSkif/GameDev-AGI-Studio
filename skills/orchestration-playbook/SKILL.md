@@ -13,7 +13,7 @@ The coordinator writes briefs, splits the work, keeps file ownership disjoint, i
 
 ## 2. Piece cards
 
-Every piece of work gets a card (in the game's plan or its GitHub Issue):
+Every piece of work gets a card, and the card is its GitHub Issue (DEC-002, #2); a design document may explain the plan, but tasks, status and acceptance live in Issues:
 - **Goal**, an effort size (S ≤ ½ day, M 1–2 days, L 3–5, XL > 5);
 - **Acceptance**, numbered; each line says `Test:` (a script or test checks it) or `Shot:` (a screenshot checks it);
 - **Owns:** every file the piece may change ("new" = it creates the file); reading is free; one owner per file per wave;
@@ -35,15 +35,15 @@ A brief has nine parts: context (3–5 lines), read first, owns only, do not tou
 
 ## 4. Verbatim review archive
 
-Save every verdict as it arrived, numbered, in the game repository (Cat Challenge: 68 files in `docs/reviews/`). Use `/gamedev-studio:archive-reviews` or `python <plugin root>/scripts/archive_reviews.py --transcript <session.jsonl> --out docs/reviews`. It finds task notifications whose result holds a `VERDICT:` line, dedupes by content, numbers after the highest file and refuses secret-looking bodies. The archive is evidence; it is not a task tracker.
+Save every verdict as it arrived, numbered, in the game repository (Cat Challenge: 69 files in `docs/reviews/` by the evening of 19.11.2026). Use `/gamedev-studio:archive-reviews` or `python <plugin root>/scripts/archive_reviews.py --transcript <session.jsonl> --out docs/reviews`. It finds task notifications whose result holds a `VERDICT:` line, dedupes by content, numbers after the highest file and refuses secret-looking bodies. The archive is evidence; it is not a task tracker.
 
 ## 5. A visual progress board
 
 The Cat Challenge owner asked to see who did what and who reviewed it. Keep a board page (an Artifact) with one card per piece: status, area, title, bullets, who, reviewer, verdict, before and after images, next step, all in the owner's language and plain words. Update it after every report or verdict. The board is a view; GitHub Issues and PRs stay the record (DEC-002).
 
-## 6. Resume file for usage limits and restarts
+## 6. Resume notes for usage limits and restarts
 
-Agents stop on weekly limits (HTTP 429) or when the coordinator process restarts. Keep one short resume file in the game repository with only what the record does not hold: per stream the agent id, branch and commit, ports and the next step. On resume, continue each agent with `SendMessage` ("continue from where you stopped"), never start duplicates, and first tell every agent to commit what it has. Task status stays in GitHub. On a limit, pause (DEC-085).
+Agents stop on weekly limits (HTTP 429) or when the coordinator process restarts. Before a pause, write one resume comment on the game's tracking Issue (or its PR): per stream the branch and commit, its ports and the next step. Agent ids, which only the running coordinator can use, stay in the coordinator's own memory and are never committed. On resume, continue each agent with `SendMessage` ("continue from where you stopped"), never start duplicates, and first tell every agent to commit what it has. Cat Challenge kept a resume file in its repository (that project used Markdown plans); in a studio game the record is GitHub (DEC-002). On a limit, pause (DEC-085).
 
 ## 7. Ports, commits and machine hygiene
 

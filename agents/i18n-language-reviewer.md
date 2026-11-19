@@ -1,5 +1,5 @@
 ---
-name: i18n-native-reviewer
+name: i18n-language-reviewer
 description: Delegate to the i18n Language Reviewer, an on-demand read-only specialist, to review game text in all shipped languages - an AI language review of Russian and Ukrainian (meaning, gender-neutral address, calques, surzhyk, register, glossary), notes for native readers of the others, the validator, length lints at 360 px and small landscapes, and font glyph checks. Returns VERDICT CONFIRMED or BLOCKED. It is not a human native-speaker read and never claims to be.
 skills:
   - gamedev-studio:studio-rules
