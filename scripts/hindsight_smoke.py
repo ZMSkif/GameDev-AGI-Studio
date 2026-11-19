@@ -4,23 +4,27 @@
 It talks to a running server over HTTP (stdlib only) and prints a PASS / FAIL / MANUAL / UNKNOWN
 matrix (DEC-120); with --json each row has the shape of contracts/v1/integration-evidence.schema.json.
 It never deletes anything: memory is kept until the owner deletes it (DEC-138), so the test banks
-it creates stay and are named `<prefix>::...` for the owner to remove.
+it creates stay and are named `<prefix>::...-<run>` for the owner to remove. A run id is used for
+one store run only, so no document is ever replaced.
 
 Checks:
   S1 health            the server answers and its database is connected
-  S2 retain            facts are stored with provenance metadata and scope tags
+  S2 retain            each fact is stored (the server answers success for one item)
   S3 project isolation a fact retained in one project bank is not recalled from another (DEC-101)
-  S4 MCP isolation     the per-bank MCP endpoint of one project cannot reach another project's facts
+  S4 MCP isolation     alpha's per-bank MCP endpoint returns alpha's fact and never beta's, even when
+                       the call names beta's bank_id
   S5 task scope        task memories are found by their task tag and not by another task's tag
-  S6 provenance        recalled facts carry the provenance metadata they were stored with
-  S7 MCP allowlist     the per-bank MCP endpoint exposes exactly the allowed tools, so no delete,
-                       clear or unsourced reflect tool (DEC-138, provenance_required)
-  S8 persistence       with --recall-only after a server restart, the facts are still recalled
+  S6 provenance        recalled facts carry this run's provenance values, none of them empty
+  S7 MCP allowlist     the per-bank endpoint exposes exactly the contract's mcp_enabled_tools, so no
+                       delete, clear or unsourced reflect tool (DEC-138, provenance_required)
+  S8 persistence       after a server restart (--recall-only --after-restart), this run's facts are
+                       still recalled; without --after-restart it is MANUAL
+  S9 MCP read tools    list_memories, get_memory and get_bank answer on the per-bank endpoint and
+                       show no other bank's facts
 
 Usage:
   python scripts/hindsight_smoke.py [--url http://127.0.0.1:8888] [--prefix gamedev-studio-smoke]
-                                    [--run RUN_ID] [--recall-only] [--json]
-                                    [--allow-tools retain,recall,list_memories,get_memory,get_bank]
+                                    [--run RUN_ID] [--recall-only [--after-restart]] [--json]
 Exit codes: 0 no FAIL, 1 at least one FAIL, 2 bad arguments or the server is unreachable.
 """
 from __future__ import annotations
@@ -28,21 +32,27 @@ from __future__ import annotations
 import argparse
 import datetime as _dt
 import json
+import re
 import sys
 import urllib.error
 import urllib.request
 import uuid
+from pathlib import Path
 
-# The per-bank tools the plugin allows (contracts/v1/knowledge-policy.json memory_backend.mcp_enabled_tools).
-# `reflect` is left out: its answers come back without sources (based_on is null), against
-# provenance_required. Any tool outside this set on the endpoint is a FAIL, not only known delete names.
-ALLOWED_TOOLS = ("retain", "recall", "list_memories", "get_memory", "get_bank")
-REQUIRED_TOOLS = {"retain", "recall"}
+POLICY = Path(__file__).resolve().parents[1] / "contracts" / "v1" / "knowledge-policy.json"
 PROVENANCE_KEYS = ("source_type", "source", "source_rev", "recorded_by", "verified")
+SOURCE = "scripts/hindsight_smoke.py"
+RECORDED_BY = "gamedev-studio:hindsight_smoke"
+RUN_RE = re.compile(r"^[a-z0-9]{2,16}$")
 
 
 class SmokeError(RuntimeError):
     """The server could not be reached or answered with something unusable."""
+
+
+def allowed_tools() -> set[str]:
+    """The per-bank tools the contract allows (knowledge-policy.json memory_backend.mcp_enabled_tools)."""
+    return set(json.loads(POLICY.read_text(encoding="utf-8"))["memory_backend"]["mcp_enabled_tools"])
 
 
 def request(url: str, method: str = "GET", body=None, headers=None, timeout: float = 180.0):
@@ -60,31 +70,36 @@ def request(url: str, method: str = "GET", body=None, headers=None, timeout: flo
         raise SmokeError(f"{method} {url}: {exc}") from exc
 
 
+def as_json(raw: str):
+    try:
+        return json.loads(raw)
+    except ValueError:
+        return None
+
+
 def banks(prefix: str, run: str) -> dict[str, str]:
-    """Studio bank, two project banks; tasks are tags inside a project bank (DEC-101)."""
+    """A studio bank and two project banks per run; tasks are tags inside a project bank (DEC-101)."""
     return {
-        "studio": f"{prefix}::studio",
+        "studio": f"{prefix}::studio-{run}",
         "alpha": f"{prefix}::project::alpha-{run}",
         "beta": f"{prefix}::project::beta-{run}",
     }
 
 
-def provenance(source: str, rev: str) -> dict[str, str]:
-    return {"source_type": "smoke-test", "source": source, "source_rev": rev,
-            "recorded_by": "gamedev-studio:hindsight_smoke", "verified": "false"}
+def provenance(run: str) -> dict[str, str]:
+    return {"source_type": "smoke-test", "source": SOURCE, "source_rev": run,
+            "recorded_by": RECORDED_BY, "verified": "false"}
 
 
 def facts(run: str) -> list[dict]:
     """Facts with unique tokens, so a recall shows where an answer came from."""
     return [
         {"bank": "studio", "content": f"Studio rule {run}: every piece of work gets an independent reviewer.",
-         "tags": ["scope:studio"]},
-        {"bank": "alpha", "content": f"The alpha game {run} uses the cobalt-lantern colour palette.",
-         "tags": ["scope:project"]},
-        {"bank": "beta", "content": f"The beta game {run} uses the amber-kite colour palette.",
-         "tags": ["scope:project"]},
+         "tags": []},
+        {"bank": "alpha", "content": f"The alpha game {run} uses the cobalt-lantern colour palette.", "tags": []},
+        {"bank": "beta", "content": f"The beta game {run} uses the amber-kite colour palette.", "tags": []},
         {"bank": "alpha", "content": f"Task T1 of {run} fixed the lantern flicker by lifting the overlay 2 mm.",
-         "tags": ["scope:task", "task:T1"]},
+         "tags": ["task:T1"]},
     ]
 
 
@@ -92,10 +107,12 @@ def texts(recall_body: dict) -> str:
     return " ".join(str(r.get("text", "")) for r in recall_body.get("results", [])).lower()
 
 
-def has_provenance(recall_body: dict) -> bool:
+def has_provenance(recall_body: dict, run: str) -> bool:
+    """Every result carries this run's provenance, with no empty value."""
+    want = provenance(run)
     results = recall_body.get("results", [])
     return bool(results) and all(
-        isinstance(r.get("metadata"), dict) and all(k in r["metadata"] for k in PROVENANCE_KEYS)
+        isinstance(r.get("metadata"), dict) and all(r["metadata"].get(k) == want[k] for k in PROVENANCE_KEYS)
         for r in results)
 
 
@@ -106,7 +123,10 @@ def parse_mcp(raw: str, content_type: str) -> dict:
             if line.startswith("data:"):
                 return json.loads(line[5:].strip())
         raise SmokeError("MCP answer had no data line")
-    return json.loads(raw)
+    answer = as_json(raw)
+    if not isinstance(answer, dict):
+        raise SmokeError("MCP answer is not JSON")
+    return answer
 
 
 class McpSession:
@@ -130,39 +150,89 @@ class McpSession:
             self.headers["Mcp-Session-Id"] = lowered["mcp-session-id"]
         return parse_mcp(raw, lowered.get("content-type", ""))
 
+    def tool(self, name: str, arguments: dict) -> tuple[bool, object, str]:
+        """(ok, parsed payload, lower-case text of the whole answer); ok is False for an error answer."""
+        answer = self.call("tools/call", {"name": name, "arguments": arguments})
+        result = answer.get("result")
+        ok = "error" not in answer and isinstance(result, dict) and not result.get("isError")
+        payload = None
+        if isinstance(result, dict):
+            payload = result.get("structuredContent")
+            if payload is None and result.get("content"):
+                payload = as_json(str(result["content"][0].get("text", "")))
+        return ok, payload, json.dumps(answer, ensure_ascii=False).lower()
 
-def mcp_tools(base: str, bank: str) -> set[str]:
-    answer = McpSession(f"{base}/mcp/{bank}/").call("tools/list")
-    return {tool["name"] for tool in answer.get("result", {}).get("tools", [])}
 
-
-def mcp_recall_text(base: str, bank: str, query: str) -> str:
-    """What a per-bank MCP endpoint returns for a recall, as lower-case text."""
-    answer = McpSession(f"{base}/mcp/{bank}/").call("tools/call", {"name": "recall", "arguments": {"query": query}})
-    return json.dumps(answer.get("result", {}), ensure_ascii=False).lower()
+def endpoint(base: str, bank: str) -> str:
+    return f"{base}/mcp/{bank}/"
 
 
 def judge_tools(tools: set[str], allowed: set[str]) -> tuple[str, str]:
-    missing = sorted(REQUIRED_TOOLS - tools)
-    extra = sorted(tools - allowed)
-    if missing or extra:
-        return "FAIL", f"missing {missing}; outside the allowlist {extra}"
-    return "PASS", f"exactly the allowed tools: {sorted(tools)}"
+    if tools == allowed:
+        return "PASS", f"exactly the contract's tools: {sorted(tools)}"
+    return "FAIL", f"missing {sorted(allowed - tools)}; outside the contract {sorted(tools - allowed)}"
 
 
 def recall(base: str, bank: str, query: str, **extra) -> dict:
     body = {"query": query, "budget": "mid", "max_tokens": 2048}
     body.update(extra)
     status, _, raw = request(f"{base}/v1/default/banks/{bank}/memories/recall", "POST", body)
-    if status != 200:
+    answer = as_json(raw)
+    if status != 200 or not isinstance(answer, dict):
         raise SmokeError(f"recall {bank}: HTTP {status}: {raw[:200]}")
-    return json.loads(raw)
+    return answer
 
 
-def run(base: str, prefix: str, run_id: str, recall_only: bool, allowed: set[str]) -> list[tuple[str, str, str]]:
+def existing_banks(base: str) -> set[str]:
+    status, _, raw = request(f"{base}/v1/default/banks")
+    answer = as_json(raw)
+    if status != 200 or not isinstance(answer, dict):
+        raise SmokeError(f"list banks: HTTP {status}")
+    return {b.get("bank_id") for b in answer.get("banks", []) if isinstance(b, dict)}
+
+
+def retain_one(base: str, bank: str, item: dict) -> bool:
+    status, _, raw = request(f"{base}/v1/default/banks/{bank}/memories", "POST", {"items": [item]}, timeout=600)
+    answer = as_json(raw)
+    return status == 200 and isinstance(answer, dict) and answer.get("success") is True \
+        and answer.get("items_count") == 1
+
+
+def check_mcp_isolation(base: str, names: dict, run: str, question: str) -> tuple[str, str]:
+    session = McpSession(endpoint(base, names["alpha"]))
+    ok, _, own = session.tool("recall", {"query": question})
+    probe_ok, _, probe = session.tool("recall", {"query": question, "bank_id": names["beta"]})
+    leaked = "amber" in own or "amber" in probe
+    if ok and "cobalt" in own and not leaked:
+        how = "returned alpha's fact" if probe_ok and "cobalt" in probe else "was refused"
+        return "PASS", f"alpha's endpoint returns alpha's fact only; the call naming beta's bank_id {how}"
+    return "FAIL", f"own recall ok={ok} cobalt={'cobalt' in own}; beta's fact leaked={leaked}"
+
+
+def check_read_tools(base: str, names: dict) -> tuple[str, str]:
+    session = McpSession(endpoint(base, names["alpha"]))
+    listed_ok, listed, listed_text = session.tool("list_memories", {})
+    bank_ok, bank, _ = session.tool("get_bank", {})
+    items = listed.get("items", []) if isinstance(listed, dict) else []
+    memory_id = next((i.get("id") for i in items if isinstance(i, dict) and i.get("id")), None)
+    got_ok = False
+    if memory_id:
+        got_ok, got, _ = session.tool("get_memory", {"memory_id": memory_id})
+        got_ok = got_ok and isinstance(got, dict) and got.get("id") == memory_id
+    own_bank = isinstance(bank, dict) and bank.get("bank_id") == names["alpha"]
+    clean = "amber" not in listed_text
+    if listed_ok and bank_ok and got_ok and own_bank and "cobalt" in listed_text and clean:
+        return "PASS", "list_memories, get_bank and get_memory answered with alpha's data only"
+    return "FAIL", (f"list_memories ok={listed_ok} ({len(items)} items), get_bank ok={bank_ok} own={own_bank}, "
+                    f"get_memory ok={got_ok}, other bank's data absent={clean}")
+
+
+def run(base: str, prefix: str, run_id: str, recall_only: bool, after_restart: bool,
+        allowed: set[str]) -> list[tuple[str, str, str]]:
     rows: list[tuple[str, str, str]] = []
     status, _, raw = request(f"{base}/health")
-    healthy = status == 200 and json.loads(raw).get("database") == "connected"
+    health = as_json(raw)
+    healthy = status == 200 and isinstance(health, dict) and health.get("database") == "connected"
     rows.append(("S1 health", "PASS" if healthy else "FAIL", raw[:120]))
     if not healthy:
         return rows
@@ -170,14 +240,15 @@ def run(base: str, prefix: str, run_id: str, recall_only: bool, allowed: set[str
     if recall_only:
         rows.append(("S2 retain", "UNKNOWN", "not run in --recall-only mode"))
     else:
+        clash = sorted(set(names.values()) & existing_banks(base))
+        if clash:
+            raise SmokeError(f"run id {run_id} was used before ({', '.join(clash)}); pick a new --run, "
+                             "so no stored document is replaced")
         stored = 0
-        for index, fact in enumerate(facts(run_id)):
+        for fact in facts(run_id):
             item = {"content": fact["content"], "context": "gamedev-studio smoke test",
-                    "metadata": provenance("scripts/hindsight_smoke.py", run_id), "tags": fact["tags"],
-                    "document_id": f"smoke-{run_id}-{index}"}
-            status, _, _ = request(f"{base}/v1/default/banks/{names[fact['bank']]}/memories", "POST",
-                                   {"items": [item]}, timeout=600)
-            stored += status == 200
+                    "metadata": provenance(run_id), "tags": fact["tags"]}
+            stored += retain_one(base, names[fact["bank"]], item)
         rows.append(("S2 retain", "PASS" if stored == 4 else "FAIL", f"{stored}/4 retained over REST (sync)"))
     question = "Which colour palette does the game use?"
     alpha, beta = recall(base, names["alpha"], question), recall(base, names["beta"], question)
@@ -186,11 +257,7 @@ def run(base: str, prefix: str, run_id: str, recall_only: bool, allowed: set[str
     rows.append(("S3 project isolation", "PASS" if isolated else "FAIL",
                  f"alpha={texts(alpha)[:80]!r} beta={texts(beta)[:80]!r}"))
     try:
-        via_mcp = mcp_recall_text(base, names["alpha"], question)
-        mcp_isolated = "cobalt" in via_mcp and "amber" not in via_mcp
-        rows.append(("S4 MCP isolation", "PASS" if mcp_isolated else "FAIL",
-                     "the alpha per-bank endpoint returns alpha facts only (the multi-bank /mcp/ endpoint "
-                     "takes any bank_id, so the plugin wires one endpoint per bank)"))
+        rows.append(("S4 MCP isolation", *check_mcp_isolation(base, names, run_id, question)))
     except SmokeError as exc:
         rows.append(("S4 MCP isolation", "FAIL", str(exc)))
     t1 = recall(base, names["alpha"], "How was the flicker fixed?", tags=["task:T1"], tags_match="any_strict")
@@ -206,25 +273,44 @@ def run(base: str, prefix: str, run_id: str, recall_only: bool, allowed: set[str
                       tags_match="any_strict", **facts_only)
     observations = [r for r in alpha.get("results", []) + t1.get("results", []) if r.get("type") == "observation"]
     bare = sum(1 for r in observations if not r.get("metadata"))
-    rows.append(("S6 provenance", "PASS" if has_provenance(alpha_facts) and has_provenance(t1_facts) else "FAIL",
-                 f"facts carry {list(PROVENANCE_KEYS)}; {bare} of {len(observations)} derived observations "
-                 "have no metadata (unverified hints)"))
+    proven = has_provenance(alpha_facts, run_id) and has_provenance(t1_facts, run_id)
+    rows.append(("S6 provenance", "PASS" if proven else "FAIL",
+                 f"facts carry this run's {list(PROVENANCE_KEYS)}; {bare} of {len(observations)} derived "
+                 "observations have no metadata (unverified hints)"))
     try:
         rows.append(("S7 MCP allowlist", *judge_tools(mcp_tools(base, names["studio"]), allowed)))
     except SmokeError as exc:
         rows.append(("S7 MCP allowlist", "FAIL", str(exc)))
-    if recall_only:
+    if recall_only and after_restart:
         studio = recall(base, names["studio"], "Who reviews each piece of work?")
-        kept = "independent reviewer" in texts(studio) and isolated
+        kept = f"rule {run_id}" in texts(studio) and "independent reviewer" in texts(studio) and isolated
         rows.append(("S8 persistence", "PASS" if kept else "FAIL",
-                     f"facts of run {run_id} recalled by a later run; this proves persistence only if the "
-                     "server was restarted in between"))
+                     f"run {run_id}'s facts recalled after a restart the operator confirmed (--after-restart)"))
     else:
-        rows.append(("S8 persistence", "MANUAL", f"restart the server, then run with --recall-only --run {run_id}"))
+        rows.append(("S8 persistence", "MANUAL",
+                     f"restart the server, then run with --recall-only --after-restart --run {run_id}"))
+    try:
+        rows.append(("S9 MCP read tools", *check_read_tools(base, names)))
+    except SmokeError as exc:
+        rows.append(("S9 MCP read tools", "FAIL", str(exc)))
     return rows
 
 
-def evidence(rows, base: str, version: str, environment: str) -> list[dict]:
+def mcp_tools(base: str, bank: str) -> set[str]:
+    answer = McpSession(endpoint(base, bank)).call("tools/list")
+    return {tool["name"] for tool in answer.get("result", {}).get("tools", [])}
+
+
+def server_version(base: str) -> str:
+    try:
+        status, _, raw = request(f"{base}/v1/version")
+    except SmokeError:
+        return "unknown"
+    answer = as_json(raw)
+    return str(answer.get("api_version")) if status == 200 and isinstance(answer, dict) else "unknown"
+
+
+def evidence(rows, command: str, version: str, environment: str) -> list[dict]:
     """Rows in the shape of contracts/v1/integration-evidence.schema.json."""
     now = _dt.datetime.now(_dt.timezone.utc).replace(microsecond=0).isoformat()
     return [{
@@ -234,7 +320,7 @@ def evidence(rows, base: str, version: str, environment: str) -> list[dict]:
         "status": result.lower(),
         "version": version,
         "environment": environment,
-        "command_redacted": f"python scripts/hindsight_smoke.py --url {base}",
+        "command_redacted": command,
         "observed_result": observed,
         "recovery_test": "pass" if check.startswith("S8") and result == "PASS" else "not_run",
     } for check, result, observed in rows]
@@ -244,11 +330,12 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Smoke test a Hindsight server (read the module docstring).")
     parser.add_argument("--url", default="http://127.0.0.1:8888")
     parser.add_argument("--prefix", default="gamedev-studio-smoke")
-    parser.add_argument("--run", default=None, help="run id; reuse it with --recall-only")
-    parser.add_argument("--recall-only", action="store_true", help="store nothing; check earlier facts")
-    parser.add_argument("--allow-tools", default=",".join(ALLOWED_TOOLS), help="comma-separated MCP allowlist")
+    parser.add_argument("--run", default=None, help="run id (2-16 lower-case letters or digits); reuse it only "
+                                                    "with --recall-only")
+    parser.add_argument("--recall-only", action="store_true", help="store nothing; check an earlier run's facts")
+    parser.add_argument("--after-restart", action="store_true",
+                        help="with --recall-only: the server was restarted since the store run (S8)")
     parser.add_argument("--json", action="store_true", help="print integration-evidence rows as JSON")
-    parser.add_argument("--version", default="hindsight-api", help="server version for the evidence rows")
     parser.add_argument("--environment", default="local", help="environment for the evidence rows")
     try:
         args = parser.parse_args(argv)
@@ -257,17 +344,25 @@ def main(argv: list[str] | None = None) -> int:
     if args.recall_only and not args.run:
         print("ERROR: --recall-only needs the --run id of the earlier run", file=sys.stderr)
         return 2
+    if args.after_restart and not args.recall_only:
+        print("ERROR: --after-restart goes with --recall-only", file=sys.stderr)
+        return 2
     run_id = args.run or uuid.uuid4().hex[:8]
-    allowed = {t.strip() for t in args.allow_tools.split(",") if t.strip()}
+    if not RUN_RE.match(run_id):
+        print("ERROR: --run must be 2-16 lower-case letters or digits", file=sys.stderr)
+        return 2
     base = args.url.rstrip("/")
+    command = " ".join(["python scripts/hindsight_smoke.py", "--url", base, "--prefix", args.prefix, "--run", run_id]
+                       + (["--recall-only"] if args.recall_only else [])
+                       + (["--after-restart"] if args.after_restart else []))
     try:
-        rows = run(base, args.prefix, run_id, args.recall_only, allowed)
+        rows = run(base, args.prefix, run_id, args.recall_only, args.after_restart, allowed_tools())
     except SmokeError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
     if args.json:
-        print(json.dumps({"run": run_id, "evidence": evidence(rows, base, args.version, args.environment)},
-                         ensure_ascii=False, indent=2))
+        rows_json = evidence(rows, command, server_version(base), args.environment)
+        print(json.dumps({"run": run_id, "evidence": rows_json}, ensure_ascii=False, indent=2))
     else:
         print(f"run {run_id}")
         for check, result, observed in rows:

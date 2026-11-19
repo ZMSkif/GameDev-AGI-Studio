@@ -193,6 +193,11 @@ FORBIDDEN_MEMORY_TOOLS = {"delete_bank", "clear_memories", "delete_document", "d
 NEVER_STORE = {"secrets", "personal_data", "unverified_claims_as_facts"}
 REQUIRED_MEMORY_METADATA = {"source_type", "source", "source_rev", "recorded_by", "verified"}
 PLACEMENT_VALUES = {"owner_decision_pending", "local", "server"}
+PLACEMENT_TASK = REPO_ISSUES + "150"
+EVIDENCE_URL = re.compile(re.escape(REPO_ISSUES) + r"[1-9][0-9]*(#issuecomment-[0-9]+)?")
+NO_PAID_EXTRACTION = "subscription_or_local_model_never_paid_api"            # DEC-019, DEC-085
+FACT_TYPES = ["world", "experience"]
+RETAIN_NEVER_PASSES = {"document_id", "update_mode"}                          # DEC-138
 
 
 def check_against_schema(value, schema, where):
@@ -212,6 +217,10 @@ def check_against_schema(value, schema, where):
             check(isinstance(item, bool), f"{where}.{key}: must be true or false")
         if rule.get("type") == "array":
             check(isinstance(item, list) and len(item) >= rule.get("minItems", 0), f"{where}.{key}: must be a list")
+            items = rule.get("items", {})
+            if items.get("type") == "string":
+                check(all(isinstance(i, str) and len(i) >= items.get("minLength", 0) for i in item),
+                      f"{where}.{key}: every item must be a non-empty string")
         if rule.get("type") == "string":
             check(isinstance(item, str) and len(item) >= rule.get("minLength", 0), f"{where}.{key}: must be a string")
 
@@ -228,6 +237,8 @@ def validate_knowledge_policy(policy, tool_schema):
     check(policy.get("persistent_project_knowledge_deletion") == "manual_owner_action_only",
           f"{where}: only the owner deletes memory (DEC-138)")
     check(policy.get("provenance_required") is True, f"{where}: provenance_required must be true (DEC-102)")
+    check(policy.get("context_revision_required") is True,
+          f"{where}: context_revision_required must be true (DEC-102)")
     check(policy.get("retrieval_modes") == RETRIEVAL_MODES and policy.get("default_retrieval_mode") == "auto",
           f"{where}: retrieval_modes must be {RETRIEVAL_MODES} with default auto (DEC-104)")
     backend = policy.get("memory_backend")
@@ -235,19 +246,31 @@ def validate_knowledge_policy(policy, tool_schema):
     capability = backend.get("capability")
     check_against_schema(capability, tool_schema, f"{where} memory_backend.capability")
     check(capability["paid"] is False, f"{where}: the memory backend must not be a paid service (DEC-019, DEC-085)")
+    check(backend.get("llm_for_extraction") == NO_PAID_EXTRACTION,
+          f"{where}: llm_for_extraction must be {NO_PAID_EXTRACTION!r} (DEC-019, DEC-085)")
     if capability["availability"] == "verified":
         check(isinstance(capability.get("last_verified_at"), str) and capability["last_verified_at"],
               f"{where}: a verified backend needs last_verified_at (DEC-046, DEC-125)")
+        check(isinstance(capability.get("evidence_url"), str) and bool(EVIDENCE_URL.fullmatch(capability["evidence_url"])),
+              f"{where}: a verified backend needs evidence_url on an issue or comment in this repository (DEC-046, DEC-125)")
     check(backend.get("placement") in PLACEMENT_VALUES, f"{where}: placement must be one of {sorted(PLACEMENT_VALUES)}")
+    if backend.get("placement") == "owner_decision_pending":
+        check(backend.get("placement_task") == PLACEMENT_TASK, f"{where}: a pending placement must link {PLACEMENT_TASK}")
     check("endpoint" not in backend and "url" not in backend,
           f"{where}: the endpoint is the owner's choice (task #150) and lives in each game's MCP config, not here")
     tools = set(backend.get("mcp_enabled_tools", []))
     check(tools and tools <= set(capability["supported_actions"]),
           f"{where}: mcp_enabled_tools must be a non-empty subset of the capability's supported_actions")
-    banned = sorted(tools & FORBIDDEN_MEMORY_TOOLS)
-    check(not banned, f"{where}: mcp_enabled_tools must not include {banned}")
+    banned = sorted((tools | set(capability["supported_actions"])) & FORBIDDEN_MEMORY_TOOLS)
+    check(not banned, f"{where}: mcp_enabled_tools and supported_actions must not include {banned}")
     check(backend.get("reflect_allowed") is False, f"{where}: reflect has no sources; reflect_allowed must be false")
     check(backend.get("endpoint_per_bank") is True, f"{where}: one MCP endpoint per bank keeps projects apart (DEC-101)")
+    check(backend.get("recall_types_for_facts") == FACT_TYPES,
+          f"{where}: recall_types_for_facts must be {FACT_TYPES}; observations carry no provenance")
+    check(backend.get("observations") == "unverified_hints", f"{where}: observations must be unverified_hints")
+    limits = backend.get("known_limits")
+    check(isinstance(limits, list) and bool(limits) and all(isinstance(x, str) and x for x in limits),
+          f"{where}: known_limits must list what the smoke test found")
     naming = backend.get("bank_naming", {})
     check(set(naming) == set(KNOWLEDGE_SCOPES) and "{repository}" in naming.get("project", ""),
           f"{where}: bank_naming must name the studio, project ({{repository}}) and task scopes")
@@ -255,14 +278,28 @@ def validate_knowledge_policy(policy, tool_schema):
     check(NEVER_STORE <= set(rules.get("never_store", [])), f"{where}: never_store must include {sorted(NEVER_STORE)}")
     check(REQUIRED_MEMORY_METADATA <= set(rules.get("required_metadata", [])),
           f"{where}: required_metadata must include {sorted(REQUIRED_MEMORY_METADATA)}")
+    check(rules.get("scope_is_the_bank") is True and "scope_tags" not in rules,
+          f"{where}: the bank is the scope; scope tags hid memories in the smoke test")
+    check(RETAIN_NEVER_PASSES <= set(rules.get("retain_never_passes", [])),
+          f"{where}: retain_never_passes must include {sorted(RETAIN_NEVER_PASSES)}; a repeated document_id "
+          f"replaces memory (DEC-138)")
     learning = policy.get("learning", {})
     check(isinstance(learning.get("noise_guard_min_independent_occurrences"), int)
           and learning["noise_guard_min_independent_occurrences"] >= 2,
           f"{where}: a lesson needs at least 2 independent occurrences (or one severe)")
+    check(learning.get("noise_guard_single_severe") == "blocker" and learning.get("independence_key") == "piece",
+          f"{where}: one blocker is severe, and independence is counted per piece")
     check(learning.get("notify_every_automatic_change") is True, f"{where}: every automatic change is notified (DEC-100)")
-    check(learning.get("push_pr_or_issue_requires_owner_yes") is True,
-          f"{where}: pushes, PRs and Issues from lessons need the owner's yes")
-
+    check(learning.get("auto_apply_requires_passing_checks") is True,
+          f"{where}: automatic changes must be verified first (DEC-106: safe, verified, non-creative)")
+    check(learning.get("push_or_pr_requires_owner_yes") is True,
+          f"{where}: pushes and PRs from lessons need the owner's yes")
+    check("push_pr_or_issue_requires_owner_yes" not in learning,
+          f"{where}: Issues are engineering tasks agents may create (DEC-008); the rule covers push and PR only")
+    sources = learning.get("rule_sources", {})
+    check(isinstance(sources, dict) and all(isinstance(sources.get(k), str) and sources[k] for k in
+                                            ("noise_guard", "push_or_pr_requires_owner_yes")),
+          f"{where}: learning.rule_sources must cite where the noise guard and the push/PR rule come from")
 
 def validate(root):
     """Validate the contract set under root; return the number of contracts."""

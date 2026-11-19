@@ -5,9 +5,19 @@ description: Long-term studio and project memory through Hindsight over MCP (DEC
 
 # Memory (Hindsight)
 
-Binding: DEC-024 (#24) memory is retrievable, never authoritative; DEC-101 (#102) studio, project and task levels; DEC-102 (#103) only relevant sources, with revision and provenance; DEC-103 (#104) the approved source of truth wins over memory; DEC-104 (#106) Auto, Always Verify, Memory First and Manual; DEC-138 (#140) memory stays until the owner deletes it; DEC-019 (#19), DEC-085 (#86) no paid API; DEC-090 (#91) no secrets in prompts or stores. The contract is `contracts/v1/knowledge-policy.json`.
+Binding:
+- DEC-024 (#24): memory is retrievable, never authoritative.
+- DEC-101 (#102): studio, project and task levels.
+- DEC-102 (#103): only relevant sources, with revision and provenance.
+- DEC-103 (#104): the approved source of truth wins over memory.
+- DEC-104 (#106): Auto, Always Verify, Memory First and Manual.
+- DEC-138 (#140): memory stays until the owner deletes it.
+- DEC-019 (#19), DEC-085 (#86): no paid API.
+- DEC-090 (#91): no secrets in prompts or stores.
 
-**Status (19.11.2026):** Hindsight 1.2.2 passed a local smoke test on the owner's PC (`scripts/hindsight_smoke.py`). Where the server finally runs, this PC or a server, is the owner's choice (task #150). Until then use the local server, and never change another machine.
+The contract is `contracts/v1/knowledge-policy.json`.
+
+**Status (19.11.2026):** Hindsight 1.2.2 passed a local smoke test on the owner's PC (`scripts/hindsight_smoke.py`). Where the server finally runs, this PC or a server, is the owner's choice (task #150). Until the owner decides, only the local smoke server runs. Connect a game only with the owner's yes, and never change another machine. The contract marks the backend `unverified` until the smoke evidence is posted on #150.
 
 ## 1. Banks and scopes
 
@@ -17,7 +27,7 @@ Binding: DEC-024 (#24) memory is retrievable, never authoritative; DEC-101 (#102
 | project | bank `gamedev-studio::project::<repository>` | "In cat-challenge the round-3 lesson runs inside the first show." |
 | task | the project bank, tag `task:<issue number>` | "Issue 42: the collar spike came from an unbisected border." |
 
-- Add a scope tag to every memory (`scope:studio`, `scope:project`, `scope:task`).
+- **The bank is the scope.** Do not add `scope:` tags. Tag a task memory `task:<issue number>`.
 - **One MCP endpoint per bank.** The multi-bank endpoint `/mcp/` accepts any `bank_id`, so a session there can read other games. The smoke test showed it. Wire only per-bank endpoints into a game.
 
 ## 2. Connect a game repository (each step needs the owner's yes)
@@ -41,7 +51,16 @@ Store only what helps later work and is backed by a source:
 - a recurring failure class (`lessons` skill);
 - a piece's outcome, with its review verdict file.
 
-Every retain carries `metadata` with `source_type`, `source` (file, issue or commit), `source_rev` (commit or date), `recorded_by` (role) and `verified` (`"false"` unless a reviewer confirmed it). It also carries the scope tags. A memory without provenance is not stored.
+Every retain carries `metadata` with:
+- `source_type`;
+- `source`: a file, issue or commit;
+- `source_rev`: a commit or date;
+- `recorded_by`: the role;
+- `verified`: `"false"` unless a reviewer confirmed it.
+
+A memory without provenance is not stored.
+
+**Never pass `document_id` or `update_mode`.** In Hindsight 1.2.2, a retain whose `document_id` already exists replaces that document: its earlier memories are deleted (the default `update_mode` is `replace`). That would delete memory, which only the owner may do (DEC-138). Leave the id out, and Hindsight makes a new one. A script that needs an id makes it unique for every run, as `mine_lessons.py` does.
 
 **Never store:**
 - secrets, tokens, keys or passwords;
@@ -50,21 +69,23 @@ Every retain carries `metadata` with `source_type`, `source` (file, issue or com
 - whole transcripts;
 - copyrighted text.
 
-Before a retain, check the content as `scripts/archive_reviews.py` checks a verdict: secret patterns and the project's `--forbid` patterns. Retain over MCP is asynchronous, so a recall right after it can come back empty; recall again after about 20 s.
+Before a retain, check the whole payload (content, metadata and tags) as `scripts/archive_reviews.py` checks a verdict: secret patterns and the project's `--forbid` patterns.
+
+Retain over MCP is asynchronous, so a recall right after it can come back empty. Recall again after about 20 s.
 
 ## 4. Recall and the four modes
 
 | Mode | When | What to do |
 |---|---|---|
 | **Auto** (default) | normal work | Recall, then check every memory you act on against its source before relying on it. |
-| **Always Verify** | decisions, money, publishing, anything risky | Recall only as a pointer; read the source (issue, file, commit) itself; act only on the source. |
+| **Always Verify** | decisions, money, publishing, anything risky | Recall only as a pointer and act only on the source. Read the source itself (issue, file, commit). For an uncertain provider or tool claim, also check the official docs or run a small experiment. |
 | **Memory First** | low-risk recall of studio practice | Use the memory directly, still showing its provenance, and say it is from memory. |
 | **Manual** | the owner asked for it, or no memory server is wired | Do not recall; ask the owner. |
 
 - Recall facts with `types: ["world", "experience"]`. Derived observations come back without provenance, so they are hints, never evidence.
-- **The bank is the scope.** Recall from both the project bank and the studio bank, and do not filter by `scope:` tags. A tag filter hid a project memory in the smoke test. Filter only by `task:<n>` when you want one task's memories.
+- Recall from both the project bank and the studio bank. For one task's memories, pass `tags: ["task:<n>"]` with `tags_match: "any_strict"`. The default `any` also returns untagged memories.
 - `reflect` is not used: its answers carry no sources, and the server's MCP allowlist leaves it out.
-- **The approved source of truth always wins** (DEC-103). That means the decision issues, then the approved GDD, Art Bible and architecture, then memory. When a memory contradicts a source, follow the source. Report the stale memory to the owner; never delete or "fix" it yourself.
+- **The approved source of truth always wins** (DEC-103). The order is: the decision issues, then the approved GDD, Art Bible and architecture, then memory. When a memory contradicts a source, follow the source. Report the stale memory to the owner; never delete or "fix" it yourself.
 
 ## 5. Running the server (local)
 
@@ -76,14 +97,22 @@ HINDSIGHT_API_MCP_ENABLED_TOOLS=retain,recall,list_memories,get_memory,get_bank 
 ```
 
 - Bind to 127.0.0.1. The default is 0.0.0.0 with an unauthenticated MCP endpoint.
-- The `claude-code` provider uses the owner's Claude subscription (no API key). The `openai-codex` provider or a local Ollama model are the other no-paid-API options.
+- The `claude-code` provider uses the owner's Claude subscription (no API key). The `openai-codex` provider and a local Ollama model are the other no-paid-API options; neither was tested.
 - The first start downloads the search models from Hugging Face. It can take longer than the default 300 s init timeout.
-- After any change, run `python scripts/hindsight_smoke.py`. With `--json` it prints rows for `contracts/v1/integration-evidence.schema.json`.
+- After any change, run `python scripts/hindsight_smoke.py --run <new id>`. With `--json` it prints rows for `contracts/v1/integration-evidence.schema.json`.
+- To check persistence, restart the server, then run `--recall-only --run <the same id> --after-restart`. Without `--after-restart`, S8 is MANUAL.
 
 ## 6. Deleting
 
-Only the owner deletes memory, from the control plane or the admin CLI (DEC-138). Agents never call delete or clear tools, even on smoke banks, and never send DELETE to the REST API, which is open on localhost. If memory must go, ask the owner and name the bank and the memories.
+Only the owner deletes memory, by their own means (DEC-138). The 1.2.2 admin CLI has no delete command. The REST API's DELETE routes are open on the server without auth, and only this rule keeps agents off them.
+
+Agents never call delete or clear tools, even on smoke banks, and never send DELETE to the REST API. If memory must go, ask the owner and name the bank and the memories.
 
 ## Source
 
-Hindsight docs at hindsight.vectorize.io (installation, models, MCP server, configuration, memories API; read 19.11.2026). Smoke test on the owner's PC, 19.11.2026, `scripts/hindsight_smoke.py`: S1–S8 PASS, Claude Code and Codex both read and write one bank over MCP, the multi-bank endpoint crosses banks, observations and reflect carry no sources.
+- Hindsight docs at hindsight.vectorize.io (installation, models, MCP server, configuration, memories API; read 19.11.2026), and the 1.2.2 source for `document_id`, `update_mode` and `tags_match`.
+- Smoke test on the owner's PC, 19.11.2026, `scripts/hindsight_smoke.py`:
+  - Claude Code and Codex both read and write one bank over MCP;
+  - the multi-bank endpoint crosses banks;
+  - observations and reflect carry no sources;
+  - REST DELETE is open on localhost.

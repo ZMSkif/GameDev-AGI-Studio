@@ -45,13 +45,14 @@
         "bank:gamedev-studio::project::{repository}"
       ],
       "paid": false,
-      "availability": "verified",
+      "availability": "unverified",
       "last_verified_at": "2026-11-19T16:40:00Z",
       "evidence_url": null,
       "license": "MIT",
       "recovery_policy": "manual_recovery"
     },
     "verified_environment": "local smoke test on the owner's Windows PC, embedded PostgreSQL, LLM via the owner's Claude subscription",
+    "verification_note": "the local smoke test passed on 2026-11-19; availability becomes verified, with evidence_url, once the evidence is posted on task #150",
     "placement": "owner_decision_pending",
     "placement_task": "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/150",
     "bank_naming": {
@@ -73,7 +74,14 @@
       "experience"
     ],
     "observations": "unverified_hints",
-    "llm_for_extraction": "subscription_or_local_model_never_paid_api"
+    "llm_for_extraction": "subscription_or_local_model_never_paid_api",
+    "known_limits": [
+      "the multi-bank /mcp/ endpoint accepts any bank_id, so wire one endpoint per bank",
+      "observations and reflect answers carry no provenance",
+      "the REST API's DELETE routes are open on the server without auth",
+      "the server binds 0.0.0.0 unless HINDSIGHT_API_HOST is set",
+      "a retain with an existing document_id replaces that document by default, so agents never pass document_id or update_mode"
+    ]
   },
   "storage_rules": {
     "store": [
@@ -97,18 +105,26 @@
       "verified"
     ],
     "verified_default": "false",
-    "scope_tags": [
-      "scope:studio",
-      "scope:project",
-      "scope:task"
+    "scope_is_the_bank": true,
+    "task_tag": "task:{issue_number}",
+    "retain_never_passes": [
+      "document_id",
+      "update_mode"
     ]
   },
   "learning": {
     "evidence": "verbatim_review_archive_and_qa_failures",
     "noise_guard_min_independent_occurrences": 2,
     "noise_guard_single_severe": "blocker",
+    "independence_key": "piece",
     "safe_noncreative_auto_apply": true,
+    "auto_apply_requires_passing_checks": true,
     "notify_every_automatic_change": true,
-    "push_pr_or_issue_requires_owner_yes": true
+    "push_or_pr_requires_owner_yes": true,
+    "rule_sources": {
+      "noise_guard": "the owner's brief for the memory round, 2026-11-19, relayed by the coordinator",
+      "push_or_pr_requires_owner_yes": "the owner's brief for the memory round, 2026-11-19, relayed by the coordinator; AGENTS.md rule 5",
+      "auto_apply_requires_passing_checks": "DEC-106 (#108): safe, verified, non-creative changes"
+    }
   }
 }

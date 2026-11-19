@@ -474,9 +474,31 @@ class KnowledgePolicyRules(FixtureCase):
         self.edit_kp(lambda p: self.backend(p)["capability"].update(paid=True))
         self.assertFails("must not be a paid service")
 
+    def verified(self, p, **extra):
+        cap = self.backend(p)["capability"]
+        cap.update(availability="verified", last_verified_at="2026-11-19T16:40:00Z",
+                   evidence_url=vc.REPO_ISSUES + "150#issuecomment-1")
+        cap.update(extra)
+
+    def test_verified_with_date_and_evidence_passes(self):
+        self.edit_kp(self.verified)
+        vc.validate(self.root)
+
     def test_verified_needs_a_date(self):
-        self.edit_kp(lambda p: self.backend(p)["capability"].update(last_verified_at=None))
+        self.edit_kp(lambda p: self.verified(p, last_verified_at=None))
         self.assertFails("a verified backend needs last_verified_at")
+
+    def test_verified_needs_evidence_in_this_repository(self):
+        for url in (None, "https://example.com/evidence", vc.REPO_ISSUES + "150x", "notes/smoke.md"):
+            with self.subTest(url=url):
+                self.reset_kp()
+                self.edit_kp(lambda p, url=url: self.verified(p, evidence_url=url))
+                self.assertFails("a verified backend needs evidence_url")
+
+    def test_unverified_needs_no_evidence(self):
+        p = json.loads((REPO / "contracts/v1/knowledge-policy.json").read_text(encoding="utf-8"))
+        self.assertEqual(p["memory_backend"]["capability"]["availability"], "unverified")
+        self.assertIsNone(p["memory_backend"]["capability"]["evidence_url"])
 
     def test_destructive_or_unsourced_tools_fail(self):
         for tool in ("delete_bank", "clear_memories", "reflect"):
@@ -485,8 +507,12 @@ class KnowledgePolicyRules(FixtureCase):
                     self.backend(p)["mcp_enabled_tools"].append(tool)
                     self.backend(p)["capability"]["supported_actions"].append(tool)
                 self.edit_kp(fn)
-                self.assertFails("mcp_enabled_tools must not include")
-                shutil.copy(REPO / "contracts/v1/knowledge-policy.json", self.dir / "knowledge-policy.json")
+                self.assertFails("mcp_enabled_tools and supported_actions must not include")
+                self.reset_kp()
+
+    def test_destructive_tool_in_supported_actions_alone_fails(self):
+        self.edit_kp(lambda p: self.backend(p)["capability"]["supported_actions"].append("delete_bank"))
+        self.assertFails("must not include ['delete_bank']")
 
     def test_tool_outside_supported_actions_fails(self):
         self.edit_kp(lambda p: self.backend(p)["mcp_enabled_tools"].append("list_banks"))
@@ -514,16 +540,62 @@ class KnowledgePolicyRules(FixtureCase):
         self.edit_kp(lambda p: p["storage_rules"]["required_metadata"].remove("source_rev"))
         self.assertFails("required_metadata must include")
 
-    def test_learning_guards(self):
-        self.edit_kp(lambda p: p["learning"].update(noise_guard_min_independent_occurrences=1))
-        self.assertFails("at least 2 independent occurrences")
+    def reset_kp(self):
         shutil.copy(REPO / "contracts/v1/knowledge-policy.json", self.dir / "knowledge-policy.json")
-        self.edit_kp(lambda p: p["learning"].update(push_pr_or_issue_requires_owner_yes=False))
-        self.assertFails("need the owner's yes")
-        shutil.copy(REPO / "contracts/v1/knowledge-policy.json", self.dir / "knowledge-policy.json")
-        self.edit_kp(lambda p: p["learning"].update(notify_every_automatic_change=False))
-        self.assertFails("every automatic change is notified (DEC-100)")
 
+    def assertEditFails(self, fn, fragment):
+        self.reset_kp()
+        self.edit_kp(fn)
+        self.assertFails(fragment)
+
+    def test_learning_guards(self):
+        learning = lambda **kw: (lambda p: p["learning"].update(kw))
+        self.assertEditFails(learning(noise_guard_min_independent_occurrences=1), "at least 2 independent occurrences")
+        self.assertEditFails(learning(push_or_pr_requires_owner_yes=False), "pushes and PRs from lessons need")
+        self.assertEditFails(lambda p: p["learning"].pop("push_or_pr_requires_owner_yes"), "pushes and PRs from lessons")
+        self.assertEditFails(learning(push_pr_or_issue_requires_owner_yes=True), "agents may create (DEC-008)")
+        self.assertEditFails(learning(notify_every_automatic_change=False), "every automatic change is notified (DEC-100)")
+        self.assertEditFails(learning(auto_apply_requires_passing_checks=False), "must be verified first (DEC-106")
+        self.assertEditFails(learning(noise_guard_single_severe="any_should_fix"), "one blocker is severe")
+        self.assertEditFails(learning(independence_key="file"), "independence is counted per piece")
+        self.assertEditFails(learning(rule_sources={"noise_guard": "x"}), "rule_sources must cite")
+        self.assertEditFails(learning(rule_sources={"noise_guard": "", "push_or_pr_requires_owner_yes": "y"}),
+                             "rule_sources must cite")
+
+    def test_core_guarantees(self):
+        top = lambda **kw: (lambda p: p.update(kw))
+        self.assertEditFails(top(memory_cannot_override_owner_decisions=False), "must not override decisions (DEC-024)")
+        self.assertEditFails(top(provenance_required=False), "provenance_required must be true (DEC-102)")
+        self.assertEditFails(top(context_revision_required=False), "context_revision_required must be true (DEC-102)")
+        self.assertEditFails(lambda p: p.pop("context_revision_required"), "context_revision_required must be true")
+
+    def test_backend_guarantees(self):
+        backend = lambda **kw: (lambda p: self.backend(p).update(kw))
+        self.assertEditFails(backend(llm_for_extraction="paid_api_allowed"), "llm_for_extraction must be")
+        self.assertEditFails(backend(observations="facts"), "observations must be unverified_hints")
+        self.assertEditFails(backend(recall_types_for_facts=["world", "experience", "observation"]),
+                             "recall_types_for_facts must be")
+        self.assertEditFails(backend(known_limits=[]), "known_limits must list")
+        self.assertEditFails(backend(known_limits=[""]), "known_limits must list")
+        self.assertEditFails(backend(placement="anywhere"), "placement must be one of")
+        self.assertEditFails(lambda p: self.backend(p).pop("placement"), "placement must be one of")
+        self.assertEditFails(backend(placement_task=vc.REPO_ISSUES + "1"), "a pending placement must link")
+        self.assertEditFails(backend(url="http://127.0.0.1:8888/mcp/"), "the endpoint is the owner's choice")
+
+    def test_schema_types_and_extra_keys(self):
+        cap = lambda **kw: (lambda p: self.backend(p)["capability"].update(kw))
+        self.assertEditFails(cap(permission_scopes=[None]), "permission_scopes: every item must be a non-empty string")
+        self.assertEditFails(cap(permission_scopes=[""]), "permission_scopes: every item must be a non-empty string")
+        self.assertEditFails(cap(supported_actions="retain"), "supported_actions: must be a list")
+        self.assertEditFails(cap(paid="no"), "paid: must be true or false")
+        self.assertEditFails(cap(version=""), "version: must be a string")
+        self.assertEditFails(cap(endpoint="http://x"), "properties outside the schema ['endpoint']")
+
+    def test_storage_scope_and_document_ids(self):
+        rules = lambda **kw: (lambda p: p["storage_rules"].update(kw))
+        self.assertEditFails(rules(scope_tags=["scope:studio"]), "the bank is the scope")
+        self.assertEditFails(rules(scope_is_the_bank=False), "the bank is the scope")
+        self.assertEditFails(rules(retain_never_passes=["update_mode"]), "retain_never_passes must include")
 
 class CliFailurePath(FixtureCase):
     def run_cli(self, *args):
