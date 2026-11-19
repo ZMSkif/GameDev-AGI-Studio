@@ -5,7 +5,8 @@
     "version": "1.0.0",
     "description": "Initial machine-readable implementation interface derived from approved system topology; endpoint details require engineering review.",
     "x-status": "deferred",
-    "x-deferred-by": "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/146"
+    "x-deferred-by": "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/146",
+    "x-deferred-permanently-by": "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/164"
   },
   "paths": {
     "/v1/health": {

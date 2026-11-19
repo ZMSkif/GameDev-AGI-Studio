@@ -1,4 +1,4 @@
-> **ARCHIVED EVIDENCE SOURCE (2026-11-14).** This is the pre-existing, owner-accepted consolidated architecture summary, **not** the original verbatim 142 Q&A transcript. Binding current decisions are GitHub Issues labeled `decision`; any later explicitly superseding decision wins.
+> **ARCHIVED EVIDENCE SOURCE (2026-11-14).** This is the pre-existing, owner-accepted consolidated architecture summary, **not** the original verbatim 142 Q&A transcript. Binding current decisions are GitHub Issues labeled `decision`; any later explicitly superseding decision wins. The self-hosted platform parts (coordinator, PostgreSQL execution, workers, Studio Control Center) were deferred by DEC-143 (#146) on 2026-11-17 and deferred for good by DEC-146 (#164) on 2026-11-19; the studio ships as a Claude Code and Codex plugin.
 
 # GameDev AGI Studio — Technical Architecture & Implementation Specification
 

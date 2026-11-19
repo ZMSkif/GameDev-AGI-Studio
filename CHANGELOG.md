@@ -2,7 +2,7 @@
 
 All notable changes to the `gamedev-studio` plugin. The version lives only in `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`, and a release tag `vX.Y.Z` must match it. From the next release on, each section is the release notes for its tag (see "Releases" in `README.md`). 0.1.0 and 0.2.0 were not tagged. The v0.3.0 release notes were written by hand, in Russian and English, before this file existed.
 
-## [0.4.0] - 2026-11-19
+## [0.4.0] - 2026-11-20
 
 ### Added
 - **Memory** over Hindsight 1.2.2 (MIT) through MCP: the `memory` skill and `scripts/hindsight_smoke.py` ([DEC-024](https://github.com/ZMSkif/GameDev-AGI-Studio/issues/24), DEC-101–DEC-104, [DEC-138](https://github.com/ZMSkif/GameDev-AGI-Studio/issues/140)).
@@ -25,8 +25,9 @@ All notable changes to the `gamedev-studio` plugin. The version lives only in `.
   - Nothing is stored unless the agent names the class with `--keep` after reading the hits.
   - It stores lessons with provenance and without a `document_id`. The run marker is stored only after every lesson was.
   - It proposes plugin changes on a local branch. Push and PR need the owner's yes.
-- Contracts v1.3.0: `knowledge-policy.json` 1.1.0, checked by `validate_contracts.py`. It covers the memory backend, bank naming, storage rules, learning rules with their sources, and the known limits.
+- Contracts v1.4.0: `knowledge-policy.json` 1.1.0, checked by `validate_contracts.py`, with the backend verified by the smoke evidence on [#150](https://github.com/ZMSkif/GameDev-AGI-Studio/issues/150). It covers the memory backend, bank naming, storage rules, learning rules with their sources, and the known limits.
 - `validate_plugin.py`: a command may not have a skill's name.
+- [DEC-146](https://github.com/ZMSkif/GameDev-AGI-Studio/issues/164): the platform parts DEC-143 deferred stay deferred for good. `system-boundaries.json` 1.3.0, `orchestration-policy.json` and `coordinator.openapi.json` link it, and `studio-rules` rule (h) says so.
 - `CHANGELOG.md`, `scripts/release_check.py` and the `Release` workflow: a pushed `vX.Y.Z` tag is checked against both `plugin.json` versions and this file, and the GitHub release is created from its section. README "Releases" lists the steps.
 
 ## [0.3.0] - 2026-11-19

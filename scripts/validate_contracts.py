@@ -5,7 +5,7 @@ import json
 import re
 import sys
 
-SUPPORTED_VERSION = "1.3.0"
+SUPPORTED_VERSION = "1.4.0"
 REPO_ISSUES = "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/"
 ISSUE_URL = re.compile(re.escape(REPO_ISSUES) + r"[1-9][0-9]*")
 # Engine profiles (game-production-policy.json). DEC-012 (#12) made Godot 4.x the studio engine;
@@ -29,6 +29,8 @@ GODOT_SCOPED_URLS = {REPO_ISSUES + "47", REPO_ISSUES + "70", REPO_ISSUES + "118"
 PROFILE_SPLIT_DECISION = "DEC-145"
 # The only decision allowed to defer modules so far: owner decision #146 (DEC-143).
 PLUGIN_DECISION_URL = REPO_ISSUES + "146"
+# Owner decision #164 (DEC-146): the parts DEC-143 deferred stay deferred for good.
+PERMANENT_DECISION_URL = REPO_ISSUES + "164"
 MODULE_STATUSES = {"active", "deferred"}
 # Owner decision #146 (DEC-143): exactly these modules are deferred, not cancelled.
 DEFERRED_MODULES = {"coordinator", "worker-agent", "postgresql", "control-center"}
@@ -59,6 +61,11 @@ def check_deferred_by(value, where):
     check(value == PLUGIN_DECISION_URL, f"{where}: deferred_by must be {PLUGIN_DECISION_URL}")
 
 
+def check_permanent(value, where):
+    check(value == PERMANENT_DECISION_URL,
+          f"{where}: deferred_permanently_by must be {PERMANENT_DECISION_URL} (DEC-146)")
+
+
 def validate_boundaries(boundaries):
     modules = boundaries.get("modules")
     check(isinstance(modules, list) and modules, "system-boundaries.json: modules missing")
@@ -70,8 +77,11 @@ def validate_boundaries(boundaries):
               f"{where}: status must be one of {sorted(MODULE_STATUSES)}")
         if module["status"] == "deferred":
             check_deferred_by(module.get("deferred_by"), where)
+            check_permanent(module.get("deferred_permanently_by"), where)
         else:
             check("deferred_by" not in module, f"{where}: active module must not have deferred_by")
+            check("deferred_permanently_by" not in module,
+                  f"{where}: active module must not have deferred_permanently_by")
     deferred = {m["id"] for m in modules if m["status"] == "deferred"}
     check(deferred == DEFERRED_MODULES,
           f"system-boundaries.json: deferred modules {sorted(deferred)} != {sorted(DEFERRED_MODULES)}")
@@ -86,6 +96,7 @@ def validate_orchestration(policy):
     check(authority.get("execution") == "postgresql", f"{where}: original value must be preserved")
     check(authority.get("execution_status") == "deferred", f"{where}: execution_status must be deferred")
     check_deferred_by(authority.get("execution_deferred_by"), where)
+    check_permanent(authority.get("execution_deferred_permanently_by"), where)
     check(authority.get("execution_while_deferred") == "agent_runtime",
           f"{where}: execution_while_deferred must be agent_runtime")
 
@@ -94,6 +105,7 @@ def validate_openapi(spec):
     info = spec.get("info", {})
     check(info.get("x-status") == "deferred", "coordinator.openapi.json: info.x-status must be deferred")
     check_deferred_by(info.get("x-deferred-by"), "coordinator.openapi.json info")
+    check_permanent(info.get("x-deferred-permanently-by"), "coordinator.openapi.json info")
 
 
 def manifest_links(manifest, filename):
@@ -325,6 +337,8 @@ def validate(root):
         check(filename in manifest["contracts"], f"manifest must list {filename}")
         check(PLUGIN_DECISION_URL in manifest["contracts"][filename]["decision_issue_urls"],
               f"manifest: {filename} must link {PLUGIN_DECISION_URL}")
+        check(PERMANENT_DECISION_URL in manifest["contracts"][filename]["decision_issue_urls"],
+              f"manifest: {filename} must link {PERMANENT_DECISION_URL}")
 
     boundaries = load(directory / "system-boundaries.json")
     validate_boundaries(boundaries)

@@ -16,6 +16,7 @@ spec.loader.exec_module(vc)
 
 URL_146 = "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/146"
 URL_1 = "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/1"
+URL_146_DEC = "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/164"
 NOT_REPO_ISSUE = "deferred_by must be a URL of an issue in this repository"
 NOT_146 = "deferred_by must be " + URL_146
 BOUNDARIES = "system-boundaries.json module "
@@ -76,18 +77,18 @@ class ManifestRules(FixtureCase):
         vc.validate(self.root)
 
     def test_old_manifest_versions_rejected(self):
-        for old in ("1.0.0", "1.1.0", "1.2.0"):
+        for old in ("1.0.0", "1.1.0", "1.2.0", "1.3.0"):
             with self.subTest(version=old):
                 m = self.read("manifest.json")
                 m["version"] = old
                 self.write("manifest.json", m)
-                self.assertFails("manifest version must be 1.3.0")
+                self.assertFails("manifest version must be 1.4.0")
 
     def test_any_other_manifest_version_rejected(self):
         m = self.read("manifest.json")
-        m["version"] = "1.4.0"
+        m["version"] = "1.5.0"
         self.write("manifest.json", m)
-        self.assertFails("manifest version must be 1.3.0")
+        self.assertFails("manifest version must be 1.4.0")
 
     def test_each_changed_contract_must_link_decision_146(self):
         for name in vc.DEFERRAL_CONTRACTS:
@@ -143,7 +144,7 @@ class BoundaryRules(FixtureCase):
 
     def test_extra_deferred_module(self):
         self.edit_boundaries(lambda b: self.module(b, "tool-registry").update(
-            status="deferred", deferred_by=URL_146))
+            status="deferred", deferred_by=URL_146, deferred_permanently_by=URL_146_DEC))
         self.assertFails("system-boundaries.json: deferred modules")
 
     def test_missing_deferred_module(self):
@@ -151,6 +152,7 @@ class BoundaryRules(FixtureCase):
             m = self.module(b, "worker-agent")
             m["status"] = "active"
             del m["deferred_by"]
+            del m["deferred_permanently_by"]
         self.edit_boundaries(fn)
         self.assertFails("system-boundaries.json: deferred modules")
 
@@ -495,10 +497,15 @@ class KnowledgePolicyRules(FixtureCase):
                 self.edit_kp(lambda p, url=url: self.verified(p, evidence_url=url))
                 self.assertFails("a verified backend needs evidence_url")
 
-    def test_unverified_needs_no_evidence(self):
+    def test_real_backend_is_verified_with_its_evidence(self):
         p = json.loads((REPO / "contracts/v1/knowledge-policy.json").read_text(encoding="utf-8"))
-        self.assertEqual(p["memory_backend"]["capability"]["availability"], "unverified")
-        self.assertIsNone(p["memory_backend"]["capability"]["evidence_url"])
+        cap = p["memory_backend"]["capability"]
+        self.assertEqual(cap["availability"], "verified")
+        self.assertTrue(cap["evidence_url"].startswith(vc.REPO_ISSUES + "150#issuecomment-"))
+
+    def test_unverified_needs_no_evidence(self):
+        self.edit_kp(lambda p: self.backend(p)["capability"].update(availability="unverified", evidence_url=None))
+        vc.validate(self.root)
 
     def test_destructive_or_unsourced_tools_fail(self):
         for tool in ("delete_bank", "clear_memories", "reflect"):
@@ -626,6 +633,57 @@ class CliFailurePath(FixtureCase):
         fn(b)
         self.write("system-boundaries.json", b)
 
+
+
+class PermanentDeferral(FixtureCase):
+    """DEC-146: the parts DEC-143 deferred stay deferred for good, and each says so."""
+
+    def test_real_contracts_name_the_decision(self):
+        b = json.loads((REPO / "contracts/v1/system-boundaries.json").read_text(encoding="utf-8"))
+        for m in b["modules"]:
+            if m["status"] == "deferred":
+                self.assertEqual(m["deferred_permanently_by"], URL_146_DEC)
+                self.assertEqual(m["deferred_by"], URL_146)
+
+    def test_missing_or_other_permanent_link_fails(self):
+        for value in (None, URL_1, URL_146):
+            with self.subTest(value=value):
+                b = self.read("system-boundaries.json")
+                for m in b["modules"]:
+                    if m["id"] == "coordinator":
+                        if value is None:
+                            m.pop("deferred_permanently_by")
+                        else:
+                            m["deferred_permanently_by"] = value
+                self.write("system-boundaries.json", b)
+                self.assertFails("deferred_permanently_by must be " + URL_146_DEC)
+
+    def test_active_module_with_permanent_link_fails(self):
+        b = self.read("system-boundaries.json")
+        for m in b["modules"]:
+            if m["id"] == "github":
+                m["deferred_permanently_by"] = URL_146_DEC
+        self.write("system-boundaries.json", b)
+        self.assertFails("active module must not have deferred_permanently_by")
+
+    def test_orchestration_and_openapi_need_the_link(self):
+        o = self.read("orchestration-policy.json")
+        o["authority"].pop("execution_deferred_permanently_by")
+        self.write("orchestration-policy.json", o)
+        self.assertFails("authority.execution: deferred_permanently_by must be")
+        shutil.copy(REPO / "contracts/v1/orchestration-policy.json", self.dir / "orchestration-policy.json")
+        s = self.read("coordinator.openapi.json")
+        s["info"]["x-deferred-permanently-by"] = URL_1
+        self.write("coordinator.openapi.json", s)
+        self.assertFails("coordinator.openapi.json info: deferred_permanently_by must be")
+
+    def test_manifest_links_the_decision(self):
+        m = self.read("manifest.json")
+        e = m["contracts"]["orchestration-policy.json"]
+        i = e["decision_issue_urls"].index(URL_146_DEC)
+        del e["decision_issue_urls"][i], e["decision_ids"][i]
+        self.write("manifest.json", m)
+        self.assertFails("manifest: orchestration-policy.json must link " + URL_146_DEC)
 
 if __name__ == "__main__":
     unittest.main()

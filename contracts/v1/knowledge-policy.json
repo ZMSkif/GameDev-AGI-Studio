@@ -45,14 +45,14 @@
         "bank:gamedev-studio::project::{repository}"
       ],
       "paid": false,
-      "availability": "unverified",
-      "last_verified_at": "2026-11-19T16:40:00Z",
-      "evidence_url": null,
+      "availability": "verified",
+      "last_verified_at": "2026-11-19T18:10:14Z",
+      "evidence_url": "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/150#issuecomment-7023344318",
       "license": "MIT",
       "recovery_policy": "manual_recovery"
     },
     "verified_environment": "local smoke test on the owner's Windows PC, embedded PostgreSQL, LLM via the owner's Claude subscription",
-    "verification_note": "the local smoke test passed on 2026-11-19; availability becomes verified, with evidence_url, once the evidence is posted on task #150",
+    "verification_note": "local smoke test S1-S9 on the owner's PC, 2026-11-19 (S8 after a full restart), and a live lessons store; evidence posted on task #150",
     "placement": "owner_decision_pending",
     "placement_task": "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/150",
     "bank_naming": {

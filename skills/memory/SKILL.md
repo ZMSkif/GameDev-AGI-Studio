@@ -17,7 +17,7 @@ Binding:
 
 The contract is `contracts/v1/knowledge-policy.json`.
 
-**Status (19.11.2026):** Hindsight 1.2.2 passed a local smoke test on the owner's PC (`scripts/hindsight_smoke.py`). Where the server finally runs, this PC or a server, is the owner's choice (task #150). Until the owner decides, only the local smoke server runs. Connect a game only with the owner's yes, and never change another machine. The contract marks the backend `unverified` until the smoke evidence is posted on #150.
+**Status (19.11.2026):** Hindsight 1.2.2 passed a local smoke test on the owner's PC (`scripts/hindsight_smoke.py`). Where the server finally runs, this PC or a server, is the owner's choice (task #150). Until the owner decides, only the local smoke server runs. Connect a game only with the owner's yes, and never change another machine. The evidence is posted on #150, and the contract marks the backend `verified` with that link.
 
 ## 1. Banks and scopes
 

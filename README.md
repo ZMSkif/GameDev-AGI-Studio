@@ -58,7 +58,7 @@ Long-term memory runs on [Hindsight](https://hindsight.vectorize.io) 1.2.2 (MIT)
 - `scripts/brief_piece.py` (`/gamedev-studio:brief-piece`) is the light Context Intelligence layer.
 - `scripts/mine_lessons.py` (`/gamedev-studio:mine-lessons`) is the light Learning and Improvement layer.
 
-The rules live in `contracts/v1/knowledge-policy.json` 1.1.0. It marks the backend `unverified` until the smoke evidence is posted on #150.
+The rules live in `contracts/v1/knowledge-policy.json` 1.1.0. The smoke evidence is posted on [#150](../../issues/150), and the contract marks the backend `verified` with that link.
 
 Layout: `.claude-plugin/` (Claude manifest and marketplace), `.codex-plugin/` (Codex manifest), `.agents/plugins/marketplace.json` (Codex marketplace), `skills/`, `agents/`, `hooks/`. The version is set only in the two `plugin.json` files and must match; `python scripts/validate_plugin.py` checks this.
 
