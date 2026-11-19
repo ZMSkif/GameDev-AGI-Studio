@@ -227,9 +227,9 @@ class RetainTest(MineCase):
 
     def test_only_kept_classes_and_then_the_marker_are_stored(self):
         fake = FakeHindsight()
-        stored, refused = self.retain(fake, keep=("collider-mismatch",))
-        self.assertEqual(refused, [])
-        self.assertEqual(stored, ["lesson:collider-mismatch", "lessons-run"])
+        result = self.retain(fake, keep=("collider-mismatch",))
+        self.assertEqual((result["refused"], result["unknown"]), ([], []))
+        self.assertEqual(result["stored"], ["lesson:collider-mismatch", "lessons-run"])
         lesson, marker = self.items(fake)
         self.assertTrue(all(lesson["metadata"][k] for k in ("source_type", "source", "source_rev", "recorded_by")))
         self.assertIn(self.REPO, lesson["metadata"]["source"])
@@ -243,38 +243,41 @@ class RetainTest(MineCase):
 
     def test_storing_stops_at_the_first_failure(self):
         fake = FakeHindsight(answers=[{"success": False}])
-        stored, refused = self.retain(fake)
-        self.assertEqual(stored, [])
-        self.assertEqual(len(fake.sent), 1)                  # nothing after the failure, so a re-run stores nothing twice
-        self.assertEqual([r[0] for r in refused], ["lesson:collider-mismatch", "lesson:audio-lifecycle", "lessons-run"])
-        fake = FakeHindsight(answers=[{"success": True, "items_count": 1}, urllib.error.URLError("refused")])
-        stored, refused = self.retain(fake)
-        self.assertEqual(stored, ["lesson:collider-mismatch"])
-        self.assertEqual([r[0] for r in refused], ["lesson:audio-lifecycle", "lessons-run"])
+        result = self.retain(fake)
+        self.assertEqual(result["stored"], [])
+        self.assertEqual(len(fake.sent), 1)
+        self.assertEqual(result["refused"][0][0], "lesson:collider-mismatch")
+        self.assertEqual(result["skipped"], ["lesson:audio-lifecycle", "lessons-run"])
+
+    def test_a_refused_or_unreachable_server_is_refused_and_a_lost_answer_is_unknown(self):
+        cases = [({"success": False}, "refused"), ({"success": True, "items_count": 0}, "refused"),
+                 (urllib.error.HTTPError("u", 500, "err", {}, None), "refused"),
+                 (urllib.error.URLError(ConnectionRefusedError(10061, "refused")), "refused"),
+                 (urllib.error.URLError("timed out"), "unknown"), (TimeoutError("read timed out"), "unknown"),
+                 (ConnectionResetError("reset"), "unknown")]
+        for answer, kind in cases:
+            with self.subTest(answer=answer):
+                result = self.retain(FakeHindsight(answers=[answer]), keep=("audio-lifecycle",))
+                self.assertEqual(result["stored"], [])
+                self.assertEqual(len(result[kind]), 1)
+                self.assertEqual(result["skipped"], ["lessons-run"])
 
     def test_the_guard_checks_the_whole_payload(self):
         for pattern in ("audio-lifecycle", "owner/game", "gamedev-studio:lessons", "review archive"):
             with self.subTest(pattern=pattern):
                 fake = FakeHindsight()
-                stored, refused = self.retain(fake, keep=("audio-lifecycle",), forbid=[re.compile(pattern)])
+                result = self.retain(fake, keep=("audio-lifecycle",), forbid=[re.compile(pattern)])
                 self.assertEqual(fake.sent, [])
-                self.assertEqual(stored, [])
-                self.assertIn("--forbid", refused[0][1])
+                self.assertEqual(result["stored"], [])
+                self.assertIn("--forbid", result["refused"][0][1])
 
     def test_a_secret_in_a_source_file_name_is_refused(self):
-        next(e for e in self.report["lessons"] if e["class"] == "audio-lifecycle")["hits"][0]["file"] = "2026-11-19_01_agent-ghp_" + "a" * 36 + "-finished.md"
+        entry = next(e for e in self.report["lessons"] if e["class"] == "audio-lifecycle")
+        entry["hits"][0]["file"] = "2026-11-19_01_agent-ghp_" + "a" * 36 + "-finished.md"
         fake = FakeHindsight()
-        stored, refused = self.retain(fake, keep=("audio-lifecycle",))
+        result = self.retain(fake, keep=("audio-lifecycle",))
         self.assertEqual(fake.sent, [])
-        self.assertIn("secret", refused[0][1])
-
-    def test_failed_answers_are_reported(self):
-        for answer in ({"success": False}, {"success": True, "items_count": 0},
-                       urllib.error.HTTPError("u", 500, "err", {}, None), urllib.error.URLError("refused")):
-            with self.subTest(answer=answer):
-                stored, refused = self.retain(FakeHindsight(answers=[answer]), keep=("audio-lifecycle",))
-                self.assertEqual(stored, [])
-                self.assertEqual(len(refused), 2)
+        self.assertIn("secret", result["refused"][0][1])
 
     def test_default_token_is_random(self):
         a, b = FakeHindsight(), FakeHindsight()
@@ -379,36 +382,74 @@ class PropertyTest(MineCase):
         groups = ml.piece_groups(titles)
         self.assertEqual(len(set(groups.values())), 1, sorted(set(groups.values())))
 
-    def test_retain_every_item_is_sent_once_whatever_fails(self):
+    def run_store(self, fake, args):
+        out, err = io.StringIO(), io.StringIO()
+        with mock.patch.object(ml.urllib.request, "urlopen", side_effect=fake), \
+                contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = ml.main(args)
+        return code, err.getvalue()
+
+    def server(self, fail_at, how):
+        """A fake server: `accepted` counts what it stored; call `fail_at` fails as `how`."""
+        state = {"n": 0, "accepted": []}
+
+        def fake(req, timeout=0):
+            state["n"] += 1
+            item = json.loads(req.data.decode("utf-8"))["items"][0]
+            name = item["tags"][1] if item["tags"][0] == "lesson" else "marker"
+            if state["n"] == fail_at + 1 and how == "refused":
+                raise urllib.error.HTTPError("u", 503, "busy", {}, None)
+            state["accepted"].append(name)                  # the server stores it ...
+            if state["n"] == fail_at + 1 and how == "lost":
+                raise TimeoutError("the answer was lost")   # ... but the answer never arrives
+            body = json.dumps({"success": True, "items_count": 1}).encode("utf-8")
+
+            class Resp:
+                def __enter__(self): return self
+                def __exit__(self, *a): return False
+                def read(self): return body
+            return Resp()
+        return fake, state
+
+    def test_retain_a_confirmed_refusal_then_the_printed_retry_stores_each_item_once(self):
         self.review(1, "Review CN1", "## BLOCKER\nmusic stuck\n")
         self.review(2, "Review CK2", "## BLOCKER\n- The collider overhang is 0.9 m.\n")
         base = ["--reviews", str(self.dir), "--retain", "http://x", "--repository", "o/g"]
         keep = ["--keep", "audio-lifecycle", "--keep", "collider-mismatch"]
         for fail_at in range(3):                      # lesson 1, lesson 2, the marker
             with self.subTest(fail_at=fail_at):
-                sent, calls = [], {"n": 0}
+                fake, state = self.server(fail_at, "refused")
+                code, err = self.run_store(fake, base + keep)
+                self.assertEqual(code, 3)
+                retry = err.rsplit("--since and ", 1)[1].split(" (")[0].strip().rstrip(".").split()
+                token = re.search(r"RUN TOKEN: ([0-9a-f]{12})", err).group(1)
+                self.assertEqual(retry[:2], ["--run-token", token])
+                self.assertEqual(self.run_store(fake, base + retry)[0], 0)
+                self.assertEqual(sorted(state["accepted"]),
+                                 sorted(["lesson:audio-lifecycle", "lesson:collider-mismatch", "marker"]))
 
-                def fake(req, timeout=0):
-                    calls["n"] += 1
-                    item = json.loads(req.data.decode("utf-8"))["items"][0]
-                    if calls["n"] == fail_at + 1:
-                        raise urllib.error.URLError("down")
-                    sent.append(item["tags"][1] if item["tags"][0] == "lesson" else "marker")
-                    body = json.dumps({"success": True, "items_count": 1}).encode("utf-8")
+    def test_retain_a_lost_answer_is_unknown_and_gives_no_blind_retry(self):
+        self.review(1, "Review CN1", "## BLOCKER\nmusic stuck\n")
+        base = ["--reviews", str(self.dir), "--retain", "http://x", "--repository", "o/g", "--keep", "audio-lifecycle"]
+        for fail_at in range(2):                      # the lesson, the marker
+            with self.subTest(fail_at=fail_at):
+                fake, state = self.server(fail_at, "lost")
+                code, err = self.run_store(fake, base)
+                self.assertEqual(code, 3)
+                self.assertIn("UNKNOWN", err)
+                self.assertIn("The server may have stored it", err)
+                self.assertIn("Do not run the store again yet", err)
+                self.assertRegex(err, r"lessons_run = [0-9a-f]{12}")
+                self.assertNotIn("run again with the same --since", err)
+                self.assertNotIn("NOT STORED", err)
 
-                    class Resp:
-                        def __enter__(self): return self
-                        def __exit__(self, *a): return False
-                        def read(self): return body
-                    return Resp()
-
-                out, err = io.StringIO(), io.StringIO()
-                with mock.patch.object(ml.urllib.request, "urlopen", side_effect=fake), \
-                        contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-                    self.assertEqual(ml.main(base + keep), 3)
-                    retry = err.getvalue().rsplit("--since and ", 1)[1].split(" (")[0].strip().rstrip(".").split()
-                    self.assertEqual(ml.main(base + retry), 0)
-                self.assertEqual(sorted(sent), sorted(["lesson:audio-lifecycle", "lesson:collider-mismatch", "marker"]))
+    def test_mark_run_needs_the_runs_token(self):
+        self.review(1, "Review CN1", "## BLOCKER\nmusic stuck\n")
+        base = ["--reviews", str(self.dir), "--retain", "http://x", "--repository", "o/g"]
+        with mock.patch.object(ml.urllib.request, "urlopen") as urlopen:
+            self.assertEqual(self.run_store(urlopen, base + ["--mark-run"])[0], 2)          # no token: refused
+            self.assertEqual(self.run_store(urlopen, base + ["--mark-run", "--run-token", "nothex"])[0], 2)
+        urlopen.assert_not_called()
 
     def test_mark_run_needs_retain_and_no_keep(self):
         self.review(1, "Review CN1", "## BLOCKER\nmusic stuck\n")
@@ -416,7 +457,7 @@ class PropertyTest(MineCase):
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
             self.assertEqual(ml.main(["--reviews", str(self.dir), "--mark-run"]), 2)
             self.assertEqual(ml.main(["--reviews", str(self.dir), "--retain", "http://x", "--repository", "o/g",
-                                      "--mark-run", "--keep", "audio-lifecycle"]), 2)
+                                      "--mark-run", "--run-token", "0123456789ab", "--keep", "audio-lifecycle"]), 2)
 
 
 class RoundFourClaudeLessons(MineCase):

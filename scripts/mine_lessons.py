@@ -300,8 +300,10 @@ def items_for(report: dict, keep: list[str], repository: str, token: str) -> lis
     return items
 
 
-def post(base: str, bank: str, item: dict) -> str | None:
-    """Store one item; return None on success, else the reason."""
+def post(base: str, bank: str, item: dict) -> tuple[str, str]:
+    """Store one item. Returns ("stored", ""), ("refused", why) when the server answered that it did not
+    store it or could not be reached at all, or ("unknown", why) when the request may have arrived but no
+    usable answer came back (a timeout, a dropped connection, an answer that is not JSON)."""
     data = json.dumps({"items": [item]}).encode("utf-8")
     req = urllib.request.Request(f"{base.rstrip('/')}/v1/default/banks/{bank}/memories", data=data, method="POST",
                                  headers={"Content-Type": "application/json"})
@@ -309,14 +311,18 @@ def post(base: str, bank: str, item: dict) -> str | None:
         with urllib.request.urlopen(req, timeout=600) as resp:
             body = json.loads(resp.read().decode("utf-8") or "{}")
     except urllib.error.HTTPError as exc:
-        return f"HTTP {exc.code}"
-    except (urllib.error.URLError, TimeoutError, ConnectionError, OSError) as exc:
-        return str(exc)
+        return "refused", f"HTTP {exc.code}"
+    except urllib.error.URLError as exc:
+        if isinstance(exc.reason, ConnectionRefusedError):
+            return "refused", f"connection refused ({exc.reason})"
+        return "unknown", str(exc)
+    except (TimeoutError, ConnectionError, OSError) as exc:
+        return "unknown", f"{type(exc).__name__}: {exc}"
     except ValueError:
-        return "answer is not JSON"
+        return "unknown", "the answer is not JSON"
     if body.get("success") is not True or body.get("items_count") != 1:
-        return f"not stored: {json.dumps(body)[:200]}"
-    return None
+        return "refused", f"not stored: {json.dumps(body)[:200]}"
+    return "stored", ""
 
 
 def item_name(item: dict) -> str:
@@ -324,22 +330,26 @@ def item_name(item: dict) -> str:
 
 
 def retain(report: dict, keep: list[str], base: str, bank: str, repository: str, forbid: list[re.Pattern],
-           token: str | None = None, marker_only: bool = False) -> tuple[list[str], list[tuple[str, str]]]:
-    """Store each kept lesson, then the run marker. Storing stops at the first item that is refused or
-    fails, so a re-run with --keep set to the rest stores nothing twice. Returns (stored, not stored)."""
+           token: str | None = None, marker_only: bool = False) -> dict:
+    """Store each kept lesson, then the run marker, stopping at the first item that is not stored for
+    sure. Returns {"token", "stored", "refused": [(item, why)], "unknown": [(item, why)], "skipped": [item]}.
+    An unknown item may be in the bank: the caller must check the bank before storing anything again."""
     blocked_reason = _guard()
     token = token or uuid.uuid4().hex[:12]
     items = items_for(report, keep, repository, token)
     if marker_only:
         items = items[-1:]
-    stored: list[str] = []
+    result = {"token": token, "stored": [], "refused": [], "unknown": [], "skipped": []}
     for position, item in enumerate(items):
-        reason = blocked_reason(json.dumps(item, ensure_ascii=False), forbid) or post(base, bank, item)
-        if reason:
-            rest = [(item_name(i), "not stored: an earlier item failed") for i in items[position + 1:]]
-            return stored, [(item_name(item), reason)] + rest
-        stored.append(item_name(item))
-    return stored, []
+        blocked = blocked_reason(json.dumps(item, ensure_ascii=False), forbid)
+        status, why = ("refused", blocked) if blocked else post(base, bank, item)
+        if status == "stored":
+            result["stored"].append(item_name(item))
+            continue
+        result[status].append((item_name(item), why))
+        result["skipped"] = [item_name(i) for i in items[position + 1:]]
+        break
+    return result
 
 
 def repository_of(folder: Path) -> Path | None:
@@ -359,7 +369,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--keep", action="append", default=[], metavar="CLASS",
                         help="with --retain: a class to store, named after reading its hits; repeatable")
     parser.add_argument("--mark-run", action="store_true",
-                        help="with --retain: store only the run marker (after the kept lessons were stored)")
+                        help="with --retain and --run-token: store only the marker of that run, after every kept "
+                             "lesson of it was stored")
+    parser.add_argument("--run-token", help="the RUN TOKEN an earlier, unfinished run printed; a retry reuses it")
     parser.add_argument("--out", help="write the Markdown report here (outside the game repository)")
     parser.add_argument("--json", action="store_true", help="print the report as JSON")
     parser.add_argument("--retain", metavar="URL", help="Hindsight base URL to store the lessons in")
@@ -384,8 +396,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.retain and not (args.repository and REPO_RE.match(args.repository)):
         print("ERROR: --retain needs --repository owner/name", file=sys.stderr)
         return 2
-    if args.mark_run and (args.keep or not args.retain):
-        print("ERROR: --mark-run goes with --retain and without --keep", file=sys.stderr)
+    if args.mark_run and (args.keep or not args.retain or not args.run_token):
+        print("ERROR: --mark-run goes with --retain and the --run-token of the unfinished run, without --keep",
+              file=sys.stderr)
+        return 2
+    if args.run_token and not re.fullmatch(r"[0-9a-f]{12}", args.run_token):
+        print("ERROR: --run-token is the 12-character RUN TOKEN a run printed", file=sys.stderr)
         return 2
     if args.retain and not args.keep and not args.mark_run:
         print("ERROR: --retain stores only the classes you name: read the report, then add --keep CLASS "
@@ -414,17 +430,28 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout.reconfigure(errors="backslashreplace")  # a cp1251 console cannot print every character
     print(json.dumps(report, indent=2) if args.json else text)
     if args.retain:
-        stored, refused = retain(report, args.keep, args.retain, args.bank, args.repository, forbid,
-                                 marker_only=args.mark_run)
-        print(f"STORED: {', '.join(stored) or 'nothing'}", file=sys.stderr)
-        for name, reason in refused:
+        result = retain(report, args.keep, args.retain, args.bank, args.repository, forbid,
+                        token=args.run_token, marker_only=args.mark_run)
+        print(f"RUN TOKEN: {result['token']}", file=sys.stderr)
+        print(f"STORED: {', '.join(result['stored']) or 'nothing'}", file=sys.stderr)
+        for name, reason in result["refused"]:
             print(f"NOT STORED {name}: {reason}", file=sys.stderr)
-        if refused:
-            left = [name.split(":", 1)[1] for name, _ in refused if name.startswith("lesson:")]
-            retry = (f"--keep {' --keep '.join(left)}" if left else "--mark-run (every kept lesson is stored)")
+        for name, reason in result["unknown"]:
+            print(f"UNKNOWN {name}: {reason}. The server may have stored it.", file=sys.stderr)
+        for name in result["skipped"]:
+            print(f"NOT SENT {name}: an earlier item was not stored for sure", file=sys.stderr)
+        if result["unknown"]:
+            print(f"Do not run the store again yet. First recall from the bank with the tags of the unknown item "
+                  f"and look for metadata lessons_run = {result['token']}: if it is there, it was stored. Then "
+                  f"store only what is still missing, with --run-token {result['token']} and --keep for lessons, "
+                  f"or --mark-run for the marker.", file=sys.stderr)
+        elif result["refused"]:
+            left = [n.split(":", 1)[1] for n in [result["refused"][0][0], *result["skipped"]] if n.startswith("lesson:")]
+            retry = (f"--run-token {result['token']} --keep {' --keep '.join(left)}" if left else
+                     f"--run-token {result['token']} --mark-run (every kept lesson is stored)")
             print(f"The run marker was not stored. After fixing the cause, run again with the same --since and "
                   f"{retry}.", file=sys.stderr)
-        return 3 if refused else 0
+        return 3 if result["refused"] or result["unknown"] else 0
     return 0
 
 

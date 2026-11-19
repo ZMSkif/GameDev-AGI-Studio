@@ -647,5 +647,36 @@ class RoundFourClaudeCases(BriefCase):
         self.assertEqual(card["goal"], ["Note: the plaza fills up."])
         self.assertEqual(card["reviewer_gate"], ["the video.", "Soaks: 30 minutes on medium."])
 
+
+class RoundFiveCases(BriefCase):
+    def test_calls_with_arguments_and_short_names_are_never_silently_skipped(self):
+        self.card.write_text(CARD + "\nCall `runTraining(level)`, `go()` and `go2(x)`; the `fx` package.\n",
+                             encoding="utf-8")
+        _, text, _ = self.call()
+        stale = self.section(text, "## ⚠ Stale references")
+        for name in ("runTraining", "go", "go2"):
+            self.assertIn(f"`{name}`", stale)
+        self.assertIn("`fx`", self.section(text, "## ⚠ Names not checked"))
+        checked, short = bp.card_names("`go()` `fx` `id` `abc` `a.b` `src/x.ts`")
+        self.assertEqual((checked, short), ({"go", "abc"}, {"fx", "id"}))
+
+
+class RoundFiveClaudeCases(BriefCase):
+    def test_import_meta_and_dynamic_import_blocks_define_nothing(self):
+        (self.repo / "src/city/citizens/dyn.ts").write_text(
+            "if (import.meta.env.DEV) { stepId(); }\nimport('./x').then((m) => { runTraining(); });\n",
+            encoding="utf-8")
+        _, text, _ = self.call()
+        stale = self.section(text, "## ⚠ Stale references")
+        self.assertIn("`stepId`", stale)
+        self.assertIn("`runTraining`", stale)
+
+    def test_found_line_numbers_survive_multi_line_comments_and_strings(self):
+        (self.repo / "src/city/citizens/lines.ts").write_text(
+            "/* one\ntwo\nthree */\nconst s = `a\nb`;\nexport const stepId = 1;\n", encoding="utf-8")
+        _, text, _ = self.call()
+        self.assertIn("- `stepId`: `src/city/citizens/lines.ts:6`: export const stepId = 1;",
+                      self.section(text, "## Names the card uses, and where they were found"))
+
 if __name__ == "__main__":
     unittest.main()

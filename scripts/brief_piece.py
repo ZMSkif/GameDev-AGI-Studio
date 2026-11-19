@@ -51,7 +51,17 @@ LABEL_RE = re.compile(r"^\s*(?:[-*]\s+)?(?:\*\*[^*\n]{1,40}:\*\*|\*\*[^*\n]{1,40
                       r"|(?:[\w-]+ )?notes?\s*:|risks?\s*:)", re.I)
 ACCEPTANCE_LINE_RE = re.compile(r"^\s*(?:\d+[.)]|[-*])\s+(.*\S)")
 EVIDENCE_RE = re.compile(r"^\s*(Test|Shot)\b[^:]{0,40}:", re.I)
-SYMBOL_RE = re.compile(r"`([A-Za-z_][A-Za-z0-9_]{2,})(?:\(\))?`")
+# A backticked name, bare or called with any arguments: `runTraining`, `runTraining()`, `go(level)`.
+SYMBOL_RE = re.compile(r"`([A-Za-z_][A-Za-z0-9_]*)(\([^`\n]*\))?`")
+
+
+def card_names(card_text: str) -> tuple[set[str], set[str]]:
+    """(names to check, short bare names that are listed as not checked). A call is always checked; a bare
+    one- or two-letter word such as `fx` or `id` could be anything, so it is shown instead of guessed."""
+    check, short = set(), set()
+    for name, call in SYMBOL_RE.findall(card_text):
+        (check if call or len(name) >= 3 else short).add(name)
+    return check, short - check
 TICKED_RE = re.compile(r"`([^`]+)`")
 IMPORT_RES = (
     re.compile(r"""(?:from|import)\s*\(?\s*['"](\.{1,2}/[^'"]+)['"]"""),      # JS/TS relative imports
@@ -280,7 +290,7 @@ def definition_re(name: str) -> re.Pattern:
     return re.compile("|".join([
         rf"\b(?:function\*?|def|func|class|interface|type|enum|struct|signal|class_name|const|let|var)\s+{n}\b",
         rf"\bexport\s*\{{[^}}]{{0,4000}}?\b{n}\b",
-        rf"\bimport\b[^;\n{{]{{0,200}}\{{[^}}]{{0,4000}}?\b{n}\b",
+        rf"\bimport\b(?![.(])[^;\n{{]{{0,200}}\{{[^}}]{{0,4000}}?\b{n}\b[^}}]{{0,4000}}?\}}\s*from\b",
         rf"\bimport\s+(?:\*\s+as\s+)?{n}\b",
         rf"\bfrom\s+\S+\s+import\s+[^\n]{{0,500}}?\b{n}\b",
         rf"^[ \t]*(?:export\s+)?(?:(?:public|private|protected|internal|static|readonly|async|get|set|override|abstract)\s+)*"
@@ -327,7 +337,7 @@ def stale_symbols(root: Path, card_text: str) -> tuple[list[str], dict[str, tupl
     """Backticked identifiers in the card, split into stale ones (nothing defines, exports or imports them)
     and found ones, each with the file, line and text of its first definition so a wrong match shows.
     In JSON only an exact key counts."""
-    missing = set(SYMBOL_RE.findall(card_text))
+    missing, _ = card_names(card_text)
     found: dict[str, tuple[str, int, str]] = {}
     if not missing:
         return [], found
@@ -582,12 +592,13 @@ def render(card, decisions, skills, owned, reads, stale, found, unchecked, notes
                 "names from the card. Do not apply a recipe that uses them; ask the coordinator:",
                 *[f"- `{s}`" for s in stale]]
     if unchecked:
-        out += ["", "## ⚠ Names not checked", "git would not list this repository's files, so the brief could not "
-                "check these names. Treat each as possibly stale and ask the coordinator:",
+        out += ["", "## ⚠ Names not checked", "These names were not checked: git would not list this repository's "
+                "files, or the name is a one- or two-letter word. Treat each as possibly stale and ask the coordinator:",
                 *[f"- `{s}`" for s in unchecked]]
     if found:
         out += ["", "## Names the card uses, and where they were found",
-                "Check each line: a wrong match here would hide a stale name.",
+                "Check each line: a wrong match here would hide a stale name. Only backticked bare names and calls "
+                "are checked; paths and member chains such as `a.b` are not.",
                 *[f"- `{s}`: `{f}:{n}`: {text}" for s, (f, n, text) in sorted(found.items())]]
     if notes:
         out += ["", "## Notes from earlier reviews (verbatim)"]
@@ -631,9 +642,9 @@ def build(args) -> str:
     reads = reads_of(root, owned)
     try:
         stale, found = stale_symbols(root, card_text)
-        unchecked: list[str] = []
+        unchecked = sorted(card_names(card_text)[1])
     except GitRefused:
-        stale, found, unchecked = [], {}, sorted(set(SYMBOL_RE.findall(card_text)))
+        stale, found, unchecked = [], {}, sorted(card_names(card_text)[0])
     reviews = Path(args.reviews) if args.reviews else root / "docs" / "reviews"
     notes = review_notes(reviews, card["piece"], [p.relative_to(root).as_posix() for p in owned] + card["owns"])
     memories = usable_memories(load_json(args.memories, "--memories"))
