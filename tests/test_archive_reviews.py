@@ -252,7 +252,15 @@ class CliTest(ArchiveCase):
         code, out, err = self.call("--transcript", str(t), "--out", str(self.out))
         self.assertEqual(code, 3)
         self.assertNotIn(token, out + err)
-        self.assertIn("CONFIRMED verdict, body SHA-256", err)
+        self.assertIn("the verdict with body SHA-256", err)
+
+    def test_secret_in_the_label_position_is_never_echoed(self):
+        key = "AKIA" + "A" * 16
+        t = self.transcript([user_record(notification(f"VERDICT: {key}\nbody"))])
+        code, out, err = self.call("--transcript", str(t), "--out", str(self.out))
+        self.assertEqual(code, 3)
+        self.assertNotIn(key, out + err)
+        self.assertFalse(self.out.exists())
 
     def test_skipped_verdict_gives_exit_three(self):
         t = self.transcript([user_record(notification("VERDICT: CONFIRMED\n-----BEGIN RSA PRIVATE KEY-----"))])

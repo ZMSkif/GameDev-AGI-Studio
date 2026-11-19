@@ -265,8 +265,8 @@ def archive(files: list[Path], out: Path, *, dry_run: bool = False, forbid=(), t
             continue
         reason = blocked_reason(verdict.summary + chr(10) + verdict.body, list(forbid))
         if reason:
-            # Never echo the summary or body: it is what holds the secret.
-            skipped.append((f"{verdict.label} verdict, body SHA-256 {verdict.digest[:12]}", reason))
+            # Never echo the summary, the label or the body: any of them may hold the secret.
+            skipped.append((f"the verdict with body SHA-256 {verdict.digest[:12]}", reason))
             continue
         highest += 1
         when = verdict.timestamp or verdict.inferred
