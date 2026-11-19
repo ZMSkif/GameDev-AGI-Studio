@@ -329,5 +329,119 @@ class CliTest(MineCase):
                                        "--out", str(Path(other) / "r.md"))[0], 0)
 
 
+
+class PropertyTest(MineCase):
+    """One check per invariant, over crafted inputs."""
+
+    def raw_matches(self):
+        count = 0
+        for _, path in ml.review_files(self.dir):
+            text = path.read_text(encoding="utf-8")
+            body = text.split(ml.HEADER_END, 1)[1] if ml.HEADER_END in text else text
+            count += sum(1 for line in body.splitlines() if line.strip()
+                         for _, pattern, _ in ml.CLASSES if re.search(pattern, line, re.I))
+        return count
+
+    def reported(self, report):
+        return sum(len(e["hits"]) for key in ("lessons", "doubtful", "below") for e in report[key])
+
+    def test_conservation_every_match_is_reported(self):
+        bodies = ["## BLOCKER: music stuck after resume\n",
+                  "## BLOCKER\nNone.\n- The blue slivers are gone.\n",
+                  "## No blockers\n- Music passed all checks.\n- Music is not stuck.\n",
+                  "## Notes\n- The collider overhangs, and the music stops, and a label is cut off.\n",
+                  "# Not a header\n### Must-fix: no music after resume\nPlain prose about a soak longer than 30-minute windows.\n"]
+        for n, body in enumerate(bodies, 1):
+            self.review(n, f"Review CN{n}", body)
+        (self.dir / "2026-11-19_01_agent-other-file-with-the-same-number_blocked.md").write_text(
+            HEADER.format(title="Review CK9", v="BLOCKED") + "## BLOCKER\n- The music stops.\n", encoding="utf-8")
+        report = ml.mine(self.dir)
+        self.assertEqual(self.reported(report), self.raw_matches())
+        files = {h["file"] for key in ("lessons", "doubtful", "below") for e in report[key] for h in e["hits"]}
+        self.assertEqual(len([f for f in files if f.startswith("2026-11-19_01_")]), 2)   # same number, both kept
+
+    def test_a_heading_hit_is_severe(self):
+        self.review(1, "Review CN1", "## BLOCKER: music stuck after resume\n")
+        key, entry = self.where(ml.mine(self.dir), "audio-lifecycle")
+        self.assertEqual(key, "lessons")
+        self.assertTrue(entry["hits"][0]["severe"])
+
+    def test_grouping_any_shared_code_in_any_case_is_one_piece(self):
+        forms = ["CN1", "cn1", "Cn1", "CN-1"]
+        others = ["CK2", "ck2", "B1", "r17", "v2", ""]
+        titles = {}
+        n = 0
+        for a in forms:
+            for other in others:
+                for template in ("Review {a} after {o}", "Re-review {o} of {a}", "{o} fix in {a}"):
+                    n += 1
+                    titles[n] = template.format(a=a, o=other).strip()
+        groups = ml.piece_groups(titles)
+        self.assertEqual(len(set(groups.values())), 1, sorted(set(groups.values())))
+
+    def test_retain_every_item_is_sent_once_whatever_fails(self):
+        self.review(1, "Review CN1", "## BLOCKER\nmusic stuck\n")
+        self.review(2, "Review CK2", "## BLOCKER\n- The collider overhang is 0.9 m.\n")
+        base = ["--reviews", str(self.dir), "--retain", "http://x", "--repository", "o/g"]
+        keep = ["--keep", "audio-lifecycle", "--keep", "collider-mismatch"]
+        for fail_at in range(3):                      # lesson 1, lesson 2, the marker
+            with self.subTest(fail_at=fail_at):
+                sent, calls = [], {"n": 0}
+
+                def fake(req, timeout=0):
+                    calls["n"] += 1
+                    item = json.loads(req.data.decode("utf-8"))["items"][0]
+                    if calls["n"] == fail_at + 1:
+                        raise urllib.error.URLError("down")
+                    sent.append(item["tags"][1] if item["tags"][0] == "lesson" else "marker")
+                    body = json.dumps({"success": True, "items_count": 1}).encode("utf-8")
+
+                    class Resp:
+                        def __enter__(self): return self
+                        def __exit__(self, *a): return False
+                        def read(self): return body
+                    return Resp()
+
+                out, err = io.StringIO(), io.StringIO()
+                with mock.patch.object(ml.urllib.request, "urlopen", side_effect=fake), \
+                        contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                    self.assertEqual(ml.main(base + keep), 3)
+                    retry = err.getvalue().rsplit("--since and ", 1)[1].split(" (")[0].strip().rstrip(".").split()
+                    self.assertEqual(ml.main(base + retry), 0)
+                self.assertEqual(sorted(sent), sorted(["lesson:audio-lifecycle", "lesson:collider-mismatch", "marker"]))
+
+    def test_mark_run_needs_retain_and_no_keep(self):
+        self.review(1, "Review CN1", "## BLOCKER\nmusic stuck\n")
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            self.assertEqual(ml.main(["--reviews", str(self.dir), "--mark-run"]), 2)
+            self.assertEqual(ml.main(["--reviews", str(self.dir), "--retain", "http://x", "--repository", "o/g",
+                                      "--mark-run", "--keep", "audio-lifecycle"]), 2)
+
+
+class RoundFourClaudeLessons(MineCase):
+    def test_a_review_item_shared_by_two_pieces_does_not_merge_them(self):
+        g = ml.piece_groups({1: "Review B1 fix in CK2", 2: "Review B1 fix in CN1"})
+        self.assertNotEqual(g[1], g[2])
+        g = ml.piece_groups({1: "Review B1 fix", 2: "Re-review B1"})
+        self.assertEqual(g[1], g[2])
+
+    def test_a_title_whose_words_are_inside_another_is_the_same_piece(self):
+        g = ml.piece_groups({1: "Review audio loading and sounds", 2: "Re-review audio loading",
+                             3: "Review credits screen rework"})
+        self.assertEqual(g[1], g[2])
+        self.assertNotEqual(g[1], g[3])
+
+    def test_a_class_below_the_guard_cannot_be_kept(self):
+        self.review(1, "Review CN1", "## Notes\n- One name runs off the tile edge.\n", "confirmed")
+        out, err = io.StringIO(), io.StringIO()
+        with mock.patch.object(ml.urllib.request, "urlopen") as urlopen, \
+                contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = ml.main(["--reviews", str(self.dir), "--retain", "http://x", "--repository", "o/g",
+                            "--keep", "text-clipping"])
+        self.assertEqual(code, 2)
+        self.assertIn("not past the noise guard", err.getvalue())
+        urlopen.assert_not_called()
+
 if __name__ == "__main__":
     unittest.main()

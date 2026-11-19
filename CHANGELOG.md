@@ -18,7 +18,7 @@ All notable changes to the `gamedev-studio` plugin. The version lives only in `.
   - memories with full provenance;
   - the revision of every source.
 
-  It refuses a clashing port range, flags names that nothing defines any more, and says that a mockup is not done.
+  It refuses a clashing port range, flags names that nothing defines any more (and lists where it found the others), and says that a mockup is not done.
 - **Learning and Improvement, light** ([DEC-105](https://github.com/ZMSkif/GameDev-AGI-Studio/issues/107), [DEC-106](https://github.com/ZMSkif/GameDev-AGI-Studio/issues/108)): the `lessons` skill, `/gamedev-studio:mine-lessons` and `scripts/mine_lessons.py`.
   - It mines the review archive for recurring failure classes behind a noise guard: 2 independent pieces or 1 blocker.
   - The report shows every hit with its file and line; doubtful wording is marked, never dropped.

@@ -46,7 +46,7 @@ OTHER_HEADING = re.compile(r"^#{1,4}\s")
 NONE_LINE = re.compile(r"^\W*(?:none|nothing|n/?a)\W*$|^\W*(?:none|nothing)\s*[.!]\s", re.I)
 # A line that only reports a pass, or only says a defect is absent ("music is not stuck"), is not an
 # occurrence unless it also names a defect.
-# Outside blocker sections only: inside one, every line is read as a defect.
+# Doubt cues: they mark a hit for the agent to check; they never remove it.
 PASS_CUE = re.compile(r"\b(pass(?:es|ed)|(?:checks?|tests?|suite) pass|confirmed|works as expected)\b", re.I)
 DEFECT_CUE = re.compile(r"\b(fail\w*|broken|missing|wrong|bugs?|crash\w*|leak\w*|stuck|lost|regress\w*|not|never"
                         r"|cannot|can't|doesn't|clipp\w*|cut off|block\w*|must|surviv\w*|gone|silent|stops?|freez\w*)\b",
@@ -56,10 +56,7 @@ DEFECT_WORDS = (r"fail\w*|broken|missing|wrong|bugs?|crash\w*|leak\w*|stuck|lost
 NEGATED_DEFECT = re.compile(r"\b(?:not(?!\s+only\b)|no|never|without|doesn't|does not|didn't|isn't|is not(?!\s+only\b)"
                             r"|won't|nothing)\s+"
                             r"(?:\w+\s+){0,2}?(?:" + DEFECT_WORDS + r")\b", re.I)
-# A piece code as titles write it: CN1, WP0, WA-0, CA1b, I18N. A code right after "for" or "of" names the
-# piece ("Re-check B1 fix for CN1"); otherwise the first upper-case code does. Lower-case codes (r17, r17b)
-# count only when the title has no upper-case one; a version such as v1 or v2 is never a piece code.
-UPPER_CODE = re.compile(r"(?<![A-Za-z0-9])([A-Z]{1,4})-?(\d{1,3})([A-Za-z]?)(?![A-Za-z0-9])")
+# Piece codes in review titles, matched in any case: CN1, WP0, WA-0, CA1b, I18N, r17 (see piece_codes).
 PIECE_CODE = re.compile(r"(?<![a-z0-9])([a-z]{1,4})-?(\d{1,3})([a-z]?)(?![a-z0-9])")
 REVIEW_WORDS = {"agent", "independent", "review", "re", "second", "third", "fourth", "final", "again", "fix",
                 "fixes", "round", "follow", "up", "finished", "finish", "finishe", "fi", "of", "the", "pass", "v",
@@ -107,21 +104,6 @@ def _guard():
     return module.blocked_reason
 
 
-def piece_key(title: str) -> str:
-    """One key per piece: its code (cn1, wp0, wa0) when the title has one, else the title without review words."""
-    codes = [m for m in UPPER_CODE.finditer(title) if m.group(1).lower() not in REVIEW_WORDS]
-    named = [m for m in codes if re.search(r"\b(for|of)\s+$", title[:m.start()], re.I)]
-    if named or codes:
-        return "".join((named[-1] if named else codes[0]).groups()).lower()
-    text = title.lower()
-    for match in PIECE_CODE.finditer(text):
-        if match.group(1) not in REVIEW_WORDS:
-            return "".join(match.groups())
-    words = [w for w in re.findall(r"[a-z0-9]+", text)
-             if w not in REVIEW_WORDS and not w.isdigit() and not re.fullmatch(r"v\d+", w)]
-    return "-".join(words) or text
-
-
 def review_files(folder: Path) -> list[tuple[int, Path]]:
     found = []
     for path in sorted(folder.glob("*.md")):
@@ -132,15 +114,14 @@ def review_files(folder: Path) -> list[tuple[int, Path]]:
 
 
 def piece_codes(title: str) -> set[str]:
-    """The codes a review title names. Two-letter-or-longer codes (CN1, WP0, WA-0, CA1b, LOD1) are the
-    pieces; a review item such as B1, M3 or R2, or a fix round such as r17, counts only when the title
-    names nothing else. Without a code, the title's words minus review words stand for the piece."""
-    upper = [m for m in UPPER_CODE.finditer(title) if m.group(1).lower() not in REVIEW_WORDS]
-    strong = {"".join(m.groups()).lower() for m in upper if len(m.group(1)) >= 2}
+    """The codes a review title names, in any case. Codes with two or more letters (CN1, WP0, WA-0, CA1b,
+    LOD1) are the pieces; a review item such as B1, M3 or R2, or a fix round such as r17, counts only when
+    the title names nothing else. Without a code, the title's words minus review words stand for it."""
+    found = [m for m in PIECE_CODE.finditer(title.lower()) if m.group(1) not in REVIEW_WORDS]
+    strong = {"".join(m.groups()) for m in found if len(m.group(1)) >= 2}
     if strong:
         return strong
-    weak = {"".join(m.groups()).lower() for m in upper}
-    weak |= {"".join(m.groups()) for m in PIECE_CODE.finditer(title.lower()) if m.group(1) not in REVIEW_WORDS}
+    weak = {"".join(m.groups()) for m in found}
     if weak:
         return weak
     words = [w for w in re.findall(r"[a-z0-9]+", title.lower())
@@ -149,8 +130,8 @@ def piece_codes(title: str) -> set[str]:
 
 
 def piece_groups(titles: dict[int, str]) -> dict[int, str]:
-    """File number -> piece group. Reviews whose titles share a code are one piece, transitively, so the
-    count errs toward fewer independent pieces, never more."""
+    """Key -> piece group. Reviews whose titles share a code are one piece, transitively. Titles that share
+    no code stay apart, so the report prints the groups for the agent to check."""
     parent = {n: n for n in titles}
 
     def find(n):
@@ -159,8 +140,14 @@ def piece_groups(titles: dict[int, str]) -> dict[int, str]:
             n = parent[n]
         return n
 
-    owner: dict[str, int] = {}
+    owner: dict = {}
     codes = {n: piece_codes(t) for n, t in titles.items()}
+    worded = {n: set(next(iter(cs)).split("-")) for n, cs in codes.items()
+              if len(cs) == 1 and not PIECE_CODE.fullmatch(next(iter(cs)))}
+    for a in worded:
+        for b in worded:
+            if a != b and len(worded[a]) >= 2 and worded[a] <= worded[b]:
+                parent[find(a)] = find(b)
     for n, cs in codes.items():
         for code in cs:
             if code in owner:
@@ -209,24 +196,24 @@ def doubts(line: str, note: str) -> list[str]:
 
 def mine(folder: Path, since: int = 0) -> dict:
     files = review_files(folder)
-    texts = {n: p.read_text(encoding="utf-8", errors="replace") for n, p in files}
+    texts = {path: path.read_text(encoding="utf-8", errors="replace") for _, path in files}
     titles = {}
     for number, path in files:
-        match = TITLE_RE.search(texts[number])
-        titles[number] = match.group(1) if match else NAME_RE.match(path.name).group(3)
+        match = TITLE_RE.search(texts[path])
+        titles[path] = match.group(1) if match else NAME_RE.match(path.name).group(3)
     groups = piece_groups(titles)
     hits: dict[str, list[dict]] = {cid: [] for cid in CLASS_IDS}
     for number, path in files:
-        text = texts[number]
+        text = texts[path]
         cut = text.index(HEADER_END) + len(HEADER_END) if HEADER_END in text else 0
         head_lines, body = text[:cut].count("\n"), text[cut:]
         for line_no, line, severe, note in lines_with_severity(body):
-            if not line.strip() or OTHER_HEADING.match(line):
+            if not line.strip():
                 continue
             for cid, pattern, _ in CLASSES:
                 if re.search(pattern, line, re.I):
                     hits[cid].append({"file": path.name, "number": number, "line": head_lines + line_no,
-                                      "piece": groups[number], "severe": severe, "doubts": doubts(line, note),
+                                      "piece": groups[path], "severe": severe, "doubts": doubts(line, note),
                                       "text": line.strip()})
     lessons, doubtful, below = [], [], []
     for cid, _, proposal in CLASSES:
@@ -303,8 +290,8 @@ def items_for(report: dict, keep: list[str], repository: str, token: str) -> lis
                          "archive_last": str(report["last"]), "lessons_run": token},
             "tags": ["lesson", f"lesson:{lesson['class']}", f"repo:{repository}"]})
     items.append({
-        "content": (f"Lessons run for {repository}: review archive files {span} mined, "
-                    f"{len(chosen)} lessons kept. Next run: --since {report['last']}."),
+        "content": (f"Lessons run for {repository}: review archive files {span} mined. "
+                    f"Next run: --since {report['last']}."),
         "context": "review archive lessons run marker",
         "metadata": {"source_type": "review-archive", "source": f"{repository}: review archive",
                      "source_rev": f"{repository} reviews {span}", "recorded_by": "gamedev-studio:lessons",
@@ -337,12 +324,14 @@ def item_name(item: dict) -> str:
 
 
 def retain(report: dict, keep: list[str], base: str, bank: str, repository: str, forbid: list[re.Pattern],
-           token: str | None = None) -> tuple[list[str], list[tuple[str, str]]]:
+           token: str | None = None, marker_only: bool = False) -> tuple[list[str], list[tuple[str, str]]]:
     """Store each kept lesson, then the run marker. Storing stops at the first item that is refused or
     fails, so a re-run with --keep set to the rest stores nothing twice. Returns (stored, not stored)."""
     blocked_reason = _guard()
     token = token or uuid.uuid4().hex[:12]
     items = items_for(report, keep, repository, token)
+    if marker_only:
+        items = items[-1:]
     stored: list[str] = []
     for position, item in enumerate(items):
         reason = blocked_reason(json.dumps(item, ensure_ascii=False), forbid) or post(base, bank, item)
@@ -369,6 +358,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--since", type=int, default=0, help="report only lessons with a file numbered above this")
     parser.add_argument("--keep", action="append", default=[], metavar="CLASS",
                         help="with --retain: a class to store, named after reading its hits; repeatable")
+    parser.add_argument("--mark-run", action="store_true",
+                        help="with --retain: store only the run marker (after the kept lessons were stored)")
     parser.add_argument("--out", help="write the Markdown report here (outside the game repository)")
     parser.add_argument("--json", action="store_true", help="print the report as JSON")
     parser.add_argument("--retain", metavar="URL", help="Hindsight base URL to store the lessons in")
@@ -393,7 +384,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.retain and not (args.repository and REPO_RE.match(args.repository)):
         print("ERROR: --retain needs --repository owner/name", file=sys.stderr)
         return 2
-    if args.retain and not args.keep:
+    if args.mark_run and (args.keep or not args.retain):
+        print("ERROR: --mark-run goes with --retain and without --keep", file=sys.stderr)
+        return 2
+    if args.retain and not args.keep and not args.mark_run:
         print("ERROR: --retain stores only the classes you name: read the report, then add --keep CLASS "
               "for each real lesson", file=sys.stderr)
         return 2
@@ -420,14 +414,16 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout.reconfigure(errors="backslashreplace")  # a cp1251 console cannot print every character
     print(json.dumps(report, indent=2) if args.json else text)
     if args.retain:
-        stored, refused = retain(report, args.keep, args.retain, args.bank, args.repository, forbid)
+        stored, refused = retain(report, args.keep, args.retain, args.bank, args.repository, forbid,
+                                 marker_only=args.mark_run)
         print(f"STORED: {', '.join(stored) or 'nothing'}", file=sys.stderr)
         for name, reason in refused:
             print(f"NOT STORED {name}: {reason}", file=sys.stderr)
         if refused:
             left = [name.split(":", 1)[1] for name, _ in refused if name.startswith("lesson:")]
-            print("The run marker was not stored. After fixing the cause, run again with the same --since and "
-                  + (f"--keep {' --keep '.join(left)}" if left else "the same --keep") + ".", file=sys.stderr)
+            retry = (f"--keep {' --keep '.join(left)}" if left else "--mark-run (every kept lesson is stored)")
+            print(f"The run marker was not stored. After fixing the cause, run again with the same --since and "
+                  f"{retry}.", file=sys.stderr)
         return 3 if refused else 0
     return 0
 

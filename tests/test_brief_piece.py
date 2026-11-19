@@ -3,11 +3,13 @@ import contextlib
 import importlib.util
 import io
 import json
+import os
 import subprocess
 import tempfile
 import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 _spec = importlib.util.spec_from_file_location("brief_piece", REPO_ROOT / "scripts" / "brief_piece.py")
@@ -543,6 +545,107 @@ class RoundThreeCases(BriefCase):
         _, second, _ = self.call()
         digest = lambda text: [l for l in self.section(text, "## Built from").splitlines() if "Review archive" in l]
         self.assertNotEqual(digest(first), digest(second))
+
+
+class RoundFourCases(BriefCase):
+    def stale(self, text):
+        return self.section(text, "## ⚠ Stale references") if "## ⚠ Stale references" in text else ""
+
+    def test_json_needs_the_exact_key(self):
+        (self.repo / "src/city/citizens/k.json").write_text('{"function runTraining() {}": true, "x": 1}',
+                                                         encoding="utf-8")
+        _, text, _ = self.call()
+        self.assertIn("`runTraining`", self.stale(text))
+
+    def test_a_string_continued_over_a_backslash_is_still_a_string(self):
+        (self.repo / "src/city/citizens/c.js").write_text('const s = "one \\\nfunction runTraining() {}";\n',
+                                                        encoding="utf-8")
+        _, text, _ = self.call()
+        self.assertIn("`runTraining`", self.stale(text))
+
+    def test_every_found_name_shows_where(self):
+        (self.repo / "src/city/citizens/re.js").write_text("// header\nconst re = /function runTraining()/;\n",
+                                                         encoding="utf-8")
+        _, text, _ = self.call()
+        found = self.section(text, "## Names the card uses, and where they were found")
+        self.assertIn("- `runTraining`: `src/city/citizens/re.js:2`: const re = /function runTraining()/;", found)
+        self.assertIn("- `startShow`: `src/city/citizens/crowd.ts:5`: export function startShow() {}", found)
+
+    def test_built_from_changes_when_any_used_byte_changes(self):
+        subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
+        subprocess.run(["git", "-C", str(self.repo), "add", "-A"], check=True)
+        subprocess.run(["git", "-C", str(self.repo), "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "x"],
+                       check=True)
+        fresh = self.repo / "src/city/citizens/new/main.ts"          # untracked, in a new folder
+        fresh.parent.mkdir()
+        fresh.write_text("export const a = 1;\n", encoding="utf-8")
+        used = [fresh, self.repo / "src/city/citizens/crowd.ts", self.repo / "src/city/layout.ts"]   # owned, owned, read
+        _, base, _ = self.call()
+        for path in used:
+            with self.subTest(path=path.name):
+                original = path.read_bytes()
+                path.write_bytes(original[:-1] + (b"X" if original[-1:] != b"X" else b"Y"))
+                _, changed, _ = self.call()
+                path.write_bytes(original)
+                self.assertNotEqual(self.section(base, "## Built from"), self.section(changed, "## Built from"))
+
+
+class RoundFourClaudeCases(BriefCase):
+    def stale(self, text):
+        return self.section(text, "## ⚠ Stale references") if "## ⚠ Stale references" in text else ""
+
+    def old_worktree(self):
+        wt = self.repo / ".claude/worktrees/agent-old"
+        (wt / "src").mkdir(parents=True)
+        (wt / ".git").write_text("gitdir: elsewhere\n", encoding="utf-8")
+        (wt / "src/old.ts").write_text("export const stepId = 1;\nexport function runTraining() {}\n", encoding="utf-8")
+
+    def test_a_repository_git_refuses_is_not_walked(self):
+        self.old_worktree()
+        subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
+        subprocess.run(["git", "-C", str(self.repo), "add", "src", "tests", "docs"], check=True)
+        with mock.patch.dict(os.environ, {"GIT_TEST_ASSUME_DIFFERENT_OWNER": "1"}):
+            code, text, _ = self.call()
+        self.assertEqual(code, 0)
+        unchecked = self.section(text, "## ⚠ Names not checked")
+        for name in ("runTraining", "stepId", "startShow"):
+            self.assertIn(f"`{name}`", unchecked)
+        self.assertNotIn("## Names the card uses, and where they were found", text)
+        built = self.section(text, "## Built from")
+        self.assertIn("git would not read it", built)
+        self.assertNotIn("clean", built)
+
+    def test_a_walk_skips_claude_folders_and_nested_repositories(self):
+        self.old_worktree()
+        nested = self.repo / "vendor/other"
+        (nested / ".git").mkdir(parents=True)
+        (nested / "x.ts").write_text("export const stepId = 1;\n", encoding="utf-8")
+        _, text, _ = self.call()
+        self.assertIn("`stepId`", self.stale(text))
+        self.assertIn("`runTraining`", self.stale(text))
+
+    def test_csharp_brace_on_the_next_line_and_raw_strings(self):
+        (self.repo / "Coach.cs").write_text(
+            'class Coach\n{\n    public void runTraining()\n    {\n    }\n'
+            '    string raw = """export const stepId = 1""";\n}\n', encoding="utf-8")
+        _, text, _ = self.call()
+        self.assertNotIn("`runTraining`", self.stale(text))
+        self.assertIn("`stepId`", self.stale(text))
+
+    def test_an_unclosed_comment_hides_nothing(self):
+        (self.repo / "src/city/citizens/open2.ts").write_text("/* export const stepId = 1;\n", encoding="utf-8")
+        (self.repo / "Paths.cs").write_text('var dir = @"C:\\dir\\"; var s = "export const runTraining = 1";\n',
+                                            encoding="utf-8")
+        _, text, _ = self.call()
+        self.assertIn("`stepId`", self.stale(text))
+        self.assertIn("`runTraining`", self.stale(text))
+
+    def test_a_plain_word_label_after_a_blank_line_stays_in_the_field(self):
+        card = bp.parse_card("# CN1 · x\n- **Goal:**\n\nNote: the plaza fills up.\n- **Acceptance:**\n  1. Test: a.\n"
+                             "- **Owns:** `src/a.ts`\n- **Reviewer gate:** the video.\n\nSoaks: 30 minutes on medium.\n"
+                             "\nMerge note: keep `x`.\n")
+        self.assertEqual(card["goal"], ["Note: the plaza fills up."])
+        self.assertEqual(card["reviewer_gate"], ["the video.", "Soaks: 30 minutes on medium."])
 
 if __name__ == "__main__":
     unittest.main()

@@ -21,11 +21,13 @@ Inputs:
 It warns, in the brief, about what Cat Challenge learned the hard way:
   * a port range that overlaps one in use, even by one port (the brief is refused, exit 3);
   * a backticked name in the card that nothing in the repository defines or imports any more
-    (a stale recipe); a mention in a comment does not count;
+    (a stale recipe); a mention in a comment or a string does not count, and every name it did find
+    is listed with its file and line so a wrong match is visible;
   * notes that earlier reviews left for this piece are pulled in verbatim: whole "For <ID>:" blocks,
     and every line of another piece's review that names the piece;
   * done means every acceptance line in the built game; a mockup is not done.
-The brief records the revision of everything it was built from (DEC-102).
+The brief records the revision of everything it was built from (DEC-102), including one digest
+over the current content of every owned and read file.
 Exit codes: 0 brief written, 2 bad input, 3 refused (port clash).
 """
 from __future__ import annotations
@@ -45,7 +47,8 @@ FIELD_RE = re.compile(r"^\s*(?:[-*]\s*)?\**(" + "|".join(FIELDS) + r")\**\s*:\s*
 # A second field on the same line, such as "**Depends:** CK2. **Reviewer gate:** the video".
 EMBEDDED_RE = re.compile(r"\*\*(" + "|".join(FIELDS) + r")(?::\*\*|\*\*\s*:)\s*", re.I)
 # A line that starts a new labelled note, such as "Merge note: ..." or "**Risks:** ...".
-LABEL_RE = re.compile(r"^\s*(?:[-*]\s+)?\**[A-Z][\w' -]{0,40}\**\s*:(?!//)")
+LABEL_RE = re.compile(r"^\s*(?:[-*]\s+)?(?:\*\*[^*\n]{1,40}:\*\*|\*\*[^*\n]{1,40}\*\*\s*:"
+                      r"|(?:[\w-]+ )?notes?\s*:|risks?\s*:)", re.I)
 ACCEPTANCE_LINE_RE = re.compile(r"^\s*(?:\d+[.)]|[-*])\s+(.*\S)")
 EVIDENCE_RE = re.compile(r"^\s*(Test|Shot)\b[^:]{0,40}:", re.I)
 SYMBOL_RE = re.compile(r"`([A-Za-z_][A-Za-z0-9_]{2,})(?:\(\))?`")
@@ -56,7 +59,7 @@ IMPORT_RES = (
     re.compile(r"""(?:preload|load)\(\s*["']res://([^"']+)["']\s*\)"""),        # GDScript
 )
 CODE_SUFFIXES = {".ts", ".tsx", ".js", ".mjs", ".jsx", ".py", ".gd", ".cs", ".json", ".css"}
-SKIP_DIRS = {".git", "node_modules", "dist", "build", "coverage", ".venv", "__pycache__", ".godot"}
+SKIP_DIRS = {".git", ".claude", "node_modules", "dist", "build", "coverage", ".venv", "__pycache__", ".godot"}
 MAX_SOURCE_BYTES = 2_000_000   # bigger files are generated bundles or captures, not source
 STOPWORDS = set("the a an and or of to in on for with by from is are be this that it its at as into only "
                 "each every one two any all not no new piece game games player players".split())
@@ -113,7 +116,7 @@ def parse_card(text: str) -> dict:
     for position, raw in enumerate(raws):
         if not raw.strip() and current in ("goal", "depends", "reviewer_gate"):
             following = next((r for r in raws[position + 1:] if r.strip()), "")
-            if not following or following.startswith("#") or LABEL_RE.match(following):
+            if card[current] and (not following or following.startswith("#") or LABEL_RE.match(following)):
                 current = None
             continue
         for line in split_fields(raw):
@@ -183,7 +186,8 @@ def check_ports(requested: str | None, registry: dict | None, piece: str) -> lis
 def walk_files(root: Path):
     """Every file under root, never entering .git, node_modules or build output."""
     for folder, dirs, files in os.walk(root):
-        dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+        # Skip build output and any nested repository or worktree (a folder with its own .git).
+        dirs[:] = [d for d in dirs if d not in SKIP_DIRS and not (Path(folder) / d / ".git").exists()]
         for name in files:
             yield Path(folder) / name
 
@@ -238,28 +242,31 @@ def reads_of(root: Path, files: list[Path]) -> list[str]:
 
 # One pass over the code, leftmost match first, so a "//" inside a string or a quote inside a comment
 # is read correctly. Comments go; string contents go, but the quotes stay.
-_HASH_LANG = re.compile(r'"""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\'|#[^\n]*|"(?:\\.|[^"\\\n])*"|\'(?:\\.|[^\'\\\n])*\'')
+_HASH_LANG = re.compile(r'"""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\'|#[^\n]*|"(?:\\[\s\S]|[^"\\\n])*"'
+                        r"|'(?:\\[\s\S]|[^'\\\n])*'")
 # C# verbatim strings first; an unclosed /* runs to the end in one step, so it cannot be slow.
-_SLASH_LANG = re.compile(r'//[^\n]*|/\*(?:[\s\S]*?\*/|[\s\S]*\Z)|@"(?:[^"]|"")*"|"(?:\\.|[^"\\\n])*"'
-                         r"|'(?:\\.|[^'\\\n])*'|`(?:\\.|[^`\\])*`")
+_SLASH_LANG = re.compile(r'//[^\n]*|/\*(?:[\s\S]*?\*/|[\s\S]*\Z)|"""[\s\S]*?"""|@"(?:[^"]|"")*"|"(?:\\[\s\S]|[^"\\\n])*"'
+                         r"|'(?:\\[\s\S]|[^'\\\n])*'|`(?:\\[\s\S]|[^`\\])*`")
 # In JSON only keys can define a name; every value string is blanked.
 _JSON_STRING = re.compile(r'"(?:\\.|[^"\\\n])*"(\s*:)?')
 
 
 def _blank(match: re.Match) -> str:
     token = match.group(0)
+    breaks = "\n" * token.count("\n")   # keep line numbers
     if token[0] in "#/":
-        return " "                       # a comment between two words must not join them
+        return " " + breaks              # a comment between two words must not join them
     if token[0] == "@":
-        return '@""'
+        return '@""' + breaks
     quote = token[:3] if token[:3] in ('"""', "\'\'\'") else token[0]
-    return quote + quote
+    return quote + breaks + quote
 
 
 def strip_comments(text: str, suffix: str) -> str:
     """Code without its comments and string contents, so a comment or a string such as
     "function runTraining() {}" that names a removed function does not keep it alive. JSON keeps its keys
-    and loses its values. The rule fails safe: when it misreads code, a name is flagged stale, never hidden."""
+    and loses its values. A lexer can misread unusual code (a regex literal, for one), so the brief shows
+    where it found each name."""
     if suffix == ".json":
         return _JSON_STRING.sub(lambda m: m.group(0) if m.group(1) else '""', text)
     return (_HASH_LANG if suffix in (".py", ".gd") else _SLASH_LANG).sub(_blank, text)
@@ -280,7 +287,7 @@ def definition_re(name: str) -> re.Pattern:
         rf"{n}\??[ \t]*{generic}[ \t]*(?:[:=]|\([^)\n]{{0,500}}\)[ \t]*(?::[^{{;\n]{{0,200}})?\{{)",
         rf"\b{n}\s*:\s*(?:async\s+)?(?:function\b|\()",
         rf"\"{n}\"\s*:",
-        rf"\b\w+{generic}\??[ \t]+{n}[ \t]*{generic}[ \t]*\([^)\n]{{0,500}}\)[ \t]*\{{",
+        rf"\b\w+{generic}\??[ \t]+{n}[ \t]*{generic}[ \t]*\([^)\n]{{0,500}}\)[ \t]*(?:\r?\n[ \t]*)?\{{",
         rf"\b\w+{generic}\??[ \t]+{n}[ \t]*\{{[ \t]*(?:get|set|init)\b",
     ]), re.M)
 
@@ -290,10 +297,17 @@ TEST_PATH = re.compile(r"(^|/)(tests?|__tests__|e2e|fixtures?|spec)(/|$)|\.(test
                        r"|(^|/)test_[^/]*\.py$|_test\.py$", re.I)
 
 
+class GitRefused(Exception):
+    """The folder is a git repository, but git would not list its files."""
+
+
 def source_files(root: Path) -> list[Path]:
     """The code files of the repository: git's tracked files when it is a git repository (so other
-    worktrees, captures and build output inside it do not count), else every file outside SKIP_DIRS."""
+    worktrees, captures and build output inside it do not count), else every file outside SKIP_DIRS.
+    A git repository that git refuses (for example over ownership) is never walked instead."""
     listed = git(root, "ls-files", "-z")
+    if listed is None and (root / ".git").exists():
+        raise GitRefused(f"git would not list the files of {root}")
     if listed is not None:
         names = [n for n in listed.split("\0") if n]
         paths = [root / n for n in names if not SKIP_DIRS & set(Path(n).parts) and not TEST_PATH.search(n)]
@@ -309,13 +323,16 @@ def source_files(root: Path) -> list[Path]:
     return keep
 
 
-def stale_symbols(root: Path, card_text: str) -> list[str]:
-    """Backticked identifiers in the card that no source file defines, exports or imports."""
+def stale_symbols(root: Path, card_text: str) -> tuple[list[str], dict[str, tuple[str, int, str]]]:
+    """Backticked identifiers in the card, split into stale ones (nothing defines, exports or imports them)
+    and found ones, each with the file, line and text of its first definition so a wrong match shows.
+    In JSON only an exact key counts."""
     missing = set(SYMBOL_RE.findall(card_text))
+    found: dict[str, tuple[str, int, str]] = {}
     if not missing:
-        return []
+        return [], found
     patterns = {s: definition_re(s) for s in missing}
-    for path in source_files(root):
+    for path in source_files(root):  # GitRefused goes to build(), which reports the names as not checked
         try:
             raw = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
@@ -323,11 +340,23 @@ def stale_symbols(root: Path, card_text: str) -> list[str]:
         here = [s for s in missing if s in raw]
         if not here:
             continue
-        code = strip_comments(raw, path.suffix)
-        missing -= {s for s in here if patterns[s].search(code)}
+        if path.suffix == ".json":
+            code = raw
+            search = {s: re.compile(rf'"{re.escape(s)}"\s*:') for s in here}
+        else:
+            code = strip_comments(raw, path.suffix)
+            search = {s: patterns[s] for s in here}
+        lines = raw.splitlines()
+        for s, pattern in search.items():
+            match = pattern.search(code)
+            if match:
+                number = code.count("\n", 0, match.start()) + 1
+                text = lines[number - 1].strip() if number <= len(lines) else ""
+                found[s] = (path.relative_to(root).as_posix(), number, text[:160])
+        missing -= set(found)
         if not missing:
             break
-    return sorted(missing)
+    return sorted(missing), found
 
 
 def indent_of(line: str) -> int:
@@ -462,7 +491,7 @@ def sha256_of(path: str | None) -> str:
 def uncommitted(root: Path) -> set[str]:
     """Paths with uncommitted changes, from `git status --porcelain -z`: no quoting, and for a rename or
     copy the new path (the entry after it is the old path)."""
-    raw = git(root, "status", "--porcelain", "-z") or ""
+    raw = git(root, "status", "--porcelain", "-z", "--untracked-files=all") or ""
     entries, found, skip = raw.split("\0"), set(), False
     for entry in entries:
         if skip:
@@ -486,6 +515,7 @@ def revisions(args, root: Path, owned: list[Path], reads: list[str],
     """What the brief was built from, with a revision for each source (DEC-102): commits for committed
     files, content hashes for uncommitted ones and for every review file the notes quote."""
     head = git(root, "rev-parse", "HEAD")
+    refused = head is None and (root / ".git").exists()
     touched = uncommitted(root)
     mine = sorted(p for p in [o.relative_to(root).as_posix() for o in owned] + reads if p in touched)
     plugin = Path(args.plugin_root)
@@ -497,10 +527,14 @@ def revisions(args, root: Path, owned: list[Path], reads: list[str],
     archive = sorted(reviews.glob("*.md")) if reviews.is_dir() else []
     digest = hashlib.sha256("\n".join(f"{a.name}:{file_sha(a)}" for a in archive).encode("utf-8")).hexdigest()[:16]
     quoted = sorted({name for name, _, _ in notes})
+    used = sorted({o.relative_to(root).as_posix() for o in owned} | set(reads))
+    used_digest = hashlib.sha256("\n".join(f"{u}:{file_sha(root / u)}" for u in used).encode("utf-8")).hexdigest()[:16]
     lines = [
-        f"- Game repository HEAD: `{head or 'not a git repository'}`"
+        (f"- Game repository: git would not read it, so its revision and uncommitted changes are unknown"
+         if refused else f"- Game repository HEAD: `{head or 'not a git repository'}`")
         + (f"; uncommitted changes in {', '.join(f'`{m}` (sha256 `{file_sha(root / m)}`)' for m in mine)}" if mine else
-           ("; other uncommitted changes exist" if touched else "; clean")),
+           ("; other uncommitted changes exist" if touched else ("" if refused or not head else "; clean"))),
+        f"- Owned and read files: {len(used)}, sha256 of all `{used_digest}` (their content now, committed or not)",
         f"- Card: sha256 `{sha256_of(args.card)}`" + (f", from {args.card_source}" if args.card_source else ""),
         f"- Decisions: sha256 `{sha256_of(args.decisions)}`",
         f"- Memories: sha256 `{sha256_of(args.memories)}`",
@@ -513,7 +547,7 @@ def revisions(args, root: Path, owned: list[Path], reads: list[str],
     return lines
 
 
-def render(card, decisions, skills, owned, reads, stale, notes, memories, port_notes, root: Path,
+def render(card, decisions, skills, owned, reads, stale, found, unchecked, notes, memories, port_notes, root: Path,
            revision_lines: list[str]) -> str:
     out = [f"# Brief: {card['title'] or card['piece']}", ""]
     out += ["## Goal", *card["goal"], ""]
@@ -544,9 +578,17 @@ def render(card, decisions, skills, owned, reads, stale, notes, memories, port_n
                                   for d in decisions]]
     out += ["", "## Skills", *[f"- `{name}`: {text}" for name, text in skills]]
     if stale:
-        out += ["", "## ⚠ Stale references", "Nothing in the repository at HEAD defines, exports or imports these "
+        out += ["", "## ⚠ Stale references", "Nothing in the working tree's tracked files defines, exports or imports these "
                 "names from the card. Do not apply a recipe that uses them; ask the coordinator:",
                 *[f"- `{s}`" for s in stale]]
+    if unchecked:
+        out += ["", "## ⚠ Names not checked", "git would not list this repository's files, so the brief could not "
+                "check these names. Treat each as possibly stale and ask the coordinator:",
+                *[f"- `{s}`" for s in unchecked]]
+    if found:
+        out += ["", "## Names the card uses, and where they were found",
+                "Check each line: a wrong match here would hide a stale name.",
+                *[f"- `{s}`: `{f}:{n}`: {text}" for s, (f, n, text) in sorted(found.items())]]
     if notes:
         out += ["", "## Notes from earlier reviews (verbatim)"]
         for name, line_no, block in notes:
@@ -587,11 +629,15 @@ def build(args) -> str:
     skills = pick_skills(Path(args.plugin_root), words)
     owned = expand_owned(root, card["owns"])
     reads = reads_of(root, owned)
-    stale = stale_symbols(root, card_text)
+    try:
+        stale, found = stale_symbols(root, card_text)
+        unchecked: list[str] = []
+    except GitRefused:
+        stale, found, unchecked = [], {}, sorted(set(SYMBOL_RE.findall(card_text)))
     reviews = Path(args.reviews) if args.reviews else root / "docs" / "reviews"
     notes = review_notes(reviews, card["piece"], [p.relative_to(root).as_posix() for p in owned] + card["owns"])
     memories = usable_memories(load_json(args.memories, "--memories"))
-    return render(card, decisions, skills, owned, reads, stale, notes, memories, port_notes, root,
+    return render(card, decisions, skills, owned, reads, stale, found, unchecked, notes, memories, port_notes, root,
                   revisions(args, root, owned, reads, notes))
 
 
