@@ -558,6 +558,8 @@ class KnowledgePolicyRules(FixtureCase):
         self.assertEditFails(learning(auto_apply_requires_passing_checks=False), "must be verified first (DEC-106")
         self.assertEditFails(learning(noise_guard_single_severe="any_should_fix"), "one blocker is severe")
         self.assertEditFails(learning(independence_key="file"), "independence is counted per piece")
+        self.assertEditFails(learning(store_requires_explicit_keep=False), "stored only when the agent names it")
+        self.assertEditFails(lambda p: p["learning"].pop("store_requires_explicit_keep"), "stored only when the agent")
         self.assertEditFails(learning(rule_sources={"noise_guard": "x"}), "rule_sources must cite")
         self.assertEditFails(learning(rule_sources={"noise_guard": "", "push_or_pr_requires_owner_yes": "y"}),
                              "rule_sources must cite")

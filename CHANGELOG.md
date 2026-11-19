@@ -21,7 +21,8 @@ All notable changes to the `gamedev-studio` plugin. The version lives only in `.
   It refuses a clashing port range, flags names that nothing defines any more, and says that a mockup is not done.
 - **Learning and Improvement, light** ([DEC-105](https://github.com/ZMSkif/GameDev-AGI-Studio/issues/107), [DEC-106](https://github.com/ZMSkif/GameDev-AGI-Studio/issues/108)): the `lessons` skill, `/gamedev-studio:mine-lessons` and `scripts/mine_lessons.py`.
   - It mines the review archive for recurring failure classes behind a noise guard: 2 independent pieces or 1 blocker.
-  - `--drop` leaves out false hits.
+  - The report shows every hit with its file and line; doubtful wording is marked, never dropped.
+  - Nothing is stored unless the agent names the class with `--keep` after reading the hits.
   - It stores lessons with provenance and without a `document_id`. The run marker is stored only after every lesson was.
   - It proposes plugin changes on a local branch. Push and PR need the owner's yes.
 - Contracts v1.3.0: `knowledge-policy.json` 1.1.0, checked by `validate_contracts.py`. It covers the memory backend, bank naming, storage rules, learning rules with their sources, and the known limits.

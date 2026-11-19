@@ -117,6 +117,7 @@
     "noise_guard_min_independent_occurrences": 2,
     "noise_guard_single_severe": "blocker",
     "independence_key": "piece",
+    "store_requires_explicit_keep": true,
     "safe_noncreative_auto_apply": true,
     "auto_apply_requires_passing_checks": true,
     "notify_every_automatic_change": true,

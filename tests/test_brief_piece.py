@@ -463,5 +463,86 @@ class RoundTwoCases(BriefCase):
         self.assertNotIn("## ⚠ Stale references", text)
         self.assertIn("uncommitted changes", self.section(text, "## Built from"))
 
+
+class RoundThreeCases(BriefCase):
+    """One fail direction: a misread may flag a name as stale, it must never hide a stale one."""
+
+    def stale(self, text):
+        return self.section(text, "## ⚠ Stale references") if "## ⚠ Stale references" in text else ""
+
+    def test_json_values_never_define_a_name_but_keys_do(self):
+        (self.repo / "src/city/citizens/recipe.json").write_text(
+            '{"recipe": "function runTraining() {}", "note": "export const stepId = 1"}', encoding="utf-8")
+        _, text, _ = self.call()
+        self.assertIn("`runTraining`", self.stale(text))
+        self.assertIn("`stepId`", self.stale(text))
+        (self.repo / "src/city/citizens/keys.json").write_text('{"stepId": 3}', encoding="utf-8")
+        _, text, _ = self.call()
+        self.assertNotIn("`stepId`", self.stale(text))
+
+    def test_comments_and_odd_strings(self):
+        (self.repo / "src/city/citizens/odd.ts").write_text(
+            "function/* old name */runTraining() {}\nconst glob = '/*.glb';\nexport const stepId = 1;\n",
+            encoding="utf-8")
+        _, text, _ = self.call()
+        self.assertEqual(self.stale(text), "")
+
+    def test_python_comments_and_csharp_verbatim_strings(self):
+        (self.repo / "tool.py").write_text("# def runTraining(): was removed\n", encoding="utf-8")
+        (self.repo / "Paths.cs").write_text('var dir = @"C:\\dir\\";\nclass P { public int stepId { get; set; } }\n',
+                                            encoding="utf-8")
+        _, text, _ = self.call()
+        self.assertIn("`runTraining`", self.stale(text))
+        self.assertNotIn("`stepId`", self.stale(text))
+
+    def test_an_unclosed_block_comment_stays_fast(self):
+        (self.repo / "src/city/citizens/open.ts").write_text("/* " + "stepId runTraining " * 20000, encoding="utf-8")
+        started = time.monotonic()
+        _, text, _ = self.call()
+        self.assertLess(time.monotonic() - started, 5)
+        self.assertIn("`stepId`", self.stale(text))
+
+    def test_python_test_files_do_not_count(self):
+        (self.repo / "test_training.py").write_text("def runTraining():\n    pass\n", encoding="utf-8")
+        _, text, _ = self.call()
+        self.assertIn("`runTraining`", self.stale(text))
+
+    def test_renamed_and_non_ascii_uncommitted_files_are_found(self):
+        subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
+        subprocess.run(["git", "-C", str(self.repo), "add", "-A"], check=True)
+        subprocess.run(["git", "-C", str(self.repo), "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "x"],
+                       check=True)
+        subprocess.run(["git", "-C", str(self.repo), "mv", "src/city/citizens/crowd.ts", "src/city/citizens/Толпа.ts"],
+                       check=True)
+        self.assertIn("src/city/citizens/Толпа.ts", bp.uncommitted(self.repo))
+        self.assertNotIn("src/city/citizens/crowd.ts", bp.uncommitted(self.repo))
+        _, first, _ = self.call()
+        self.assertIn("uncommitted changes in `src/city/citizens/Толпа.ts` (sha256", self.section(first, "## Built from"))
+        (self.repo / "src/city/citizens/Толпа.ts").write_text("export function startShow() { /* v2 */ }\n",
+                                                             encoding="utf-8")
+        _, second, _ = self.call()
+        self.assertNotEqual(self.section(first, "## Built from"), self.section(second, "## Built from"))
+
+    def test_card_fields_with_blank_lines(self):
+        card = bp.parse_card("# CN1 · x\n- **Goal:**\n\nthe plaza fills up.\n\nThe host walks the plaza.\n"
+                             "- **Acceptance:**\n  1. Test: a.\n- **Owns:** `src/a.ts`\n"
+                             "- **Depends:**\n\nCK2.\n- **Reviewer gate:**\n\nthe video.\n\nMerge note: keep `x`.\n")
+        self.assertEqual(card["goal"], ["the plaza fills up.", "The host walks the plaza."])
+        self.assertEqual(card["depends"], ["CK2."])
+        self.assertEqual(card["reviewer_gate"], ["the video."])
+
+    def test_a_for_note_starts_at_its_own_line(self):
+        _, text, _ = self.call()
+        self.assertIn("From `2026-11-19_49_agent-review-city-cs1-finished_confirmed.md`, line 10:\n\n- **For CN1:**",
+                      text)
+
+    def test_the_archive_digest_follows_every_file(self):
+        _, first, _ = self.call()
+        (self.reviews / "2026-11-19_70_agent-review-city-ck9-finished_confirmed.md").write_text(
+            '# Review: Agent "Review city CK9" finished\n\n---\n\nNothing about this piece.\n', encoding="utf-8")
+        _, second, _ = self.call()
+        digest = lambda text: [l for l in self.section(text, "## Built from").splitlines() if "Review archive" in l]
+        self.assertNotEqual(digest(first), digest(second))
+
 if __name__ == "__main__":
     unittest.main()

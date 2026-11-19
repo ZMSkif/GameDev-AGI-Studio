@@ -44,6 +44,8 @@ FIELDS = ("Goal", "Acceptance", "Owns", "Depends", "Reviewer gate", "Piece")
 FIELD_RE = re.compile(r"^\s*(?:[-*]\s*)?\**(" + "|".join(FIELDS) + r")\**\s*:\s*\**\s*(.*)$", re.I)
 # A second field on the same line, such as "**Depends:** CK2. **Reviewer gate:** the video".
 EMBEDDED_RE = re.compile(r"\*\*(" + "|".join(FIELDS) + r")(?::\*\*|\*\*\s*:)\s*", re.I)
+# A line that starts a new labelled note, such as "Merge note: ..." or "**Risks:** ...".
+LABEL_RE = re.compile(r"^\s*(?:[-*]\s+)?\**[A-Z][\w' -]{0,40}\**\s*:(?!//)")
 ACCEPTANCE_LINE_RE = re.compile(r"^\s*(?:\d+[.)]|[-*])\s+(.*\S)")
 EVIDENCE_RE = re.compile(r"^\s*(Test|Shot)\b[^:]{0,40}:", re.I)
 SYMBOL_RE = re.compile(r"`([A-Za-z_][A-Za-z0-9_]{2,})(?:\(\))?`")
@@ -107,7 +109,13 @@ def parse_card(text: str) -> dict:
     names = {"goal": "goal", "acceptance": "acceptance", "owns": "owns", "depends": "depends",
              "reviewer gate": "reviewer_gate", "piece": "piece"}
     current = None
-    for raw in text.splitlines():
+    raws = text.splitlines()
+    for position, raw in enumerate(raws):
+        if not raw.strip() and current in ("goal", "depends", "reviewer_gate"):
+            following = next((r for r in raws[position + 1:] if r.strip()), "")
+            if not following or following.startswith("#") or LABEL_RE.match(following):
+                current = None
+            continue
         for line in split_fields(raw):
             if not card["title"] and line.startswith("#"):
                 card["title"] = line.lstrip("#").strip()
@@ -136,7 +144,7 @@ def parse_card(text: str) -> dict:
                         card["new"].append(path)
             elif current in ("goal", "depends", "reviewer_gate") and line.strip():
                 card[current].append(line.rstrip())
-            elif line.startswith("#") or (current in ("goal", "depends", "reviewer_gate") and not line.strip()):
+            elif line.startswith("#"):
                 current = None
     if not card["goal"] or not card["acceptance"] or not card["owns"]:
         raise BriefError("the card needs Goal, numbered Acceptance lines and an Owns list")
@@ -231,22 +239,29 @@ def reads_of(root: Path, files: list[Path]) -> list[str]:
 # One pass over the code, leftmost match first, so a "//" inside a string or a quote inside a comment
 # is read correctly. Comments go; string contents go, but the quotes stay.
 _HASH_LANG = re.compile(r'"""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\'|#[^\n]*|"(?:\\.|[^"\\\n])*"|\'(?:\\.|[^\'\\\n])*\'')
-_SLASH_LANG = re.compile(r"//[^\n]*|/\*[\s\S]*?\*/|\"(?:\\.|[^\"\\\n])*\"|'(?:\\.|[^'\\\n])*'|`(?:\\.|[^`\\])*`")
+# C# verbatim strings first; an unclosed /* runs to the end in one step, so it cannot be slow.
+_SLASH_LANG = re.compile(r'//[^\n]*|/\*(?:[\s\S]*?\*/|[\s\S]*\Z)|@"(?:[^"]|"")*"|"(?:\\.|[^"\\\n])*"'
+                         r"|'(?:\\.|[^'\\\n])*'|`(?:\\.|[^`\\])*`")
+# In JSON only keys can define a name; every value string is blanked.
+_JSON_STRING = re.compile(r'"(?:\\.|[^"\\\n])*"(\s*:)?')
 
 
 def _blank(match: re.Match) -> str:
     token = match.group(0)
     if token[0] in "#/":
-        return ""
-    quote = token[:3] if token[:3] in ('"""', "'''") else token[0]
+        return " "                       # a comment between two words must not join them
+    if token[0] == "@":
+        return '@""'
+    quote = token[:3] if token[:3] in ('"""', "\'\'\'") else token[0]
     return quote + quote
 
 
 def strip_comments(text: str, suffix: str) -> str:
     """Code without its comments and string contents, so a comment or a string such as
-    "function runTraining() {}" that names a removed function does not keep it alive."""
+    "function runTraining() {}" that names a removed function does not keep it alive. JSON keeps its keys
+    and loses its values. The rule fails safe: when it misreads code, a name is flagged stale, never hidden."""
     if suffix == ".json":
-        return text
+        return _JSON_STRING.sub(lambda m: m.group(0) if m.group(1) else '""', text)
     return (_HASH_LANG if suffix in (".py", ".gd") else _SLASH_LANG).sub(_blank, text)
 
 
@@ -271,7 +286,8 @@ def definition_re(name: str) -> re.Pattern:
 
 
 # Tests and fixtures do not keep a name alive: a fixture such as `stepId: 3` is not the game's code.
-TEST_PATH = re.compile(r"(^|/)(tests?|__tests__|e2e|fixtures?|spec)(/|$)|\.(test|spec)\.[A-Za-z]+$", re.I)
+TEST_PATH = re.compile(r"(^|/)(tests?|__tests__|e2e|fixtures?|spec)(/|$)|\.(test|spec)\.[A-Za-z]+$"
+                       r"|(^|/)test_[^/]*\.py$|_test\.py$", re.I)
 
 
 def source_files(root: Path) -> list[Path]:
@@ -443,6 +459,21 @@ def sha256_of(path: str | None) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()[:16]
 
 
+def uncommitted(root: Path) -> set[str]:
+    """Paths with uncommitted changes, from `git status --porcelain -z`: no quoting, and for a rename or
+    copy the new path (the entry after it is the old path)."""
+    raw = git(root, "status", "--porcelain", "-z") or ""
+    entries, found, skip = raw.split("\0"), set(), False
+    for entry in entries:
+        if skip:
+            skip = False
+            continue
+        if len(entry) > 3:
+            found.add(entry[3:])
+            skip = entry[0] in "RC" or entry[1] in "RC"
+    return found
+
+
 def file_sha(path: Path) -> str:
     try:
         return hashlib.sha256(path.read_bytes()).hexdigest()[:16]
@@ -455,8 +486,7 @@ def revisions(args, root: Path, owned: list[Path], reads: list[str],
     """What the brief was built from, with a revision for each source (DEC-102): commits for committed
     files, content hashes for uncommitted ones and for every review file the notes quote."""
     head = git(root, "rev-parse", "HEAD")
-    status = git(root, "status", "--porcelain") or ""
-    touched = {line[3:].strip().strip('"') for line in status.splitlines() if len(line) > 3}
+    touched = uncommitted(root)
     mine = sorted(p for p in [o.relative_to(root).as_posix() for o in owned] + reads if p in touched)
     plugin = Path(args.plugin_root)
     try:

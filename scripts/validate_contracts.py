@@ -289,6 +289,8 @@ def validate_knowledge_policy(policy, tool_schema):
           f"{where}: a lesson needs at least 2 independent occurrences (or one severe)")
     check(learning.get("noise_guard_single_severe") == "blocker" and learning.get("independence_key") == "piece",
           f"{where}: one blocker is severe, and independence is counted per piece")
+    check(learning.get("store_requires_explicit_keep") is True,
+          f"{where}: a lesson is stored only when the agent names it after reading the hits (DEC-138)")
     check(learning.get("notify_every_automatic_change") is True, f"{where}: every automatic change is notified (DEC-100)")
     check(learning.get("auto_apply_requires_passing_checks") is True,
           f"{where}: automatic changes must be verified first (DEC-106: safe, verified, non-creative)")
