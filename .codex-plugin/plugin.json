@@ -1,6 +1,6 @@
 {
   "name": "gamedev-studio",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "GameDev AGI Studio plugin: binding owner decisions, quality rules and agent roles for building games with Claude Code and Codex.",
   "author": {
     "name": "ZMSkif",
@@ -13,7 +13,7 @@
   "interface": {
     "displayName": "GameDev Studio",
     "shortDescription": "Binding studio rules for building games with coding agents",
-    "longDescription": "GameDev Studio tells agents to fetch the owner's binding decisions from GitHub Issues with gh and to apply them while they build games or extend this plugin.",
+    "longDescription": "GameDev Studio tells agents to fetch the owner's binding decisions from GitHub Issues with gh and to apply them while they build games or extend this plugin. It adds engine profiles, skills for portal releases, art acceptance, assets and licences, localisation, audio, game feel, fair bots, monetization and orchestration, and the studio roles with on-demand reviewers.",
     "developerName": "ZMSkif",
     "category": "Developer Tools",
     "capabilities": [

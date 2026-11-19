@@ -266,12 +266,17 @@ class EngineProfileRules(FixtureCase):
             m["contracts"][POLICY]["decision_issue_urls"].append(URL_DUMMY)
             self.write("manifest.json", m)
 
-    def test_real_policy_has_only_the_godot_profile_with_dec_012(self):
+    def test_real_policy_keeps_godot_and_any_web_profile_has_its_own_decision(self):
         p = json.loads((REPO / "contracts/v1" / POLICY).read_text(encoding="utf-8"))
         profiles = p["engine_profiles"]["profiles"]
         self.assertNotIn("engine", p)
         self.assertEqual(profiles["godot"]["engine"], "Godot 4.x")
         self.assertIn(URL_12, profiles["godot"]["decided_by"])
+        self.assertLessEqual(set(profiles), {"godot", "web"})
+        if "web" in profiles:
+            own = [u for u in profiles["web"]["decided_by"] if u != URL_12]
+            self.assertTrue(own, "the web profile cites its own owner decision")
+            self.assertNotEqual(own, [URL_DUMMY], "the fixture URL never reaches the real contract")
 
     def test_top_level_engine_rejected(self):
         self.edit_policy(lambda p: p.update(engine="Godot 4.x"))
