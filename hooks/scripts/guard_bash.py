@@ -337,8 +337,11 @@ def main() -> None:
         return
     # No session-level scope gate: only the directory a git command targets decides (is_studio_dir), so
     # `git -C <studio> commit` / `cd <studio> && git commit` from another project is still guarded.
-    cwd = payload.get("cwd") if isinstance(payload.get("cwd"), str) else None
-    cwd = cwd if cwd and os.path.isdir(cwd) else os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
+    # `cwd` is a common input field of every hook event. A missing, non-string or non-existent value is
+    # malformed input: fail open. Never fall back to the process cwd, which is unrelated to the session.
+    cwd = payload.get("cwd")
+    if not isinstance(cwd, str) or not cwd or not os.path.isdir(cwd):
+        return
     found = evaluate(command, cwd, payload.get("tool_name") == "PowerShell")
     if found:
         rule, reason = found

@@ -5,6 +5,7 @@ Claude Code / Codex PreToolUse and SessionStart events. Fixture repositories are
 temporary directory outside any studio checkout. `gh` is never called for real: the preflight
 tests put fake `git`/`gh` executables on PATH.
 """
+import atexit
 import json
 import os
 import shutil
@@ -27,6 +28,12 @@ sys.path.insert(0, str(SCRIPTS))
 import guard_bash  # noqa: E402
 import studio_scope  # noqa: E402
 import studio_shell  # noqa: E402
+
+
+# Hook subprocesses run from a neutral, non-repository directory so that no result can depend on the
+# runner's working directory or branch (the repository root is itself a studio repository).
+NEUTRAL_CWD = tempfile.mkdtemp(prefix="studio-hooks-cwd-")
+atexit.register(shutil.rmtree, NEUTRAL_CWD, True)
 
 
 def clean_env(**extra):
@@ -69,11 +76,11 @@ def pre_payload(command, cwd, tool="Bash"):
     }
 
 
-def run_script(script, payload, env=None, raw=None, python_args=()):
+def run_script(script, payload, env=None, raw=None, python_args=(), cwd=None):
     data = raw if raw is not None else json.dumps(payload, ensure_ascii=False).encode("utf-8")
     return subprocess.run(
         [sys.executable, "-I", *python_args, str(script)], input=data, env=env or clean_env(),
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60, cwd=cwd or NEUTRAL_CWD)
 
 
 def decision(done):
@@ -700,6 +707,33 @@ class FailOpen(HookTestCase):
                 done = run_script(GUARD, payload)
                 self.assertEqual((done.returncode, done.stdout), (0, b""), done.stderr)
 
+    def test_invalid_cwd_fails_open_even_when_the_process_sits_in_a_studio_repo_on_main(self):
+        # Regression: an invalid payload cwd used to fall back to the process cwd. Run the hooks from inside
+        # a studio repository on main (as CI does on the main branch) and require silence.
+        repo = make_repo(self.tmp, "runner-checkout")
+        self.assertEqual(git(repo, "symbolic-ref", "--short", "HEAD").strip(), "main")
+        missing = str(self.tmp / "missing")
+        cases = (
+            ("cwd number", {"cwd": 5}),
+            ("cwd missing dir", {"cwd": missing}),
+            ("cwd empty string", {"cwd": ""}),
+            ("cwd null", {"cwd": None}),
+            ("cwd list", {"cwd": [str(repo)]}),
+            ("cwd absent", {}),
+            ("cwd is a file", {"cwd": str(repo / "README.md")}),
+        )
+        for label, extra in cases:
+            guard = dict(pre_payload("git commit -m x", repo), **extra)
+            if not extra:
+                guard.pop("cwd")
+            start = dict({"hook_event_name": "SessionStart", "source": "startup"}, **extra)
+            for script, payload in ((GUARD, guard), (SESSION, start)):
+                with self.subTest(case=label, script=script.name):
+                    done = run_script(script, payload, cwd=repo)
+                    self.assertEqual((done.returncode, done.stdout, done.stderr), (0, b"", b""))
+        # sanity: the same process cwd with a valid payload cwd does block, so the test can fail
+        self.assertBlocked("git commit -m x", repo, "main")
+
     def test_unbalanced_quote_does_not_crash(self):
         repo = make_repo(self.tmp, "studio")
         done = run_script(GUARD, pre_payload('git commit -m "unterminated', repo))
@@ -717,7 +751,8 @@ class FailOpen(HookTestCase):
             studio_scope.fail_open(guard_bash.main)
         """ % str(SCRIPTS))
         done = subprocess.run([sys.executable, "-I", "-c", code], input=json.dumps(pre_payload("git commit -m x", repo)).encode(),
-                              env=clean_env(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
+                              env=clean_env(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60,
+                              cwd=NEUTRAL_CWD)
         self.assertEqual((done.returncode, done.stdout, done.stderr), (0, b"", b""))
 
     def test_internal_error_is_visible_only_with_debug_env(self):
@@ -730,7 +765,7 @@ class FailOpen(HookTestCase):
             studio_scope.fail_open(boom)
         """ % str(SCRIPTS))
         done = subprocess.run([sys.executable, "-I", "-c", code], env=clean_env(GAMEDEV_STUDIO_HOOK_DEBUG="1"),
-                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60, cwd=NEUTRAL_CWD)
         self.assertEqual(done.returncode, 0)
         self.assertIn(b"boom", done.stderr)
 
@@ -785,7 +820,7 @@ class SessionStartHook(HookTestCase):
             code = "import sys; sys.path.insert(0, %r)\nimport session_start as s\n%s\nimport studio_scope\nstudio_scope.fail_open(s.main)" % (
                 str(SCRIPTS), code_patch)
             done = subprocess.run([sys.executable, "-I", "-c", code], input=json.dumps(payload).encode(), env=env,
-                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60, cwd=NEUTRAL_CWD)
         self.assertEqual(done.returncode, 0, done.stderr)
         return decision(done)
 
@@ -1006,7 +1041,7 @@ class Launcher(HookTestCase):
 
     def run_launcher(self, build, name, data, env=None):
         return subprocess.run(build(name), input=data, env=env or clean_env(), stdout=subprocess.PIPE,
-                              stderr=subprocess.PIPE, timeout=60)
+                              stderr=subprocess.PIPE, timeout=60, cwd=NEUTRAL_CWD)
 
     def test_block_decision_and_stdin_pass_through(self):
         repo = make_repo(self.tmp, "studio")
@@ -1065,7 +1100,7 @@ class Launcher(HookTestCase):
     def test_no_python_on_path_fails_open_silently(self):
         sh = shutil.which("sh") or "/bin/sh"
         done = subprocess.run([sh, str(LAUNCHER), "guard_bash"], input=b"{}", env={"PATH": str(self.tmp)},
-                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60, cwd=NEUTRAL_CWD)
         self.assertEqual((done.returncode, done.stdout), (0, b""))
 
 
