@@ -134,14 +134,18 @@ def is_studio_dir(path) -> bool:
 
 
 def session_dirs(payload) -> list:
-    """Directories that define the session's project: payload cwd and CLAUDE_PROJECT_DIR."""
-    dirs = []
+    """Directories that define the session's project: the payload cwd and CLAUDE_PROJECT_DIR.
+
+    A missing, non-string or non-existent payload cwd is malformed input and yields no directories
+    (the hook then stays silent); the process cwd is never used.
+    """
     cwd = payload.get("cwd") if isinstance(payload, dict) else None
-    for value in (cwd, os.environ.get("CLAUDE_PROJECT_DIR")):
-        if isinstance(value, str) and value and value not in dirs:
-            dirs.append(value)
-    if not dirs:
-        dirs.append(os.getcwd())
+    if not isinstance(cwd, str) or not cwd or not os.path.isdir(cwd):
+        return []
+    dirs = [cwd]
+    project = os.environ.get("CLAUDE_PROJECT_DIR")
+    if isinstance(project, str) and project and project not in dirs:
+        dirs.append(project)
     return dirs
 
 
