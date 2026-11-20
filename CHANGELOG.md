@@ -5,7 +5,7 @@ All notable changes to the `gamedev-studio` plugin. The version lives only in `.
 ## [0.4.1] - 2026-11-20
 
 ### Added
-- `INSTALL.md` and `INSTALL.ru.md`: installing the plugin on a clean Windows PC from the release zip, with no GitHub access needed. Each step says who does it: Claude, Claude after the person's yes, or the person (sign-in, Windows prompts, restarts). The guide also covers:
+- `INSTALL.md` and `INSTALL.ru.md`: installing the plugin on a clean Windows PC from the release zip, with no GitHub access needed ([DEC-147](https://github.com/ZMSkif/GameDev-AGI-Studio/issues/167), task [#168](https://github.com/ZMSkif/GameDev-AGI-Studio/issues/168)). Each step says who does it: Claude, Claude after the person's yes, or the person (sign-in, Windows prompts, restarts). The guide also covers:
   - step 8: each game in its own folder outside the plugin folder, marked with `.gamedev-studio` so the hooks apply; the game's tasks go in its own repository's GitHub Issues, under the person's own account;
   - what the owner does before handing over;
   - working without GitHub access;

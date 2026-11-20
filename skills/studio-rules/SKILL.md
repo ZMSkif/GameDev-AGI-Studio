@@ -12,7 +12,7 @@ Before designing interfaces, read the studio's `AGENTS.md` and `contracts/v1/`. 
 - `gh api repos/ZMSkif/GameDev-AGI-Studio/contents/AGENTS.md -H "Accept: application/vnd.github.raw"`
 - `gh api repos/ZMSkif/GameDev-AGI-Studio/contents/contracts/v1 --jq '.[].name'` to list the contracts, then the same call with a file path and the `Accept` header above to read one.
 
-**Without GitHub access.** A person who got the plugin as a zip from the owner usually has no access to the private repository: `gh` is missing, not signed in, or answers that the repository is not found. That is a normal setup, not an error to fix. Say once that the full decision list is not available here, then:
+**Without GitHub access** (DEC-147, #167). A person who got the plugin as a zip from the owner usually has no access to the private repository: `gh` is missing, not signed in, or answers that the repository is not found. That is a normal setup, not an error to fix. Say once that the full decision list is not available here, then:
 
 - read `contracts/v1/` and `reference/` from the plugin's own folder, the folder the zip was unpacked into (`INSTALL.md` uses `C:\Tools\gamedev-studio`); they ship inside the zip. The `AGENTS.md` there is for work on the studio's own repository (its Issues, Projects and pull requests) and does not apply to this person's games;
 - apply rules (b) to (i) below and the other skills of this plugin, which carry the studio's rules;
