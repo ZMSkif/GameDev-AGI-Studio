@@ -27,7 +27,7 @@ Nothing was installed on the owner's PC. A real install ran on 2026-11-20 on a c
 - the zip was built the same way as the release zip and unpacked with Windows PowerShell 5.1 into `C:\Tools`; it holds this guide, the check script and the studio rules;
 - Claude Code 2.1.329 was installed with the official installer. The installer itself warned that `.local\bin` is not on PATH, which is why step 1 has the PATH item;
 - `claude plugin validate` passed;
-- `claude plugin marketplace add` and `claude plugin install` passed. `claude plugin list` showed plugin 0.4.1, enabled and read from `C:\Tools\gamedev-studio`. The plugin holds 24 skills, 14 agent roles and 2 hooks;
+- `claude plugin marketplace add` and `claude plugin install` passed. `claude plugin list` showed plugin 0.4.1, enabled and read from `C:\Tools\gamedev-studio`. The plugin holds 17 skills, 7 commands, 14 agent roles and 2 hooks;
 - `python scripts/doctor.py`: every required item ✅, the plugin "installed from this folder and enabled";
 - with a stripped PATH the script showed ❌ and the fixes for Claude Code, Git and Python;
 - updating by replacing the folder, as "Updating" says: with no reinstall, `claude plugin list` showed the version from the new folder right away;
@@ -36,7 +36,7 @@ Nothing was installed on the owner's PC. A real install ran on 2026-11-20 on a c
 What that run cannot cover:
 
 - the GitHub machine already has Git and Python, so steps 3 and 4 (winget) did not run;
-- signing in to Claude and using the plugin in a real session: nobody signs in to Claude on the GitHub machine;
+- signing in to Claude and using the plugin in a real session, hooks and step 8 included: nobody signs in to Claude on the GitHub machine;
 - home editions of Windows 10 and 11: the GitHub machine runs Windows Server 2025;
 - Codex.
 
@@ -54,7 +54,7 @@ What that run cannot cover:
    ```
 2. Close the window, open a new one and check: `claude --version`.
    - If the command is not found, or the installer said `...\.local\bin is not in your PATH`, the install folder is not on PATH. The installer puts the program in `%USERPROFILE%\.local\bin` but may not add it to PATH. Add that folder to your user PATH: Settings → System → About → Advanced system settings → Environment Variables → `Path` in the upper list → Edit → New → `%USERPROFILE%\.local\bin` → OK. Then open a new PowerShell window.
-3. Run `claude` and sign in in the browser. If the browser does not open, press `c` to copy the link, open it yourself and paste the code back into the terminal. Then leave with `/exit`.
+3. Run `claude`. When it asks how to sign in, choose the Claude account with a subscription, not Console. Sign in in the browser. If the browser does not open, press `c` to copy the link, open it yourself and paste the code back into the terminal. Then leave with `/exit`.
 
 Alternative: `winget install Anthropic.ClaudeCode`. That install does not update itself, and `claude update` does nothing for it. Update it with `winget upgrade Anthropic.ClaudeCode`.
 
@@ -69,9 +69,12 @@ claude
 
 - If the zip has another name or is in another folder, fix the path in `Expand-Archive`.
 - The zip holds one folder, `gamedev-studio`: this is the **plugin folder**. To check, it contains `.claude-plugin\marketplace.json`.
-- The plugin loads straight from this folder, so do not delete or move it after installing.
+- The plugin loads straight from this folder, so do not delete or move it after installing. This folder is only for installing and updating: do not make games in it, because an update replaces it whole (step 8 says where games go).
+- Claude Code asks whether you trust this folder. Answer yes.
 
 Now tell Claude: "Install the plugin by INSTALL.md, steps 3–7".
+
+> **For Claude:** the `AGENTS.md` file in this folder holds the rules for people who develop the studio itself in its repository (GitHub Issues, Projects, pull requests). They do not apply to an install by this guide: do not run `gh`, and create nothing on GitHub.
 
 ## Step 3. [Claude] See what is already installed
 
@@ -149,19 +152,38 @@ codex plugin add gamedev-studio@gamedev-studio
 1. **[Claude]** `python scripts/doctor.py`: every required item is ✅, and the plugin says "installed from this folder and enabled".
 2. **[you]** Open a new Claude Code session and ask "which skills does the gamedev-studio plugin have?". The answer should list `studio-rules`, `engine-profiles`, `memory` and others.
 
-Done; you can make games.
+The plugin is installed.
 
-## Without GitHub access (the usual case)
+## Step 8. [you] Your game, in its own folder
+
+Make each game in a separate folder **outside** the plugin folder, for example `C:\Games\<name>`:
+
+```powershell
+New-Item -ItemType Directory -Force C:\Games\my-game | Out-Null
+cd C:\Games\my-game
+git init -b main
+New-Item -ItemType File .gamedev-studio | Out-Null
+claude
+```
+
+- The `.gamedev-studio` file marks the folder as a studio game. The plugin's checks (hooks) work only in such a folder:
+  - a rules reminder at start;
+  - no commits straight to `main`;
+  - no committed passwords or keys.
+- In Claude, start the game with `/gamedev-studio:new-web-game "Title"`. Claude runs an interview with answer options and creates or downloads nothing without your yes.
+- **The game's tasks** go in the GitHub Issues of the game's own repository (DEC-002), not in files. That needs your own free GitHub account and the GitHub CLI: `winget install --id GitHub.cli -e --source winget --accept-source-agreements --accept-package-agreements`, then `gh auth login` in a separate PowerShell window. It is your own account; it neither gives nor needs access to the studio's repository. Without it, Claude says there is nowhere to keep tasks and asks you.
+
+## Without access to the studio's repository (the usual case)
 
 Everything needed for games works:
 
 - the skills, agent roles and `/gamedev-studio:…` commands;
-- the hook checks;
-- the studio rules: they are in the plugin's skills and in the `AGENTS.md`, `contracts/v1/` and `reference/` files inside the plugin folder.
+- the hook checks in a game folder that has the `.gamedev-studio` file (step 8);
+- the studio rules: they are in the plugin's skills and in the `contracts/v1/` and `reference/` folders inside the plugin folder.
 
-What is missing is the owner's full list of decisions. It is kept in the GitHub Issues of the private repository. Claude says once that the list is not available and then works by the plugin's rules. If it needs a decision the plugin does not cover, Claude asks you instead of making one up; then ask the owner.
+What is missing is the owner's full list of decisions. It is kept in the GitHub Issues of the studio's private repository. Claude says once that the list is not available and then works by the plugin's rules. If it needs a decision the plugin does not cover, Claude asks you instead of making one up; then ask the owner.
 
-When Claude Code starts in a game folder, it may warn `GameDev Studio tool preflight FAILED: gh (GitHub CLI) was not found`. Without GitHub this is expected: only tasks that need GitHub stop, and other work goes on.
+If the GitHub CLI is missing or not signed in, Claude Code warns `GameDev Studio tool preflight FAILED` when it starts in a game folder. Only tasks that need GitHub stop, such as the game's tasks (step 8); other work goes on. There is no need to ask for access to the studio's repository.
 
 ## Updating
 
@@ -176,7 +198,7 @@ When Claude Code starts in a game folder, it may warn `GameDev Studio tool prefl
 4. **[you]** Start Claude Code in the plugin folder: `cd C:\Tools\gamedev-studio`, then `claude`. There is no need to reinstall the plugin: it loads from this folder, and the Claude Code docs say changes there take effect at the next start.
 5. **[Claude]** `python scripts/doctor.py` shows the new version. Once everything works, delete `C:\Tools\gamedev-studio-old` yourself.
 
-Checked on a clean GitHub machine: after the folder was replaced, `claude plugin list` showed the new folder's version with no reinstall, and `python scripts/doctor.py` said "installed from this folder and enabled".
+Checked on a clean GitHub machine: after the folder was replaced, `claude plugin list` showed the new folder's version with no reinstall, and `python scripts/doctor.py` said "installed from this folder and enabled". No real session ran there after the update, and updating Codex was not checked. An update does not touch the games in `C:\Games`.
 
 ## Hindsight memory (optional, only when the owner decides)
 

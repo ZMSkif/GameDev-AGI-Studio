@@ -252,7 +252,7 @@ def check_git_bash(t):
         code, out = run(["bash", "--version"])
         return (True, t["found"].format(v=(out.splitlines() or ["bash"])[0]), "", "") if code == 0 else \
             (False, t["not_found"], t["fix_git_bash"], "claude_yes")
-    override = os.environ.get("CLAUDE_CODE_GIT_BASH_PATH")
+    override = os.environ.get("CLAUDE_CODE_GIT_BASH_PATH") or settings_env("CLAUDE_CODE_GIT_BASH_PATH")
     if override:                                          # an explicit override must work; never paper over it
         return (True, t["found"].format(v=override), "", "") if works_as_bash(Path(override)) else \
             (False, t["bash_override_bad"].format(p=override), t["fix_git_bash_override"], "you")
@@ -327,6 +327,16 @@ def claude_config_dir() -> Path:
 
 def read_json(path: Path):
     return json.loads(path.read_text(encoding="utf-8-sig"))
+
+
+def settings_env(name: str) -> str:
+    """A variable from the `env` section of Claude Code's user settings.json, where the guide sets it."""
+    try:
+        env = read_json(claude_config_dir() / "settings.json").get("env", {})
+    except (OSError, ValueError, AttributeError):
+        return ""
+    value = env.get(name) if isinstance(env, dict) else None
+    return value if isinstance(value, str) else ""
 
 
 def same_folder(a, b) -> bool:

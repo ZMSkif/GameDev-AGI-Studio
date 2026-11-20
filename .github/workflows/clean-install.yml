@@ -135,6 +135,27 @@ jobs:
           }
           exit 0
 
+      - name: Guide step 8 - a game folder with the marker switches the plugin's hooks on, through Git Bash
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force C:\Games\my-game | Out-Null
+          Set-Location C:\Games\my-game
+          git init -b main | Out-Null
+          New-Item -ItemType File .gamedev-studio | Out-Null
+          $bash = "C:\Program Files\Git\bin\bash.exe"
+          $hook = "C:/Tools/gamedev-studio/hooks/run-hook.cmd"
+          $start = '{"hook_event_name":"SessionStart","source":"startup","cwd":"C:\\Games\\my-game"}' | & $bash $hook session_start | Out-String
+          "SessionStart: $start"
+          if ($start -notmatch "GameDev Studio project") { throw "the SessionStart hook did not answer in the game folder" }
+          $guard = '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"git commit -m x"},"cwd":"C:\\Games\\my-game"}' | & $bash $hook guard_bash | Out-String
+          "PreToolUse: $guard"
+          if ($guard -notmatch '"deny"') { throw "the guard did not block a commit on main in the game folder" }
+          New-Item -ItemType Directory -Force C:\Games\not-a-game | Out-Null
+          $quiet = '{"hook_event_name":"SessionStart","source":"startup","cwd":"C:\\Games\\not-a-game"}' | & $bash $hook session_start | Out-String
+          if ($quiet.Trim()) { throw "the hook spoke outside a studio game folder: $quiet" }
+          "outside a marked folder: silent"
+          exit 0
+
       - name: Guide "Updating" - replace the folder; Claude Code reads the new version without a reinstall
         shell: pwsh
         env:
@@ -162,6 +183,11 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
+
+      - name: Python 3.13, the version the guide's step 4 installs
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.13"
 
       - name: Install hindsight-api 1.2.2 in a venv, as the guide's optional section says
         shell: pwsh

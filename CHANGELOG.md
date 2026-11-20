@@ -6,6 +6,7 @@ All notable changes to the `gamedev-studio` plugin. The version lives only in `.
 
 ### Added
 - `INSTALL.md` and `INSTALL.ru.md`: installing the plugin on a clean Windows PC from the release zip, with no GitHub access needed. Each step says who does it: Claude, Claude after the person's yes, or the person (sign-in, Windows prompts, restarts). The guide also covers:
+  - step 8: each game in its own folder outside the plugin folder, marked with `.gamedev-studio` so the hooks apply; the game's tasks go in its own repository's GitHub Issues, under the person's own account;
   - what the owner does before handing over;
   - working without GitHub access;
   - updating by replacing the folder;
@@ -14,12 +15,14 @@ All notable changes to the `gamedev-studio` plugin. The version lives only in `.
   - It starts only an exact list of version commands and never starts Codex or `claude plugin list`.
   - It switches off automatic Python installs for its probe.
   - It reads Claude Code's plugin files to see whether the plugin is installed, enabled and loaded from this folder.
+  - It needs Python 3.10 or newer, because the plugin's commands save files with `newline=`.
+  - It also reads `CLAUDE_CODE_GIT_BASH_PATH` from the `env` section of Claude Code's `settings.json`.
   - `--github` adds the GitHub CLI, sign-in and repository checks.
 - The release now attaches `gamedev-studio-X.Y.Z.zip`, with a single `gamedev-studio` folder, built from the tagged commit.
-- `.github/workflows/clean-install.yml`: on a fresh `windows-latest` runner, it unpacks that zip, installs Claude Code with the official installer, validates and installs the plugin with a throwaway config, and runs the doctor, including with a stripped PATH. Hindsight is tried as a best-effort job.
+- `.github/workflows/clean-install.yml`: on a fresh `windows-latest` runner, it unpacks that zip, installs Claude Code with the official installer, validates and installs the plugin with a throwaway config, and runs the doctor, including with a stripped PATH. It also checks that the hooks run in a marked game folder and stay silent elsewhere, and that an update by folder swap is picked up. Hindsight is tried on Python 3.13 as a best-effort job.
 
 ### Changed
-- `studio-rules`: without GitHub access, the agent works from the rules shipped in the plugin folder (`AGENTS.md`, `contracts/v1/`, `reference/`, the skills) and asks instead of inventing a decision. It does not keep retrying `gh`.
+- `studio-rules`: without access to the studio's repository, the agent works from the rules shipped in the plugin folder (`contracts/v1/`, `reference/`, the skills) and asks instead of inventing a decision. It does not keep retrying `gh`, and it treats that folder's `AGENTS.md` as rules for the studio's own repository only.
 
 ### Fixed
 - `brief_piece.py --decisions` also reads a file written by Windows PowerShell 5.1 (UTF-16 with a byte-order mark, or UTF-8 with one).

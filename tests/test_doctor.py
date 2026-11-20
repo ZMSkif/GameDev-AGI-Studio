@@ -248,6 +248,11 @@ class ResultTest(DoctorCase):
         self.assertFalse(rows["git_bash"]["ok"])                       # never papered over by a found bash
         self.assertIn("CLAUDE_CODE_GIT_BASH_PATH", rows["git_bash"]["detail"])
         self.assertEqual(rows["git_bash"]["who"], "you")
+        settings = {"enabledPlugins": {dr.PLUGIN_ID: True}, "env": {"CLAUDE_CODE_GIT_BASH_PATH": str(readme)}}
+        (self.config / "settings.json").write_text(json.dumps(settings), encoding="utf-8")
+        _, rows = self.check(FakeTools(), "--lang", "en")
+        self.assertFalse(rows["git_bash"]["ok"])                       # the override the guide puts in settings.json
+        self.assertIn(str(readme), rows["git_bash"]["detail"])
 
     def test_git_bash_is_looked_for_next_to_git(self):
         git = self.home / "Tools" / "Git" / "cmd" / "git.exe"
