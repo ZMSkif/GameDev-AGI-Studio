@@ -30,7 +30,8 @@ Nothing was installed on the owner's PC. A real install ran on 2026-11-20 on a c
 - `claude plugin marketplace add` and `claude plugin install` passed. `claude plugin list` showed plugin 0.4.1, enabled and read from `C:\Tools\gamedev-studio`. The plugin holds 24 skills, 14 agent roles and 2 hooks;
 - `python scripts/doctor.py`: every required item ✅, the plugin "installed from this folder and enabled";
 - with a stripped PATH the script showed ❌ and the fixes for Claude Code, Git and Python;
-- updating by replacing the folder: UPDATE_RESULT_EN.
+- updating by replacing the folder, as "Updating" says: with no reinstall, `claude plugin list` showed the version from the new folder right away;
+- Hindsight memory, following the "Hindsight memory" section, installed and answered its health check.
 
 What that run cannot cover:
 
@@ -175,13 +176,18 @@ When Claude Code starts in a game folder, it may warn `GameDev Studio tool prefl
 4. **[you]** Start Claude Code. There is no need to reinstall the plugin: it loads from this folder, and the Claude Code docs say changes there take effect at the next start.
 5. **[Claude]** `python scripts/doctor.py` shows the new version. Once everything works, delete `C:\Tools\gamedev-studio-old` yourself.
 
-This update path has not been tested on a real install.
+Checked on a clean GitHub machine: after the folder was replaced, `claude plugin list` showed the new folder's version with no reinstall, and `python scripts/doctor.py` said "installed from this folder and enabled".
 
 ## Hindsight memory (optional, only when the owner decides)
 
 The plugin works without memory. The owner decides where and how the studio's memory runs, so follow these steps only when the owner says so.
 
-> [The result of the trial Hindsight install in GitHub Actions goes here.] The owner's PC runs the server on Python 3.11.9 with `hindsight-api` 1.2.2, about 1.8 GB.
+> **Checked on a clean GitHub Actions machine** (Windows Server 2025, Python 3.12.10). The commands of steps 1–3 passed:
+> - the install took about 5 minutes and 2.2 GB;
+> - the server started its own database, downloaded the models and answered `healthy`, with the database connected, after 52 seconds;
+> - `doctor.py --hindsight` showed ✅.
+>
+> Fact extraction was not checked there, because nobody is signed in to Claude on that machine. On the owner's PC the server runs on Python 3.11.9 with `hindsight-api` 1.2.2.
 
 1. **[Claude → you]** Install, about 2 GB, after your yes. It needs Python 3.11 or newer:
    ```powershell
