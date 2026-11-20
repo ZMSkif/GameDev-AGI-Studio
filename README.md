@@ -62,6 +62,10 @@ The rules live in `contracts/v1/knowledge-policy.json` 1.1.0. The smoke evidence
 
 Layout: `.claude-plugin/` (Claude manifest and marketplace), `.codex-plugin/` (Codex manifest), `.agents/plugins/marketplace.json` (Codex marketplace), `skills/`, `agents/`, `hooks/`. The version is set only in the two `plugin.json` files and must match; `python scripts/validate_plugin.py` checks this.
 
+### Install from zero (Windows)
+
+[INSTALL.md](INSTALL.md) (English) and [INSTALL.ru.md](INSTALL.ru.md) (Russian) walk a clean Windows PC from nothing to a working plugin. Each step says whether Claude can do it or the person must. `python scripts/doctor.py` checks the computer read-only: it installs, changes and deletes nothing, and prints ✅ or ❌ with the fix for each prerequisite. The guide was not run on a clean machine; it says what was checked instead.
+
 ### Install from a local clone
 
 Verified on Claude Code 2.1.325 and Codex 0.169.0, using a throwaway config directory (`CLAUDE_CONFIG_DIR` / `CODEX_HOME`):

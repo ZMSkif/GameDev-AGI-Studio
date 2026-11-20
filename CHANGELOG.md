@@ -2,6 +2,12 @@
 
 All notable changes to the `gamedev-studio` plugin. The version lives only in `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`, and a release tag `vX.Y.Z` must match it. From the next release on, each section is the release notes for its tag (see "Releases" in `README.md`). 0.1.0 and 0.2.0 were not tagged. The v0.3.0 release notes were written by hand, in Russian and English, before this file existed.
 
+## [Unreleased]
+
+### Added
+- `INSTALL.md` and `INSTALL.ru.md`: installing the plugin from zero on Windows. Each step says who does it: Claude, or the person (sign-ins, Windows prompts, repository access). The guide covers GitHub access and a fallback without it, plus optional Hindsight memory. It is not run on a clean machine; it says what was checked instead.
+- `scripts/doctor.py`: a read-only check of every prerequisite, with ✅ or ❌ and the fix for each, in Russian or English. It runs only version, status and list commands from an allowlist.
+
 ## [0.4.0] - 2026-11-20
 
 ### Added
