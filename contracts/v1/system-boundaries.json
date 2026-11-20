@@ -1,5 +1,5 @@
 {
-  "version": "1.2.0",
+  "version": "1.3.0",
   "modules": [
     {
       "id": "studio-plugin",
@@ -15,21 +15,24 @@
       "status": "deferred",
       "responsibility": "owner_dashboard_and_approvals",
       "no_direct_privileged_execution": true,
-      "deferred_by": "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/146"
+      "deferred_by": "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/146",
+      "deferred_permanently_by": "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/164"
     },
     {
       "id": "coordinator",
       "status": "deferred",
       "responsibility": "orchestration_scheduling_audit_policy",
       "implementation_style": "modular_monolith_initially",
-      "deferred_by": "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/146"
+      "deferred_by": "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/146",
+      "deferred_permanently_by": "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/164"
     },
     {
       "id": "worker-agent",
       "status": "deferred",
       "responsibility": "capability_advertisement_leases_sandbox_execution",
       "inbound_ports_required": false,
-      "deferred_by": "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/146"
+      "deferred_by": "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/146",
+      "deferred_permanently_by": "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/164"
     },
     {
       "id": "github",
@@ -40,7 +43,8 @@
       "id": "postgresql",
       "status": "deferred",
       "responsibility": "durable_state_checkpoints_leases_audit",
-      "deferred_by": "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/146"
+      "deferred_by": "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/146",
+      "deferred_permanently_by": "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/164"
     },
     {
       "id": "hindsight",

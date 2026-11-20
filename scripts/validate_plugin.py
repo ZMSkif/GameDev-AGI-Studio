@@ -442,6 +442,9 @@ def check_commands(root: Path, errors: list[str]) -> None:
         scan_text_for_secrets(rel, text, errors)
         if not NAME_RE.match(path.stem):
             errors.append(f"{rel}: file name must be kebab-case")
+        if (root / "skills" / path.stem / "SKILL.md").is_file():
+            errors.append(f"{rel}: has the same name as the skill '{path.stem}', so /<plugin>:{path.stem} "
+                          f"is ambiguous; rename the command")
         fields, body = parse_frontmatter(text)
         if fields is None or "__invalid__" in (fields or {}):
             errors.append(f"{rel}: missing or invalid YAML frontmatter")

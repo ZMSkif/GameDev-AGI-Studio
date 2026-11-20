@@ -83,6 +83,7 @@
     "execution": "postgresql",
     "execution_status": "deferred",
     "execution_deferred_by": "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/146",
+    "execution_deferred_permanently_by": "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/164",
     "execution_while_deferred": "agent_runtime",
     "memory": "hindsight_not_authoritative",
     "artifacts": "versioned_hashes"

@@ -16,6 +16,7 @@ spec.loader.exec_module(vc)
 
 URL_146 = "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/146"
 URL_1 = "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/1"
+URL_146_DEC = "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/164"
 NOT_REPO_ISSUE = "deferred_by must be a URL of an issue in this repository"
 NOT_146 = "deferred_by must be " + URL_146
 BOUNDARIES = "system-boundaries.json module "
@@ -76,18 +77,18 @@ class ManifestRules(FixtureCase):
         vc.validate(self.root)
 
     def test_old_manifest_versions_rejected(self):
-        for old in ("1.0.0", "1.1.0"):
+        for old in ("1.0.0", "1.1.0", "1.2.0", "1.3.0"):
             with self.subTest(version=old):
                 m = self.read("manifest.json")
                 m["version"] = old
                 self.write("manifest.json", m)
-                self.assertFails("manifest version must be 1.2.0")
+                self.assertFails("manifest version must be 1.4.0")
 
     def test_any_other_manifest_version_rejected(self):
         m = self.read("manifest.json")
-        m["version"] = "1.3.0"
+        m["version"] = "1.5.0"
         self.write("manifest.json", m)
-        self.assertFails("manifest version must be 1.2.0")
+        self.assertFails("manifest version must be 1.4.0")
 
     def test_each_changed_contract_must_link_decision_146(self):
         for name in vc.DEFERRAL_CONTRACTS:
@@ -143,7 +144,7 @@ class BoundaryRules(FixtureCase):
 
     def test_extra_deferred_module(self):
         self.edit_boundaries(lambda b: self.module(b, "tool-registry").update(
-            status="deferred", deferred_by=URL_146))
+            status="deferred", deferred_by=URL_146, deferred_permanently_by=URL_146_DEC))
         self.assertFails("system-boundaries.json: deferred modules")
 
     def test_missing_deferred_module(self):
@@ -151,6 +152,7 @@ class BoundaryRules(FixtureCase):
             m = self.module(b, "worker-agent")
             m["status"] = "active"
             del m["deferred_by"]
+            del m["deferred_permanently_by"]
         self.edit_boundaries(fn)
         self.assertFails("system-boundaries.json: deferred modules")
 
@@ -422,6 +424,188 @@ class EngineProfileRules(FixtureCase):
         self.assertFails(PROFILE + "'web': use_for must be a non-empty list of strings")
 
 
+KP = "knowledge-policy.json: "
+
+
+class KnowledgePolicyRules(FixtureCase):
+    def edit_kp(self, fn):
+        p = self.read("knowledge-policy.json")
+        fn(p)
+        self.write("knowledge-policy.json", p)
+
+    def backend(self, p):
+        return p["memory_backend"]
+
+    def test_real_policy_passes_and_keeps_the_decisions(self):
+        p = json.loads((REPO / "contracts/v1/knowledge-policy.json").read_text(encoding="utf-8"))
+        self.assertEqual(p["scopes"], ["studio", "project", "task"])
+        self.assertEqual(p["default_retrieval_mode"], "auto")
+        self.assertFalse(p["memory_backend"]["capability"]["paid"])
+        vc.validate(self.root)
+
+    def test_scopes_are_the_three_levels(self):
+        self.edit_kp(lambda p: p.update(scopes=["studio", "project"]))
+        self.assertFails(KP + "scopes must be")
+
+    def test_memory_never_ranks_above_decisions(self):
+        def fn(p):
+            p["authority_order"] = ["verified_context_memory", "binding_decision_issues",
+                                    "approved_versioned_gdd_art_bible_architecture"]
+        self.edit_kp(fn)
+        self.assertFails("must rank above memory (DEC-103)")
+
+    def test_only_the_owner_deletes(self):
+        self.edit_kp(lambda p: p.update(persistent_project_knowledge_deletion="agent_cleanup_allowed"))
+        self.assertFails("only the owner deletes memory (DEC-138)")
+
+    def test_the_four_modes_with_auto_default(self):
+        self.edit_kp(lambda p: p.update(default_retrieval_mode="memory_first"))
+        self.assertFails("retrieval_modes must be")
+        self.edit_kp(lambda p: p.update(default_retrieval_mode="auto", retrieval_modes=["auto", "manual"]))
+        self.assertFails("retrieval_modes must be")
+
+    def test_capability_follows_the_tool_capability_contract(self):
+        self.edit_kp(lambda p: self.backend(p)["capability"].update(availability="ready"))
+        self.assertFails("availability: 'ready' is not one of")
+
+    def test_capability_without_required_field_fails(self):
+        self.edit_kp(lambda p: self.backend(p)["capability"].pop("license"))
+        self.assertFails("memory_backend.capability: missing ['license']")
+
+    def test_paid_backend_fails(self):
+        self.edit_kp(lambda p: self.backend(p)["capability"].update(paid=True))
+        self.assertFails("must not be a paid service")
+
+    def verified(self, p, **extra):
+        cap = self.backend(p)["capability"]
+        cap.update(availability="verified", last_verified_at="2026-11-19T16:40:00Z",
+                   evidence_url=vc.REPO_ISSUES + "150#issuecomment-1")
+        cap.update(extra)
+
+    def test_verified_with_date_and_evidence_passes(self):
+        self.edit_kp(self.verified)
+        vc.validate(self.root)
+
+    def test_verified_needs_a_date(self):
+        self.edit_kp(lambda p: self.verified(p, last_verified_at=None))
+        self.assertFails("a verified backend needs last_verified_at")
+
+    def test_verified_needs_evidence_in_this_repository(self):
+        for url in (None, "https://example.com/evidence", vc.REPO_ISSUES + "150x", "notes/smoke.md"):
+            with self.subTest(url=url):
+                self.reset_kp()
+                self.edit_kp(lambda p, url=url: self.verified(p, evidence_url=url))
+                self.assertFails("a verified backend needs evidence_url")
+
+    def test_real_backend_is_verified_with_its_evidence(self):
+        p = json.loads((REPO / "contracts/v1/knowledge-policy.json").read_text(encoding="utf-8"))
+        cap = p["memory_backend"]["capability"]
+        self.assertEqual(cap["availability"], "verified")
+        self.assertTrue(cap["evidence_url"].startswith(vc.REPO_ISSUES + "150#issuecomment-"))
+
+    def test_unverified_needs_no_evidence(self):
+        self.edit_kp(lambda p: self.backend(p)["capability"].update(availability="unverified", evidence_url=None))
+        vc.validate(self.root)
+
+    def test_destructive_or_unsourced_tools_fail(self):
+        for tool in ("delete_bank", "clear_memories", "reflect"):
+            with self.subTest(tool=tool):
+                def fn(p, tool=tool):
+                    self.backend(p)["mcp_enabled_tools"].append(tool)
+                    self.backend(p)["capability"]["supported_actions"].append(tool)
+                self.edit_kp(fn)
+                self.assertFails("mcp_enabled_tools and supported_actions must not include")
+                self.reset_kp()
+
+    def test_destructive_tool_in_supported_actions_alone_fails(self):
+        self.edit_kp(lambda p: self.backend(p)["capability"]["supported_actions"].append("delete_bank"))
+        self.assertFails("must not include ['delete_bank']")
+
+    def test_tool_outside_supported_actions_fails(self):
+        self.edit_kp(lambda p: self.backend(p)["mcp_enabled_tools"].append("list_banks"))
+        self.assertFails("must be a non-empty subset of the capability's supported_actions")
+
+    def test_reflect_flag_and_endpoint_per_bank(self):
+        self.edit_kp(lambda p: self.backend(p).update(reflect_allowed=True))
+        self.assertFails("reflect_allowed must be false")
+        shutil.copy(REPO / "contracts/v1/knowledge-policy.json", self.dir / "knowledge-policy.json")
+        self.edit_kp(lambda p: self.backend(p).update(endpoint_per_bank=False))
+        self.assertFails("one MCP endpoint per bank")
+
+    def test_endpoint_is_not_hard_coded(self):
+        self.edit_kp(lambda p: self.backend(p).update(endpoint="http://127.0.0.1:8888/mcp/"))
+        self.assertFails("the endpoint is the owner's choice")
+
+    def test_bank_naming_needs_the_repository(self):
+        self.edit_kp(lambda p: self.backend(p)["bank_naming"].update(project="gamedev-studio::project"))
+        self.assertFails("bank_naming must name")
+
+    def test_never_store_and_metadata(self):
+        self.edit_kp(lambda p: p["storage_rules"]["never_store"].remove("secrets"))
+        self.assertFails("never_store must include")
+        shutil.copy(REPO / "contracts/v1/knowledge-policy.json", self.dir / "knowledge-policy.json")
+        self.edit_kp(lambda p: p["storage_rules"]["required_metadata"].remove("source_rev"))
+        self.assertFails("required_metadata must include")
+
+    def reset_kp(self):
+        shutil.copy(REPO / "contracts/v1/knowledge-policy.json", self.dir / "knowledge-policy.json")
+
+    def assertEditFails(self, fn, fragment):
+        self.reset_kp()
+        self.edit_kp(fn)
+        self.assertFails(fragment)
+
+    def test_learning_guards(self):
+        learning = lambda **kw: (lambda p: p["learning"].update(kw))
+        self.assertEditFails(learning(noise_guard_min_independent_occurrences=1), "at least 2 independent occurrences")
+        self.assertEditFails(learning(push_or_pr_requires_owner_yes=False), "pushes and PRs from lessons need")
+        self.assertEditFails(lambda p: p["learning"].pop("push_or_pr_requires_owner_yes"), "pushes and PRs from lessons")
+        self.assertEditFails(learning(push_pr_or_issue_requires_owner_yes=True), "agents may create (DEC-008)")
+        self.assertEditFails(learning(notify_every_automatic_change=False), "every automatic change is notified (DEC-100)")
+        self.assertEditFails(learning(auto_apply_requires_passing_checks=False), "must be verified first (DEC-106")
+        self.assertEditFails(learning(noise_guard_single_severe="any_should_fix"), "one blocker is severe")
+        self.assertEditFails(learning(independence_key="file"), "independence is counted per piece")
+        self.assertEditFails(learning(store_requires_explicit_keep=False), "stored only when the agent names it")
+        self.assertEditFails(lambda p: p["learning"].pop("store_requires_explicit_keep"), "stored only when the agent")
+        self.assertEditFails(learning(rule_sources={"noise_guard": "x"}), "rule_sources must cite")
+        self.assertEditFails(learning(rule_sources={"noise_guard": "", "push_or_pr_requires_owner_yes": "y"}),
+                             "rule_sources must cite")
+
+    def test_core_guarantees(self):
+        top = lambda **kw: (lambda p: p.update(kw))
+        self.assertEditFails(top(memory_cannot_override_owner_decisions=False), "must not override decisions (DEC-024)")
+        self.assertEditFails(top(provenance_required=False), "provenance_required must be true (DEC-102)")
+        self.assertEditFails(top(context_revision_required=False), "context_revision_required must be true (DEC-102)")
+        self.assertEditFails(lambda p: p.pop("context_revision_required"), "context_revision_required must be true")
+
+    def test_backend_guarantees(self):
+        backend = lambda **kw: (lambda p: self.backend(p).update(kw))
+        self.assertEditFails(backend(llm_for_extraction="paid_api_allowed"), "llm_for_extraction must be")
+        self.assertEditFails(backend(observations="facts"), "observations must be unverified_hints")
+        self.assertEditFails(backend(recall_types_for_facts=["world", "experience", "observation"]),
+                             "recall_types_for_facts must be")
+        self.assertEditFails(backend(known_limits=[]), "known_limits must list")
+        self.assertEditFails(backend(known_limits=[""]), "known_limits must list")
+        self.assertEditFails(backend(placement="anywhere"), "placement must be one of")
+        self.assertEditFails(lambda p: self.backend(p).pop("placement"), "placement must be one of")
+        self.assertEditFails(backend(placement_task=vc.REPO_ISSUES + "1"), "a pending placement must link")
+        self.assertEditFails(backend(url="http://127.0.0.1:8888/mcp/"), "the endpoint is the owner's choice")
+
+    def test_schema_types_and_extra_keys(self):
+        cap = lambda **kw: (lambda p: self.backend(p)["capability"].update(kw))
+        self.assertEditFails(cap(permission_scopes=[None]), "permission_scopes: every item must be a non-empty string")
+        self.assertEditFails(cap(permission_scopes=[""]), "permission_scopes: every item must be a non-empty string")
+        self.assertEditFails(cap(supported_actions="retain"), "supported_actions: must be a list")
+        self.assertEditFails(cap(paid="no"), "paid: must be true or false")
+        self.assertEditFails(cap(version=""), "version: must be a string")
+        self.assertEditFails(cap(endpoint="http://x"), "properties outside the schema ['endpoint']")
+
+    def test_storage_scope_and_document_ids(self):
+        rules = lambda **kw: (lambda p: p["storage_rules"].update(kw))
+        self.assertEditFails(rules(scope_tags=["scope:studio"]), "the bank is the scope")
+        self.assertEditFails(rules(scope_is_the_bank=False), "the bank is the scope")
+        self.assertEditFails(rules(retain_never_passes=["update_mode"]), "retain_never_passes must include")
+
 class CliFailurePath(FixtureCase):
     def run_cli(self, *args):
         return subprocess.run([sys.executable, str(SCRIPT), *args], capture_output=True, text=True)
@@ -449,6 +633,57 @@ class CliFailurePath(FixtureCase):
         fn(b)
         self.write("system-boundaries.json", b)
 
+
+
+class PermanentDeferral(FixtureCase):
+    """DEC-146: the parts DEC-143 deferred stay deferred for good, and each says so."""
+
+    def test_real_contracts_name_the_decision(self):
+        b = json.loads((REPO / "contracts/v1/system-boundaries.json").read_text(encoding="utf-8"))
+        for m in b["modules"]:
+            if m["status"] == "deferred":
+                self.assertEqual(m["deferred_permanently_by"], URL_146_DEC)
+                self.assertEqual(m["deferred_by"], URL_146)
+
+    def test_missing_or_other_permanent_link_fails(self):
+        for value in (None, URL_1, URL_146):
+            with self.subTest(value=value):
+                b = self.read("system-boundaries.json")
+                for m in b["modules"]:
+                    if m["id"] == "coordinator":
+                        if value is None:
+                            m.pop("deferred_permanently_by")
+                        else:
+                            m["deferred_permanently_by"] = value
+                self.write("system-boundaries.json", b)
+                self.assertFails("deferred_permanently_by must be " + URL_146_DEC)
+
+    def test_active_module_with_permanent_link_fails(self):
+        b = self.read("system-boundaries.json")
+        for m in b["modules"]:
+            if m["id"] == "github":
+                m["deferred_permanently_by"] = URL_146_DEC
+        self.write("system-boundaries.json", b)
+        self.assertFails("active module must not have deferred_permanently_by")
+
+    def test_orchestration_and_openapi_need_the_link(self):
+        o = self.read("orchestration-policy.json")
+        o["authority"].pop("execution_deferred_permanently_by")
+        self.write("orchestration-policy.json", o)
+        self.assertFails("authority.execution: deferred_permanently_by must be")
+        shutil.copy(REPO / "contracts/v1/orchestration-policy.json", self.dir / "orchestration-policy.json")
+        s = self.read("coordinator.openapi.json")
+        s["info"]["x-deferred-permanently-by"] = URL_1
+        self.write("coordinator.openapi.json", s)
+        self.assertFails("coordinator.openapi.json info: deferred_permanently_by must be")
+
+    def test_manifest_links_the_decision(self):
+        m = self.read("manifest.json")
+        e = m["contracts"]["orchestration-policy.json"]
+        i = e["decision_issue_urls"].index(URL_146_DEC)
+        del e["decision_issue_urls"][i], e["decision_ids"][i]
+        self.write("manifest.json", m)
+        self.assertFails("manifest: orchestration-policy.json must link " + URL_146_DEC)
 
 if __name__ == "__main__":
     unittest.main()
