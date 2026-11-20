@@ -22,7 +22,22 @@ Russian version: [INSTALL.ru.md](INSTALL.ru.md).
 
 ## How this was checked
 
-[The result of the clean Windows run in GitHub Actions goes here.]
+Nothing was installed on the owner's PC. A real install ran on 2026-11-20 on a clean GitHub Actions virtual machine: Windows Server 2025, the `windows-latest` image, workflow "Clean install on Windows". This is what passed there:
+
+- the zip was built the same way as the release zip and unpacked with Windows PowerShell 5.1 into `C:\Tools`; it holds this guide, the check script and the studio rules;
+- Claude Code 2.1.329 was installed with the official installer. The installer itself warned that `.local\bin` is not on PATH, which is why step 1 has the PATH item;
+- `claude plugin validate` passed;
+- `claude plugin marketplace add` and `claude plugin install` passed. `claude plugin list` showed plugin 0.4.1, enabled and read from `C:\Tools\gamedev-studio`. The plugin holds 24 skills, 14 agent roles and 2 hooks;
+- `python scripts/doctor.py`: every required item ✅, the plugin "installed from this folder and enabled";
+- with a stripped PATH the script showed ❌ and the fixes for Claude Code, Git and Python;
+- updating by replacing the folder: UPDATE_RESULT_EN.
+
+What that run cannot cover:
+
+- the GitHub machine already has Git and Python, so steps 3 and 4 (winget) did not run;
+- signing in to Claude and using the plugin in a real session: nobody signs in to Claude on the GitHub machine;
+- home editions of Windows 10 and 11: the GitHub machine runs Windows Server 2025;
+- Codex.
 
 ## Step 0. What you need
 
@@ -37,7 +52,7 @@ Russian version: [INSTALL.ru.md](INSTALL.ru.md).
    irm https://claude.ai/install.ps1 | iex
    ```
 2. Close the window, open a new one and check: `claude --version`.
-   - If the command is not found, the install folder is not on PATH. The installer puts the program in `%USERPROFILE%\.local\bin`. Add that folder to your user PATH: Settings → System → About → Advanced system settings → Environment Variables → `Path` in the upper list → Edit → New → `%USERPROFILE%\.local\bin` → OK. Then open a new PowerShell window.
+   - If the command is not found, or the installer said `...\.local\bin is not in your PATH`, the install folder is not on PATH. The installer puts the program in `%USERPROFILE%\.local\bin` but may not add it to PATH. Add that folder to your user PATH: Settings → System → About → Advanced system settings → Environment Variables → `Path` in the upper list → Edit → New → `%USERPROFILE%\.local\bin` → OK. Then open a new PowerShell window.
 3. Run `claude` and sign in in the browser. If the browser does not open, press `c` to copy the link, open it yourself and paste the code back into the terminal. Then leave with `/exit`.
 
 Alternative: `winget install Anthropic.ClaudeCode`. That install does not update itself, and `claude update` does nothing for it. Update it with `winget upgrade Anthropic.ClaudeCode`.

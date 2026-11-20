@@ -28,7 +28,7 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 REPO = "ZMSkif/GameDev-AGI-Studio"
 PLUGIN_ID = "gamedev-studio@gamedev-studio"
@@ -154,7 +154,7 @@ def allowed(argv: list[str]) -> bool:
     the program name decides."""
     if not argv:
         return False
-    got = (Path(argv[0]).stem.lower(), *argv[1:])
+    got = (PureWindowsPath(argv[0]).stem.lower(), *argv[1:])      # accepts both \ and / separators
     for command in ALLOWED_COMMANDS:
         if len(command) == len(got) and all(
                 a == b or (a == "{repo}" and REPO_RE.fullmatch(b)) for a, b in zip(command, got)):

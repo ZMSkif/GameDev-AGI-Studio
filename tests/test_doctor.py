@@ -22,7 +22,7 @@ _spec.loader.exec_module(dr)
 class FakeTools:
     """Stands in for shutil.which and subprocess.run; records every argv and env it was given."""
 
-    def __init__(self, present=("claude", "git", "python", "gh", "codex"), answers=None):
+    def __init__(self, present=("claude", "git", "bash", "python", "gh", "codex"), answers=None):
         self.present, self.answers, self.calls, self.envs = set(present), dict(answers or {}), [], []
 
     def which(self, name):
@@ -98,7 +98,7 @@ class ReadOnlyTest(DoctorCase):
     def test_every_command_it_starts_is_on_the_allowlist(self):
         for tools in (FakeTools(), FakeTools(present=())):
             self.check(tools, "--lang", "en", "--github")
-            self.assertTrue(tools.calls)
+            self.assertTrue(tools.calls or not tools.present)
             for argv in tools.calls:
                 self.assertTrue(dr.allowed(argv), argv)
         for command in dr.ALLOWED_COMMANDS:

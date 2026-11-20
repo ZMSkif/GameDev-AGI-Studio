@@ -135,6 +135,24 @@ jobs:
           }
           exit 0
 
+      - name: Guide "Updating" - replace the folder; Claude Code reads the new version without a reinstall
+        shell: pwsh
+        env:
+          PYTHONIOENCODING: utf-8
+        run: |
+          Rename-Item C:\Tools\gamedev-studio gamedev-studio-old
+          Expand-Archive -Path "$env:RUNNER_TEMP\gamedev-studio.zip" -DestinationPath C:\Tools
+          $manifest = "C:\Tools\gamedev-studio\.claude-plugin\plugin.json"
+          $json = Get-Content $manifest -Raw
+          ($json -replace '"version":\s*"[^"]+"', '"version": "9.9.9"') | Set-Content $manifest -Encoding utf8NoBOM -NoNewline
+          $list = claude plugin list | Out-String
+          $list
+          if ($list -notmatch "Version:\s*9\.9\.9") { throw "claude plugin list does not show the replaced folder's version" }
+          if ($list -notmatch [regex]::Escape("C:\Tools\gamedev-studio")) { throw "the plugin is not read from C:\Tools\gamedev-studio" }
+          Set-Location C:\Tools\gamedev-studio
+          python scripts/doctor.py --lang en
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
   hindsight:
     runs-on: windows-latest
     timeout-minutes: 35
