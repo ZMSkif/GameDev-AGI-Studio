@@ -678,5 +678,16 @@ class RoundFiveClaudeCases(BriefCase):
         self.assertIn("- `stepId`: `src/city/citizens/lines.ts:6`: export const stepId = 1;",
                       self.section(text, "## Names the card uses, and where they were found"))
 
+
+class ClosedCheckCases(BriefCase):
+    def test_a_refused_repository_lists_every_card_name_as_not_checked(self):
+        self.card.write_text(CARD + "\nAlso `go(level)` and the `id` field.\n", encoding="utf-8")
+        subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
+        with mock.patch.dict(os.environ, {"GIT_TEST_ASSUME_DIFFERENT_OWNER": "1"}):
+            _, text, _ = self.call()
+        unchecked = self.section(text, "## ⚠ Names not checked")
+        for name in ("go", "id", "runTraining", "stepId", "startShow"):
+            self.assertIn(f"`{name}`", unchecked)
+
 if __name__ == "__main__":
     unittest.main()

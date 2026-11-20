@@ -644,7 +644,8 @@ def build(args) -> str:
         stale, found = stale_symbols(root, card_text)
         unchecked = sorted(card_names(card_text)[1])
     except GitRefused:
-        stale, found, unchecked = [], {}, sorted(card_names(card_text)[0])
+        checked, short = card_names(card_text)
+        stale, found, unchecked = [], {}, sorted(checked | short)
     reviews = Path(args.reviews) if args.reviews else root / "docs" / "reviews"
     notes = review_notes(reviews, card["piece"], [p.relative_to(root).as_posix() for p in owned] + card["owns"])
     memories = usable_memories(load_json(args.memories, "--memories"))

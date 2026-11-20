@@ -32,7 +32,7 @@ PLUGIN_DECISION_URL = REPO_ISSUES + "146"
 # Owner decision #164 (DEC-146): the parts DEC-143 deferred stay deferred for good.
 PERMANENT_DECISION_URL = REPO_ISSUES + "164"
 MODULE_STATUSES = {"active", "deferred"}
-# Owner decision #146 (DEC-143): exactly these modules are deferred, not cancelled.
+# Owner decision #146 (DEC-143) deferred exactly these modules; DEC-146 (#164) made it permanent.
 DEFERRED_MODULES = {"coordinator", "worker-agent", "postgresql", "control-center"}
 # Contracts changed by #146; the manifest must link the decision for each.
 DEFERRAL_CONTRACTS = (

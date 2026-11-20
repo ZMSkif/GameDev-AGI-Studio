@@ -250,8 +250,11 @@ class RetainTest(MineCase):
         self.assertEqual(result["skipped"], ["lesson:audio-lifecycle", "lessons-run"])
 
     def test_a_refused_or_unreachable_server_is_refused_and_a_lost_answer_is_unknown(self):
-        cases = [({"success": False}, "refused"), ({"success": True, "items_count": 0}, "refused"),
-                 (urllib.error.HTTPError("u", 500, "err", {}, None), "refused"),
+        cases = [({"success": False}, "refused"), ({"success": True, "items_count": 0}, "unknown"),
+                 ({}, "unknown"), ([], "unknown"),
+                 (urllib.error.HTTPError("u", 422, "bad", {}, None), "refused"),
+                 (urllib.error.HTTPError("u", 500, "err", {}, None), "unknown"),
+                 (urllib.error.HTTPError("u", 504, "gateway", {}, None), "unknown"),
                  (urllib.error.URLError(ConnectionRefusedError(10061, "refused")), "refused"),
                  (urllib.error.URLError("timed out"), "unknown"), (TimeoutError("read timed out"), "unknown"),
                  (ConnectionResetError("reset"), "unknown")]
@@ -398,10 +401,20 @@ class PropertyTest(MineCase):
             item = json.loads(req.data.decode("utf-8"))["items"][0]
             name = item["tags"][1] if item["tags"][0] == "lesson" else "marker"
             if state["n"] == fail_at + 1 and how == "refused":
-                raise urllib.error.HTTPError("u", 503, "busy", {}, None)
+                raise urllib.error.HTTPError("u", 422, "rejected", {}, None)
             state["accepted"].append(name)                  # the server stores it ...
             if state["n"] == fail_at + 1 and how == "lost":
                 raise TimeoutError("the answer was lost")   # ... but the answer never arrives
+            if state["n"] == fail_at + 1 and how == "gateway":
+                raise urllib.error.HTTPError("u", 504, "gateway timeout", {}, None)
+            if state["n"] == fail_at + 1 and how in ("empty", "{}"):
+                text = b"" if how == "empty" else b"{}"
+
+                class Odd:
+                    def __enter__(self): return self
+                    def __exit__(self, *a): return False
+                    def read(self): return text
+                return Odd()
             body = json.dumps({"success": True, "items_count": 1}).encode("utf-8")
 
             class Resp:
@@ -431,9 +444,9 @@ class PropertyTest(MineCase):
     def test_retain_a_lost_answer_is_unknown_and_gives_no_blind_retry(self):
         self.review(1, "Review CN1", "## BLOCKER\nmusic stuck\n")
         base = ["--reviews", str(self.dir), "--retain", "http://x", "--repository", "o/g", "--keep", "audio-lifecycle"]
-        for fail_at in range(2):                      # the lesson, the marker
-            with self.subTest(fail_at=fail_at):
-                fake, state = self.server(fail_at, "lost")
+        for fail_at, how in ((0, "lost"), (1, "lost"), (0, "gateway"), (1, "gateway"), (0, "empty"), (1, "{}")):
+            with self.subTest(fail_at=fail_at, how=how):
+                fake, state = self.server(fail_at, how)
                 code, err = self.run_store(fake, base)
                 self.assertEqual(code, 3)
                 self.assertIn("UNKNOWN", err)

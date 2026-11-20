@@ -301,17 +301,18 @@ def items_for(report: dict, keep: list[str], repository: str, token: str) -> lis
 
 
 def post(base: str, bank: str, item: dict) -> tuple[str, str]:
-    """Store one item. Returns ("stored", ""), ("refused", why) when the server answered that it did not
-    store it or could not be reached at all, or ("unknown", why) when the request may have arrived but no
-    usable answer came back (a timeout, a dropped connection, an answer that is not JSON)."""
+    """Store one item. Returns ("stored", ""); ("refused", why) only when the item was surely not stored:
+    the server could not be reached, answered 4xx, or answered "success": false; or ("unknown", why) for
+    every other outcome (a timeout, a dropped connection, a 5xx such as a proxy's 502 or 504, an empty or
+    unreadable answer), because the server may have stored the item before it failed to answer."""
     data = json.dumps({"items": [item]}).encode("utf-8")
     req = urllib.request.Request(f"{base.rstrip('/')}/v1/default/banks/{bank}/memories", data=data, method="POST",
                                  headers={"Content-Type": "application/json"})
     try:
         with urllib.request.urlopen(req, timeout=600) as resp:
-            body = json.loads(resp.read().decode("utf-8") or "{}")
+            body = json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
-        return "refused", f"HTTP {exc.code}"
+        return ("refused" if 400 <= exc.code < 500 else "unknown"), f"HTTP {exc.code}"
     except urllib.error.URLError as exc:
         if isinstance(exc.reason, ConnectionRefusedError):
             return "refused", f"connection refused ({exc.reason})"
@@ -320,8 +321,12 @@ def post(base: str, bank: str, item: dict) -> tuple[str, str]:
         return "unknown", f"{type(exc).__name__}: {exc}"
     except ValueError:
         return "unknown", "the answer is not JSON"
-    if body.get("success") is not True or body.get("items_count") != 1:
+    if not isinstance(body, dict):
+        return "unknown", "the answer is not a JSON object"
+    if body.get("success") is False:
         return "refused", f"not stored: {json.dumps(body)[:200]}"
+    if body.get("success") is not True or body.get("items_count") != 1:
+        return "unknown", f"the answer does not confirm one stored item: {json.dumps(body)[:200]}"
     return "stored", ""
 
 
