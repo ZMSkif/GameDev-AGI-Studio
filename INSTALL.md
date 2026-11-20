@@ -168,7 +168,7 @@ claude
 
 - The `.gamedev-studio` file marks the folder as a studio game. The plugin's checks (hooks) work only in such a folder:
   - a rules reminder at start;
-  - no commits straight to `main`;
+  - no commits straight to `main`, except the very first commit into an empty repository;
   - no committed passwords or keys.
 - In Claude, start the game with `/gamedev-studio:new-web-game "Title"`. Claude runs an interview with answer options and creates or downloads nothing without your yes.
 - **The game's tasks** go in the GitHub Issues of the game's own repository (DEC-002), not in files. That needs your own free GitHub account and the GitHub CLI: `winget install --id GitHub.cli -e --source winget --accept-source-agreements --accept-package-agreements`, then `gh auth login` in a separate PowerShell window. It is your own account; it neither gives nor needs access to the studio's repository. Without it, Claude says there is nowhere to keep tasks and asks you.
