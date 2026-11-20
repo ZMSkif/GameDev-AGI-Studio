@@ -1,0 +1,181 @@
+name: Clean install on Windows
+
+# A real install of the plugin the way INSTALL.md describes it, on a fresh GitHub-hosted Windows runner,
+# never on a person's PC. The zip is built exactly as the Release workflow builds the release asset.
+# Claude Code comes from its official installer, with a throwaway CLAUDE_CONFIG_DIR; nothing is signed in.
+# The runner already has Git and Python, so it is not a bare PC: the doctor also runs with a stripped PATH
+# to show what a bare PC gets. The Hindsight job is best effort and never blocks.
+on:
+  pull_request:
+    paths:
+      - "INSTALL*.md"
+      - "scripts/doctor.py"
+      - ".claude-plugin/**"
+      - ".codex-plugin/**"
+      - "skills/**"
+      - "agents/**"
+      - "commands/**"
+      - "hooks/**"
+      - ".github/workflows/clean-install.yml"
+      - ".github/workflows/release.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Build the zip the way the Release workflow does
+        shell: pwsh
+        run: |
+          git archive --format=zip --prefix=gamedev-studio/ -o "$env:RUNNER_TEMP\gamedev-studio.zip" HEAD
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          "zip: {0:N0} bytes" -f (Get-Item "$env:RUNNER_TEMP\gamedev-studio.zip").Length
+
+      - name: Guide step 2 - unpack into C:\Tools with Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+          "Windows PowerShell " + $PSVersionTable.PSVersion.ToString()
+          New-Item -ItemType Directory -Force C:\Tools | Out-Null
+          Expand-Archive -Path "$env:RUNNER_TEMP\gamedev-studio.zip" -DestinationPath C:\Tools
+          foreach ($f in ".claude-plugin\marketplace.json", ".claude-plugin\plugin.json", "INSTALL.md", "INSTALL.ru.md",
+                         "scripts\doctor.py", "AGENTS.md", "contracts\v1\manifest.json", "skills\studio-rules\SKILL.md") {
+            if (-not (Test-Path "C:\Tools\gamedev-studio\$f")) { throw "the zip has no $f" }
+            "present: $f"
+          }
+
+      - name: Guide step 1 - install Claude Code with the official installer
+        shell: powershell
+        run: |
+          irm https://claude.ai/install.ps1 | iex
+          $claude = "$env:USERPROFILE\.local\bin\claude.exe"
+          if (-not (Test-Path $claude)) { throw "claude.exe is not in .local\bin" }
+          & $claude --version
+
+      - name: Throwaway Claude Code config, and .local\bin on PATH as the guide's PATH step says
+        shell: pwsh
+        run: |
+          "CLAUDE_CONFIG_DIR=$env:RUNNER_TEMP\claude-config" >> $env:GITHUB_ENV
+          "$env:USERPROFILE\.local\bin" >> $env:GITHUB_PATH
+
+      - name: claude plugin validate on the unpacked folder
+        shell: pwsh
+        run: |
+          claude --version
+          claude plugin validate C:\Tools\gamedev-studio --strict
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
+      - name: Guide step 6 - add the folder as a marketplace and install the plugin
+        shell: pwsh
+        run: |
+          claude plugin marketplace add C:\Tools\gamedev-studio
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          claude plugin install gamedev-studio@gamedev-studio
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          claude plugin list
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
+      - name: What Claude Code recorded (throwaway config)
+        shell: pwsh
+        run: |
+          foreach ($f in "plugins\installed_plugins.json", "plugins\known_marketplaces.json", "settings.json") {
+            "== $f"
+            $p = Join-Path $env:CLAUDE_CONFIG_DIR $f
+            if (Test-Path $p) { Get-Content $p -Raw } else { "(missing)" }
+          }
+          claude plugin details gamedev-studio@gamedev-studio
+          exit 0
+
+      - name: Guide step 5 and 7 - the doctor reports everything required, the plugin included
+        shell: pwsh
+        env:
+          PYTHONIOENCODING: utf-8
+        run: |
+          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+          Set-Location C:\Tools\gamedev-studio
+          python scripts/doctor.py --lang ru
+          $rows = python scripts/doctor.py --json --lang en | Out-String | ConvertFrom-Json
+          $code = $LASTEXITCODE
+          foreach ($r in $rows) { "{0,-10} ok={1,-5} {2}" -f $r.key, $r.ok, $r.detail }
+          foreach ($k in "claude", "git", "git_bash", "python", "plugin") {
+            $r = $rows | Where-Object key -eq $k
+            if (-not $r.ok) { throw "doctor: $k is not ok: $($r.detail)" }
+          }
+          if (($rows | Where-Object key -eq "plugin").detail -notlike "installed from this folder*") {
+            throw "doctor: the plugin is not reported as loaded from C:\Tools\gamedev-studio"
+          }
+          if ($code -ne 0) { throw "doctor exit code $code" }
+
+      - name: The doctor on a bare PATH shows every fix
+        shell: pwsh
+        env:
+          PYTHONIOENCODING: utf-8
+        run: |
+          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+          $py = (Get-Command python).Source
+          $env:PATH = "C:\Windows\System32"
+          Set-Location C:\Tools\gamedev-studio
+          & $py scripts/doctor.py --lang ru
+          $rows = & $py scripts/doctor.py --json --lang en | Out-String | ConvertFrom-Json
+          $code = $LASTEXITCODE
+          foreach ($r in $rows) { "{0,-10} ok={1,-5} skipped={2,-5} who={3,-10} {4}" -f $r.key, $r.ok, $r.skipped, $r.who, $r.detail }
+          if ($code -ne 1) { throw "expected exit code 1 on a bare PATH, got $code" }
+          foreach ($k in "claude", "git", "python") {
+            $r = $rows | Where-Object key -eq $k
+            if ($r.ok -or -not $r.fix) { throw "bare PATH: $k should fail with a fix" }
+          }
+          exit 0
+
+  hindsight:
+    runs-on: windows-latest
+    timeout-minutes: 35
+    continue-on-error: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Install hindsight-api 1.2.2 in a venv, as the guide's optional section says
+        shell: pwsh
+        run: |
+          python --version
+          python -m venv "$env:USERPROFILE\.hindsight-runtime"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          & "$env:USERPROFILE\.hindsight-runtime\Scripts\python.exe" -m pip install --disable-pip-version-check hindsight-api==1.2.2
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          "{0:N0} MB" -f ((Get-ChildItem "$env:USERPROFILE\.hindsight-runtime" -Recurse -File | Measure-Object Length -Sum).Sum / 1MB)
+
+      - name: Start the server on 127.0.0.1 and wait for /health (no Claude sign-in on the runner)
+        shell: pwsh
+        env:
+          PYTHONIOENCODING: utf-8
+          HINDSIGHT_API_LLM_PROVIDER: claude-code
+          HINDSIGHT_API_HOST: 127.0.0.1
+          HINDSIGHT_API_PORT: "8888"
+          HINDSIGHT_API_MODEL_INIT_TIMEOUT: "900"
+          HINDSIGHT_API_MCP_ENABLED_TOOLS: retain,recall,list_memories,get_memory,get_bank
+        run: |
+          $exe = "$env:USERPROFILE\.hindsight-runtime\Scripts\hindsight-api.exe"
+          $p = Start-Process -FilePath $exe -ArgumentList "--host", "127.0.0.1", "--port", "8888" -PassThru `
+            -RedirectStandardOutput "$env:RUNNER_TEMP\hindsight.out" -RedirectStandardError "$env:RUNNER_TEMP\hindsight.err"
+          $start = Get-Date; $up = $false
+          while (((Get-Date) - $start).TotalSeconds -lt 1200 -and -not $p.HasExited) {
+            try { $h = Invoke-RestMethod http://127.0.0.1:8888/health -TimeoutSec 5; "health: $($h | ConvertTo-Json -Compress)"; $up = $true; break } catch { Start-Sleep 15 }
+          }
+          "waited {0:N0} s; server exited: {1}" -f ((Get-Date) - $start).TotalSeconds, $p.HasExited
+          python scripts/doctor.py --hindsight --lang en
+          "== server log (last 60 lines)"
+          Get-Content "$env:RUNNER_TEMP\hindsight.out", "$env:RUNNER_TEMP\hindsight.err" -Tail 60 -ErrorAction SilentlyContinue
+          if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force }
+          if (-not $up) { throw "Hindsight did not answer /health" }
+          exit 0

@@ -2,11 +2,27 @@
 
 All notable changes to the `gamedev-studio` plugin. The version lives only in `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`, and a release tag `vX.Y.Z` must match it. From the next release on, each section is the release notes for its tag (see "Releases" in `README.md`). 0.1.0 and 0.2.0 were not tagged. The v0.3.0 release notes were written by hand, in Russian and English, before this file existed.
 
-## [Unreleased]
+## [0.4.1] - 2026-11-20
 
 ### Added
-- `INSTALL.md` and `INSTALL.ru.md`: installing the plugin from zero on Windows. Each step says who does it: Claude, or the person (sign-ins, Windows prompts, repository access). The guide covers GitHub access and a fallback without it, plus optional Hindsight memory. It is not run on a clean machine; it says what was checked instead.
-- `scripts/doctor.py`: a read-only check of every prerequisite, with ✅ or ❌ and the fix for each, in Russian or English. It runs only version, status and list commands from an allowlist.
+- `INSTALL.md` and `INSTALL.ru.md`: installing the plugin on a clean Windows PC from the release zip, with no GitHub access needed. Each step says who does it: Claude, Claude after the person's yes, or the person (sign-in, Windows prompts, restarts). The guide also covers:
+  - what the owner does before handing over;
+  - working without GitHub access;
+  - updating by replacing the folder;
+  - optional Hindsight memory, only when the owner decides.
+- `scripts/doctor.py`: a read-only check of every prerequisite, with ✅ or ❌, the fix, and who does it, in Russian or English.
+  - It starts only an exact list of version commands and never starts Codex or `claude plugin list`.
+  - It switches off automatic Python installs for its probe.
+  - It reads Claude Code's plugin files to see whether the plugin is installed, enabled and loaded from this folder.
+  - `--github` adds the GitHub CLI, sign-in and repository checks.
+- The release now attaches `gamedev-studio-X.Y.Z.zip`, with a single `gamedev-studio` folder, built from the tagged commit.
+- `.github/workflows/clean-install.yml`: on a fresh `windows-latest` runner, it unpacks that zip, installs Claude Code with the official installer, validates and installs the plugin with a throwaway config, and runs the doctor, including with a stripped PATH. Hindsight is tried as a best-effort job.
+
+### Changed
+- `studio-rules`: without GitHub access, the agent works from the rules shipped in the plugin folder (`AGENTS.md`, `contracts/v1/`, `reference/`, the skills) and asks instead of inventing a decision. It does not keep retrying `gh`.
+
+### Fixed
+- `brief_piece.py --decisions` also reads a file written by Windows PowerShell 5.1 (UTF-16 with a byte-order mark, or UTF-8 with one).
 
 ## [0.4.0] - 2026-11-20
 

@@ -615,12 +615,19 @@ def render(card, decisions, skills, owned, reads, stale, found, unchecked, notes
     return "\n".join(out) + "\n"
 
 
+def decode_text(data: bytes) -> str:
+    """UTF-8 with or without a BOM, or UTF-16 with a BOM: what `>` and Out-File write in Windows PowerShell 5.1."""
+    if data.startswith((b"\xff\xfe", b"\xfe\xff")):
+        return data.decode("utf-16")
+    return data.decode("utf-8-sig")
+
+
 def load_json(path: str | None, what: str):
     if not path:
         return None
     try:
-        return json.loads(Path(path).read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+        return json.loads(decode_text(Path(path).read_bytes()))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise BriefError(f"{what}: cannot read {path}: {exc}") from exc
 
 

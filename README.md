@@ -64,7 +64,7 @@ Layout: `.claude-plugin/` (Claude manifest and marketplace), `.codex-plugin/` (C
 
 ### Install from zero (Windows)
 
-[INSTALL.md](INSTALL.md) (English) and [INSTALL.ru.md](INSTALL.ru.md) (Russian) walk a clean Windows PC from nothing to a working plugin. Each step says whether Claude can do it or the person must. `python scripts/doctor.py` checks the computer read-only: it installs, changes and deletes nothing, and prints ✅ or ❌ with the fix for each prerequisite. The guide was not run on a clean machine; it says what was checked instead.
+[INSTALL.md](INSTALL.md) (English) and [INSTALL.ru.md](INSTALL.ru.md) (Russian) take a clean Windows PC from nothing to a working plugin, using the release zip `gamedev-studio-X.Y.Z.zip`. No GitHub access is needed. Each step says whether Claude does it or the person must. `python scripts/doctor.py` checks the computer: it installs and changes nothing, starts only an exact list of version commands, and prints ✅ or ❌ with the fix for each prerequisite. The `Clean install on Windows` workflow runs the install on a fresh GitHub-hosted Windows runner.
 
 ### Install from a local clone
 
