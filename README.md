@@ -62,6 +62,10 @@ The rules live in `contracts/v1/knowledge-policy.json` 1.1.0. The smoke evidence
 
 Layout: `.claude-plugin/` (Claude manifest and marketplace), `.codex-plugin/` (Codex manifest), `.agents/plugins/marketplace.json` (Codex marketplace), `skills/`, `agents/`, `hooks/`. The version is set only in the two `plugin.json` files and must match; `python scripts/validate_plugin.py` checks this.
 
+### Install from zero (Windows)
+
+[INSTALL.md](INSTALL.md) (English) and [INSTALL.ru.md](INSTALL.ru.md) (Russian) take a clean Windows PC from nothing to a working plugin, using the release zip `gamedev-studio-X.Y.Z.zip`. No GitHub access is needed. Each step says whether Claude does it or the person must. `python scripts/doctor.py` checks the computer: it installs and changes nothing, starts only an exact list of version commands, and prints ✅ or ❌ with the fix for each prerequisite. The `Clean install on Windows` workflow runs the install on a fresh GitHub-hosted Windows runner.
+
 ### Install from a local clone
 
 Verified on Claude Code 2.1.325 and Codex 0.169.0, using a throwaway config directory (`CLAUDE_CONFIG_DIR` / `CODEX_HOME`):
@@ -153,4 +157,4 @@ python scripts/validate_plugin.py
 python -m unittest discover -s tests -v
 ```
 
-`claude plugin validate .` checks the manifests only; the `skills`, `agents` and `commands` forms check the components in those directories. CI runs the last three Python commands; `claude plugin validate` is run locally because the Claude Code CLI is not set up in the CI runner.
+`claude plugin validate .` checks the manifests only; the `skills`, `agents` and `commands` forms check the components in those directories. CI runs the last three Python commands. The `Clean install on Windows` workflow installs the Claude Code CLI on a fresh runner and runs `claude plugin validate --strict` on the release-style zip.

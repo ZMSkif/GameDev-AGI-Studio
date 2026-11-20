@@ -688,5 +688,16 @@ class ClosedCheckCases(BriefCase):
         for name in ("go", "id", "runTraining", "stepId", "startShow"):
             self.assertIn(f"`{name}`", unchecked)
 
+
+class EncodingCases(BriefCase):
+    def test_decisions_written_by_windows_powershell_are_read(self):
+        # PowerShell 5.1 `>` writes UTF-16LE with a BOM; Out-File -Encoding utf8 writes UTF-8 with a BOM.
+        for encoding, bom in (("utf-16-le", b"\xff\xfe"), ("utf-8", b"\xef\xbb\xbf"), ("utf-8", b"")):
+            with self.subTest(encoding=encoding, bom=bom):
+                self.decisions.write_bytes(bom + json.dumps(DECISIONS, ensure_ascii=False).encode(encoding))
+                code, text, err = self.call()
+                self.assertEqual(code, 0, err)
+                self.assertIn("#40", self.section(text, "## Decisions"))
+
 if __name__ == "__main__":
     unittest.main()

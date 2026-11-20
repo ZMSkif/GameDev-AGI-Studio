@@ -3,7 +3,8 @@ name: Release
 # Runs when a maintainer pushes a tag vX.Y.Z (pushing a tag needs the owner's yes, DEC-009).
 # The check job re-runs every check on the tagged commit, requires that commit to be on main, and
 # checks the tag against both plugin.json files and the CHANGELOG. Only then does the release job,
-# the one job with write access, create the GitHub release from the CHANGELOG section. An existing
+# the one job with write access, create the GitHub release from the CHANGELOG section, with the plugin
+# zip gamedev-studio-X.Y.Z.zip (one top folder, gamedev-studio) attached. An existing
 # release is left as is.
 on:
   push:
@@ -51,7 +52,14 @@ jobs:
           persist-credentials: false
       - name: Write the release notes from the CHANGELOG
         run: python3 scripts/release_check.py --tag "$GITHUB_REF_NAME" --notes-out "$RUNNER_TEMP/release-notes.md"
-      - name: Create the GitHub release
+      - name: Build the plugin zip (one top folder, gamedev-studio, as INSTALL.md expects)
+        run: |
+          git archive --format=zip --prefix=gamedev-studio/ -o "$RUNNER_TEMP/gamedev-studio-${GITHUB_REF_NAME#v}.zip" HEAD
+          for f in INSTALL.ru.md INSTALL.md scripts/doctor.py .claude-plugin/marketplace.json .claude-plugin/plugin.json; do
+            unzip -l "$RUNNER_TEMP/gamedev-studio-${GITHUB_REF_NAME#v}.zip" | grep -qF " gamedev-studio/$f" \
+              || { echo "::error::the zip has no gamedev-studio/$f"; exit 1; }
+          done
+      - name: Create the GitHub release with the zip attached
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -59,5 +67,6 @@ jobs:
             echo "Release $GITHUB_REF_NAME already exists; leaving it unchanged."
           else
             gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag \
-              --title "gamedev-studio ${GITHUB_REF_NAME#v}" --notes-file "$RUNNER_TEMP/release-notes.md"
+              --title "gamedev-studio ${GITHUB_REF_NAME#v}" --notes-file "$RUNNER_TEMP/release-notes.md" \
+              "$RUNNER_TEMP/gamedev-studio-${GITHUB_REF_NAME#v}.zip"
           fi
