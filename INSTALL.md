@@ -31,6 +31,7 @@ Nothing was installed on the owner's PC. A real install ran on 2026-11-20 on a c
 - `python scripts/doctor.py`: every required item ✅, the plugin "installed from this folder and enabled";
 - with a stripped PATH the script showed ❌ and the fixes for Claude Code, Git and Python;
 - updating by replacing the folder, as "Updating" says: with no reinstall, `claude plugin list` showed the version from the new folder right away;
+- the game folder of step 8: through Git Bash the hooks answered at start, blocked a commit straight to `main`, and stayed silent in a folder without the `.gamedev-studio` file;
 - Hindsight memory, following the "Hindsight memory" section, installed and answered its health check.
 
 What that run cannot cover:
@@ -204,9 +205,9 @@ Checked on a clean GitHub machine: after the folder was replaced, `claude plugin
 
 The plugin works without memory. The owner decides where and how the studio's memory runs, so follow these steps only when the owner says so.
 
-> **Checked on a clean GitHub Actions machine** (Windows Server 2025, Python 3.12.10). The commands of steps 1–3 passed:
+> **Checked on a clean GitHub Actions machine** (Windows Server 2025), first on Python 3.12.10 and then on Python 3.13.17, the version step 4 installs. The commands of steps 1–3 passed:
 > - the install took about 5 minutes and 2.2 GB;
-> - the server started its own database, downloaded the models and answered `healthy`, with the database connected, after 52 seconds;
+> - the server started its own database, downloaded the models and answered `healthy`, with the database connected, after 35–52 seconds;
 > - `doctor.py --hindsight` showed ✅.
 >
 > Fact extraction was not checked there, because nobody is signed in to Claude on that machine. On the owner's PC the server runs on Python 3.11.9 with `hindsight-api` 1.2.2.
