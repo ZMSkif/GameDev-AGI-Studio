@@ -3,7 +3,6 @@ import contextlib
 import importlib.util
 import io
 import json
-import os
 import subprocess
 import tempfile
 import time
@@ -604,7 +603,7 @@ class RoundFourClaudeCases(BriefCase):
         self.old_worktree()
         subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
         subprocess.run(["git", "-C", str(self.repo), "add", "src", "tests", "docs"], check=True)
-        with mock.patch.dict(os.environ, {"GIT_TEST_ASSUME_DIFFERENT_OWNER": "1"}):
+        with mock.patch.object(bp, "git", return_value=None):   # git refuses the repository (e.g. dubious ownership)
             code, text, _ = self.call()
         self.assertEqual(code, 0)
         unchecked = self.section(text, "## ⚠ Names not checked")
@@ -683,7 +682,7 @@ class ClosedCheckCases(BriefCase):
     def test_a_refused_repository_lists_every_card_name_as_not_checked(self):
         self.card.write_text(CARD + "\nAlso `go(level)` and the `id` field.\n", encoding="utf-8")
         subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
-        with mock.patch.dict(os.environ, {"GIT_TEST_ASSUME_DIFFERENT_OWNER": "1"}):
+        with mock.patch.object(bp, "git", return_value=None):   # git refuses the repository (e.g. dubious ownership)
             _, text, _ = self.call()
         unchecked = self.section(text, "## ⚠ Names not checked")
         for name in ("go", "id", "runTraining", "stepId", "startShow"):
