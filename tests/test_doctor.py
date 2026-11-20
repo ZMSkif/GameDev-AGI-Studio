@@ -267,10 +267,10 @@ class ResultTest(DoctorCase):
         _, rows = self.check(tools, "--lang", "en")
         self.assertFalse(rows["python"]["ok"])
         self.assertIn("Microsoft Store", rows["python"]["detail"])
-        _, rows = self.check(FakeTools(answers={"python": (0, "3.8.10"), "py": (127, ""), "python3": (127, "")}),
+        _, rows = self.check(FakeTools(answers={"python": (0, "3.9.13"), "py": (127, ""), "python3": (127, "")}),
                              "--lang", "en")
         self.assertFalse(rows["python"]["ok"])
-        self.assertIn("3.8.10", rows["python"]["detail"])
+        self.assertIn("3.9.13, needs 3.10", rows["python"]["detail"])
 
     def test_gh_failures_say_whether_access_or_the_network_is_the_problem(self):
         _, rows = self.check(FakeTools(answers={"gh auth status": (1, "You are not logged into any GitHub hosts. "

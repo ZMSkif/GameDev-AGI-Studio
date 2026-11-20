@@ -88,7 +88,7 @@ py -3 --version
 The first line stops the Python install manager from installing Python by itself during the check. Step 4 installs only what is missing:
 
 - **Git**, if `git` is not found.
-- **Python**, if neither `python` nor `py -3` showed version 3.9 or newer. A `python` under `...\WindowsApps\` that talks about the Microsoft Store is a stub, not Python.
+- **Python**, if neither `python` nor `py -3` showed version 3.10 or newer. A `python` under `...\WindowsApps\` that talks about the Microsoft Store is a stub, not Python.
 
 ## Step 4. [Claude → you] Install what is missing
 
@@ -173,7 +173,7 @@ When Claude Code starts in a game folder, it may warn `GameDev Studio tool prefl
    Expand-Archive -Path "$HOME\Downloads\gamedev-studio-0.4.2.zip" -DestinationPath C:\Tools
    ```
    If `gamedev-studio-old` is left over from an earlier update, delete it first.
-4. **[you]** Start Claude Code. There is no need to reinstall the plugin: it loads from this folder, and the Claude Code docs say changes there take effect at the next start.
+4. **[you]** Start Claude Code in the plugin folder: `cd C:\Tools\gamedev-studio`, then `claude`. There is no need to reinstall the plugin: it loads from this folder, and the Claude Code docs say changes there take effect at the next start.
 5. **[Claude]** `python scripts/doctor.py` shows the new version. Once everything works, delete `C:\Tools\gamedev-studio-old` yourself.
 
 Checked on a clean GitHub machine: after the folder was replaced, `claude plugin list` showed the new folder's version with no reinstall, and `python scripts/doctor.py` said "installed from this folder and enabled".

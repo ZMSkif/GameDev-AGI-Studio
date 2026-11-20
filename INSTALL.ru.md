@@ -88,7 +88,7 @@ py -3 --version
 Первая строка не даёт Python install manager поставить Python сам при проверке. В шаге 4 ставится только недостающее:
 
 - **Git** — если `git` не найден.
-- **Python** — если ни `python`, ни `py -3` не показали версию 3.9 или новее. Если `python` лежит в папке `...\WindowsApps\` и пишет про Microsoft Store, это заглушка, а не Python.
+- **Python** — если ни `python`, ни `py -3` не показали версию 3.10 или новее. Если `python` лежит в папке `...\WindowsApps\` и пишет про Microsoft Store, это заглушка, а не Python.
 
 ## Шаг 4. [Claude → вы] Установить недостающее
 
@@ -173,7 +173,7 @@ codex plugin add gamedev-studio@gamedev-studio
    Expand-Archive -Path "$HOME\Downloads\gamedev-studio-0.4.2.zip" -DestinationPath C:\Tools
    ```
    Если `gamedev-studio-old` уже есть от прошлого обновления, сначала удалите её.
-4. **[вы]** Запустите Claude Code. Переустанавливать плагин не нужно: он загружается из этой папки, а по документации Claude Code изменения в ней действуют со следующего запуска.
+4. **[вы]** Запустите Claude Code в папке плагина: `cd C:\Tools\gamedev-studio`, затем `claude`. Переустанавливать плагин не нужно: он загружается из этой папки, а по документации Claude Code изменения в ней действуют со следующего запуска.
 5. **[Claude]** `python scripts/doctor.py` показывает новую версию. Когда всё работает, удалите `C:\Tools\gamedev-studio-old` сами.
 
 Проверено на чистой машине GitHub: после замены папки `claude plugin list` без переустановки показал версию из новой папки, а `python scripts/doctor.py` — «установлен из этой папки и включён».

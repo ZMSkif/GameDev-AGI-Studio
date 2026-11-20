@@ -157,4 +157,4 @@ python scripts/validate_plugin.py
 python -m unittest discover -s tests -v
 ```
 
-`claude plugin validate .` checks the manifests only; the `skills`, `agents` and `commands` forms check the components in those directories. CI runs the last three Python commands; `claude plugin validate` is run locally because the Claude Code CLI is not set up in the CI runner.
+`claude plugin validate .` checks the manifests only; the `skills`, `agents` and `commands` forms check the components in those directories. CI runs the last three Python commands. The `Clean install on Windows` workflow installs the Claude Code CLI on a fresh runner and runs `claude plugin validate --strict` on the release-style zip.

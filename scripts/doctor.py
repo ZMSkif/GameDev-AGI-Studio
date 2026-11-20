@@ -35,7 +35,7 @@ PLUGIN_ID = "gamedev-studio@gamedev-studio"
 MARKETPLACE = "gamedev-studio"
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 TESTED_CLAUDE = (2, 1, 325)
-MIN_PYTHON = (3, 9)
+MIN_PYTHON = (3, 10)          # the plugin's commands pass newline= when saving a file, new in Python 3.10
 PY_PROBE = "import sys;print('%d.%d.%d' % sys.version_info[:3])"
 REPO_RE = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")
 # The only commands this script may start, exactly as written; "{repo}" stands for an owner/name.
@@ -263,7 +263,7 @@ def check_git_bash(t):
 
 
 def check_python(t):
-    """The interpreter the plugin's hooks find, in their order: the first one that is 3.9 or newer."""
+    """The interpreter the plugin's hooks find, in their order: the first one that is 3.10 or newer."""
     store_alias, too_old = False, None
     for argv in (["python", "-c", PY_PROBE], ["py", "-3", "-c", PY_PROBE], ["python3", "-c", PY_PROBE]):
         code, out = run(argv)
@@ -339,7 +339,8 @@ def same_folder(a, b) -> bool:
 def plugin_state() -> tuple[str, str, str]:
     """('missing'|'disabled'|'enabled', installed version, where it loads from), read from Claude Code's own
     files. These are Claude Code's internal files, so an unexpected shape raises ValueError, not a guess.
-    A plugin from a local-folder marketplace loads in place from that folder, so the folder is what counts."""
+    A plugin from a local-folder marketplace loads in place from that folder, so the folder is what counts.
+    This is the user install the guide makes: project or local settings that switch it off are not read."""
     base = claude_config_dir()
     installed = read_json(base / "plugins" / "installed_plugins.json")
     plugins = installed.get("plugins") if isinstance(installed, dict) else None
@@ -348,7 +349,10 @@ def plugin_state() -> tuple[str, str, str]:
     entries = plugins.get(PLUGIN_ID)
     if not entries:
         return "missing", "", ""
-    entry = entries[0] if isinstance(entries, list) else entries
+    if isinstance(entries, list):                     # the guide installs for the user; prefer that entry
+        entry = next((e for e in entries if isinstance(e, dict) and e.get("scope") == "user"), entries[0])
+    else:
+        entry = entries
     if not isinstance(entry, dict):
         raise ValueError("unexpected plugin entry")
     version = str(entry.get("version", "?"))
