@@ -20,7 +20,7 @@ The owner chose two profiles on 19.11.2026: web for HTML5 portal games (Three.js
 
 ### Production skills
 
-All are short, cite their decisions and name their sources (the Cat Challenge web game, 16–19.11.2026):
+The skills cite the studio decisions they apply and link to their sources.
 
 | Skill | For |
 | --- | --- |
@@ -39,16 +39,23 @@ All are short, cite their decisions and name their sources (the Cat Challenge we
 | `memory` | studio and project memory in Hindsight over MCP: banks, what to store, the four modes, the start recipe |
 | `context-brief` | one worker brief per piece card: decisions, skills, files, review notes, memories, ports |
 | `lessons` | recurring failure classes from the review archive, stored as lessons, with proposed plugin changes |
+| `game-asset-production` | Blender source to engine-ready characters, props, materials and animation |
+| `game-ui-workflow` | approved UI reference to working, responsive game screens |
+| `gameplay-visual-review` | comparable captures and independent review in a playable build |
+| `review-evidence` | Issue/PR review card and SHA-256 verification of the attached files |
+| `studio-handoff` | pause and resume a piece in a fresh session from a GitHub checkpoint |
 
 ### Commands (Claude Code)
 
-`/gamedev-studio:new-web-game`, `/gamedev-studio:release-gate`, `/gamedev-studio:package-playgama`, `/gamedev-studio:review-piece`, `/gamedev-studio:archive-reviews`, `/gamedev-studio:brief-piece` and `/gamedev-studio:mine-lessons`. Each is a short wrapper over a skill, and no command has a skill's name.
+`/gamedev-studio:new-web-game`, `/gamedev-studio:release-gate`, `/gamedev-studio:package-playgama`, `/gamedev-studio:review-piece`, `/gamedev-studio:archive-reviews`, `/gamedev-studio:brief-piece`, `/gamedev-studio:mine-lessons`, `/gamedev-studio:review-card` and `/gamedev-studio:handoff-piece`. Each is a short wrapper over a skill, and no command has a skill's name.
 
 What each CLI was seen to load for 0.4.0:
 - **Claude Code 2.1.325:** `claude --plugin-dir . plugin details gamedev-studio` lists 24 skills and commands together (the 17 skills and the 7 commands), the 14 roles and the 2 hooks.
 - **Codex 0.169.0:** with a throwaway `CODEX_HOME`, it installs 0.4.0 with all 17 skills. The Codex manifest declares only skills and hooks. Whether a Codex session offers the commands was not tested, so in Codex use the skills directly.
 
 `python scripts/archive_reviews.py` saves reviewer verdicts verbatim from a session transcript.
+
+To run your existing CLI chats from desktop or phone, see [Mr. Mak with GameDev Studio](reference/mr-mak-workspace.md) and the [upstream attribution](reference/mr-mak-notices.md).
 
 ### Memory (Hindsight)
 
