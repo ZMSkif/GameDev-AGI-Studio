@@ -8,7 +8,9 @@ from os.path import relpath
 import sys
 from urllib.parse import quote
 
-from report_ui import STYLES, frame, markers, page, seconds, write_new
+import json
+
+from report_ui import STYLES, attr, frame, markers, page, seconds, write_new
 from review_evidence import IMAGE_SUFFIXES, load_document, measure
 
 
@@ -23,7 +25,11 @@ COPY = {
         "empty_gallery": "File details are available below.",
         "unsupported_video": "Your browser cannot play this video.",
         "before": "Before", "after": "After", "clip": "Clip", "build": "Build",
-        "test": "Test", "source": "Source", "export": "Export", "bytes_unit": "B",
+        "test": "Test", "source": "Source", "export": "Export", "bytes_unit": "B", "step": "Step frame",
+        "steps_heading": "Step by step", "step_frame": "Step frame", "note": "Note", "notes_export": "Export notes",
+        "note_placeholder": "What is wrong here, or what to check next",
+        "action_state": "state", "action_command": "command", "action_tap_at": "tap at", "action_wait": "wait",
+        "action_frame": "checkpoint", "no_frame": "no frame",
         "reference": "Reference", "decision_label": "Approval record",
         "confirmed": "Confirmed", "blocked": "Blocked", "pending": "Pending",
         "inspector_heading": "Checks", "markers": "Markers", "show_on_frame": "Show on frame",
@@ -45,7 +51,11 @@ COPY = {
         "empty_gallery": "Сведения о файлах доступны ниже.",
         "unsupported_video": "Браузер не может воспроизвести это видео.",
         "before": "До", "after": "После", "clip": "Видео", "build": "Сборка",
-        "test": "Тест", "source": "Исходник", "export": "Экспорт", "bytes_unit": "Б",
+        "test": "Тест", "source": "Исходник", "export": "Экспорт", "bytes_unit": "Б", "step": "Кадр шага",
+        "steps_heading": "По шагам", "step_frame": "Кадр шага", "note": "Заметка", "notes_export": "Экспорт заметок",
+        "note_placeholder": "Что здесь не так или что проверить дальше",
+        "action_state": "состояние", "action_command": "команда", "action_tap_at": "тап в точку", "action_wait": "пауза",
+        "action_frame": "контрольный кадр", "no_frame": "кадра нет",
         "reference": "Референс", "decision_label": "Решение об утверждении",
         "confirmed": "Принято", "blocked": "Заблокировано", "pending": "Ожидается",
         "inspector_heading": "Проверки", "markers": "Маркеры", "show_on_frame": "Показать на кадре",
@@ -131,6 +141,7 @@ def preview(root, directory, entry, copy, qa=None):
 def check_item(check, index, side, copy, clip):
     passed = check["passed"]
     kind = check.get("type", "step")
+    action = check.get("action")
     at = check.get("at_ms")
     unit = copy["seconds_unit"]
     timing = f'<span class="at">{copy["at"]} {seconds(at)} {unit}</span>' if isinstance(at, (int, float)) else ""
@@ -153,13 +164,54 @@ def check_item(check, index, side, copy, clip):
     if clip and isinstance(at, (int, float)):
         tools.append(f'<button type="button" class="action small" data-video="{clip}" '
                      f'data-seek="{seconds(at)}">{copy["video_at"]} {seconds(at)} {unit}</button>')
-    tool_row = f'<div class="tools">{"".join(tools)}</div>' if tools else ""
+    if check.get("frame"):
+        tools.append(f'<button type="button" class="action small" data-open-frame="f-{side}-{index}">'
+                     f'{copy["step_frame"]}</button>')
+    context = attr(json.dumps({"side": side, "check": check["name"], "at_ms": check.get("at_ms"),
+                               "frame": check.get("frame")}, ensure_ascii=False))
+    tools.append(f'<button type="button" class="action small" data-note="{side}-{index}" data-note-context="{context}">'
+                 f'{copy["note"]}</button>')
+    tool_row = f'<div class="tools">{"".join(tools)}</div>'
+    if action and f"action_{action}" in copy:
+        kind_label = f'{copy.get("type_" + kind, kind)} · {copy["action_" + action]}'
+    else:
+        kind_label = copy.get("type_" + kind, kind)
     return (
         f'<li class="check" data-passed="{str(passed).lower()}"><span class="icon" aria-hidden="true">'
         f'{"✓" if passed else "✕"}</span><div class="title"><b>{escape(check["name"])}</b>'
-        f'<span class="type">{copy.get("type_" + kind, kind)}</span>{timing}</div>'
+        f'<span class="type">{kind_label}</span>{timing}</div>'
         f'<p class="detail">{escape(str(check.get("detail", "")))}</p>{compare}{tool_row}</li>'
     )
+
+
+def steps_strip(qa, copy):
+    """Before and after frames of every step, side by side, when the run captured them."""
+    builds = qa["viewport"]["builds"]
+    rows = []
+    longest = max((len(builds.get(side, {}).get("checks", [])) for side in ("before", "after")), default=0)
+    for index in range(longest):
+        cells = []
+        name = ""
+        for side in ("before", "after"):
+            checks = builds.get(side, {}).get("checks", [])
+            check = checks[index] if index < len(checks) else None
+            if check is None or not check.get("frame"):
+                cells.append(f'<div class="step-cell no-frame">{copy["no_frame"]}</div>')
+                continue
+            name = name or check["name"]
+            image = frame(escape(quote(check["frame"], safe="/"), quote=True), f'{copy[side]} · {check["name"]}',
+                          group="steps", caption=f'{copy[side]} · {check["name"]}', lazy=False)
+            image = image.replace('<span class="frame"', f'<span class="frame" id="f-{side}-{index}"', 1)
+            cells.append(f'<div class="step-cell" data-passed="{str(check["passed"]).lower()}">{image}</div>')
+        if name:
+            rows.append(f'<li class="step-row"><div class="step-name"><span class="card-num">{index}</span>'
+                        f'{escape(name)}</div>{"".join(cells)}</li>')
+    if not rows:
+        return ""
+    return (f'<section class="section" aria-labelledby="steps-heading"><div class="section-head">'
+            f'<h2 id="steps-heading">{copy["steps_heading"]}<span class="count">{len(rows)}</span></h2></div>'
+            f'<ol class="steps-strip"><li class="step-row head"><div></div><div>{copy["before"]}</div>'
+            f'<div>{copy["after"]}</div></li>{"".join(rows)}</ol></section>')
 
 
 def inspector(qa, copy, directory):
@@ -189,7 +241,9 @@ def inspector(qa, copy, directory):
         )
     return (
         f'<section class="section" aria-labelledby="inspector-heading"><div class="section-head">'
-        f'<h2 id="inspector-heading">{copy["inspector_heading"]}</h2></div>'
+        f'<h2 id="inspector-heading">{copy["inspector_heading"]}</h2>'
+        f'<button type="button" class="action small" data-notes-export>{copy["notes_export"]}'
+        f'<span class="count-badge" data-notes-count>0</span></button></div>'
         f'<div class="inspector">{"".join(columns)}</div><p class="note">{copy["timing_note"]}</p></section>'
     )
 
@@ -214,7 +268,8 @@ def render(root, manifest, out, title, verdict, lang, *, from_capture=False, qa=
     # Keep the two stills together when the manifest interleaves captures and clips.
     priority = {"before": 0, "after": 1, "reference": 2}
     gallery_entries = sorted(document["files"], key=lambda entry: priority.get(entry["role"], 3))
-    gallery = "".join(preview(root, directory, entry, copy, qa) for entry in gallery_entries)
+    gallery = "".join(preview(root, directory, entry, copy, qa) for entry in gallery_entries
+                      if entry["role"] != "step")
     if not gallery:
         gallery = f'<p class="empty">{copy["empty_gallery"]}</p>'
     issue = document["issue"]
@@ -238,7 +293,7 @@ def render(root, manifest, out, title, verdict, lang, *, from_capture=False, qa=
         **copy,
         title=escape(title or copy["default_title"]),
         revisions=revisions,
-        inspector=inspector(qa, copy, directory) if qa else "",
+        inspector=(inspector(qa, copy, directory) + steps_strip(qa, copy)) if qa else "",
         marker_toggle=(f'<button type="button" class="action" data-toggle-markers aria-pressed="true">'
                        f'{copy["markers"]}</button>' if has_markers else ""),
         back_link=(f'<a class="back-link" href="../index.html"><span aria-hidden="true">←</span> '

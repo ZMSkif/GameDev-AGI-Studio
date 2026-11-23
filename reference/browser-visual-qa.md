@@ -36,9 +36,13 @@ Replace the Issue, revisions and selectors with those from the current project. 
 }
 ```
 
-The default layouts are portrait 390 × 844, landscape 844 × 390 and square 512 × 512. Use selectors for visible elements whose geometry matters. Canvas-rendered content still needs game-provided assertions or visual review. These viewport runs test browser layout. Physical device checks, GPU behavior and platform adapters need their own scenarios and evidence.
+The built-in profiles are portrait 390 × 844, landscape 844 × 390 and square 512 × 512. A scenario can define its own profiles (size, pixel ratio, locale, time zone, touch or mouse) and canvas games can expose a test bridge for state checks: see [game test bridge](game-test-bridge.md). `--profiles a,b` runs a subset, `--step-frames` saves a frame after every step. Use selectors for visible elements whose geometry matters. Canvas-rendered content still needs game-provided assertions or visual review. These viewport runs test browser layout. Physical device checks, GPU behavior and platform adapters need their own scenarios and evidence.
 
 Use `tap` for an explicit touch step. A step `{"action":"reload"}` reloads the current build and waits for the configured readiness selector in the same browser context. Give behavior assertions unique `label` values if they should appear as named observations in the pre-release report. For example, label the assertion that a Pause action stops the simulation `pause-verified` and the assertion that a saved value survives reloading `save-restored`.
+
+## From the studio panel
+
+`python <plugin-root>/scripts/studio_panel.py` lists the scenarios in the game's `qa/` folder, shows whether both builds answer, lets you pick profiles, clips and step frames, runs the capture with a live log and opens the report. Reports go to `qa-reports/`, which is added to `.gitignore`.
 
 ## Results
 
@@ -46,7 +50,9 @@ Open `index.html` in the output directory. It shows the totals, then one card pe
 
 - every check of both builds with its type, the moment it ran (measured from the page opening, which is also the start of the clip), and for failures the expected and actual values;
 - *Show on frame* highlights the measured region of a layout check on the capture; *Clip at …* moves the recorded clip to that moment;
-- every image opens in the zoom viewer (wheel or +/−, drag to pan, ←/→ to switch, a markers toggle); the gallery also has a before/after slider.
+- every image opens in the zoom viewer (wheel or +/−, drag to pan, ←/→ to switch, a markers toggle); the gallery also has a before/after slider;
+- with step frames, *Step frame* opens the frame of a check and *Step by step* lines up the baseline and candidate frames of every step;
+- *Note* adds a note to any check; notes stay in this browser and *Export notes* saves them as JSON with the check, side, moment and frame, to paste into the Issue.
 
 `summary.json` records both revisions, timing to the configured readiness state, each check with `at_ms`, measured `regions` in CSS pixels and `expected`/`actual` where the runner measured them, plus errors. Older summaries without these fields still render. Keep the reports with their images and clips. A failed probe is evidence of what the runner observed. Use the task's independent review to record acceptance.
 

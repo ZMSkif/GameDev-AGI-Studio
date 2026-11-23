@@ -16,7 +16,7 @@ DECISION_URL = re.compile(
     re.ASCII,
 )
 IMAGE_SUFFIXES = {".avif", ".gif", ".jpeg", ".jpg", ".png", ".webp"}
-ROLES = {"before", "after", "clip", "build", "test", "source", "export", "reference"}
+ROLES = {"before", "after", "clip", "build", "test", "source", "export", "reference", "step"}
 
 
 def require_keys(value, expected, label):

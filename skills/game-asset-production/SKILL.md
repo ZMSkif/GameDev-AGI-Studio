@@ -42,3 +42,7 @@ Read the selected skill before execution. Its presence does not mean that its MC
 This workflow works with locally supplied assets and references. Paid services stay optional.
 
 Sources: [Mr. Mak 3D production routing](https://github.com/witnesstodark/mr-mak-workspace/blob/v0.6.6/.agents/skills/3d-production-routing/SKILL.md) and the linked production skills (MIT, see `reference/mr-mak-notices.md`).
+
+## Mixar
+
+When the person has Mixar with Connect MCP and the `mixar-claude` plugin, use its `mixar` MCP tools for scene work in Mixar: read the scene first, build with `execute_bpy_script` in a new scene tab, verify with `render_viewport` and the UV and seam checks, and export with the `web` or `godot` preset. Credit-spending calls (`enqueue_generation`, `create_layered_material`) need `mixar_tool_quote` and the owner's yes first (DEC-130). Record Mixar and the generation provider as the asset's source (DEC-094).

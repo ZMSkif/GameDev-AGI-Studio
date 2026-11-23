@@ -44,6 +44,29 @@ def inventory(path):
     }
 
 
+def reference_check(path, ledger_path):
+    """Find archive members whose bytes match a file recorded as reference-only."""
+    if not ledger_path:
+        return {"status": "not_run"}
+    ledger = json.loads(Path(ledger_path).read_text(encoding="utf-8"))
+    files = ledger.get("files") if isinstance(ledger, dict) else None
+    if not isinstance(files, dict):
+        raise ValueError("Invalid reference-only ledger")
+    matches = []
+    with ZipFile(path) as archive:
+        for entry in archive.infolist():
+            if entry.is_dir():
+                continue
+            digest = hashlib.sha256()
+            with archive.open(entry) as member:
+                for chunk in iter(lambda: member.read(1024 * 1024), b""):
+                    digest.update(chunk)
+            record = files.get(digest.hexdigest())
+            if record:
+                matches.append({"path": entry.filename, "source": record.get("path", ""), "tool": record.get("tool", "")})
+    return {"status": "failed" if matches else "passed", "ledger_files": len(files), "matches": matches}
+
+
 def field(document, key, expected):
     if not isinstance(document, dict) or type(document.get(key)) is not expected:
         raise ValueError(f"Invalid QA summary field: {key}")
@@ -126,8 +149,9 @@ def named_check(viewports, name):
     return {"status": status, "step": name, "observations": observations}
 
 
-def build_report(archive, qa_result, platforms, limit, pause_check, save_check):
+def build_report(archive, qa_result, platforms, limit, pause_check, save_check, ledger=None):
     build = inventory(archive)
+    reference = reference_check(archive, ledger)
     qa = load_candidate_qa(qa_result) if qa_result else None
     viewports = qa["viewports"] if qa else []
     budget = {"status": "not_run"}
@@ -140,6 +164,7 @@ def build_report(archive, qa_result, platforms, limit, pause_check, save_check):
         "version": 1,
         "archive": build,
         "archive_budget": budget,
+        "reference_only": reference,
         "candidate_browser_qa": qa,
         "archive_browser_match": {"status": "unverified"} if qa else {"status": "not_run"},
         "pause": named_check(viewports, pause_check),
@@ -154,6 +179,10 @@ COPY = {
         "archive_size": "Archive size", "files": "Files", "uncompressed": "Uncompressed", "platforms": "Targets",
         "checks_heading": "Checks", "files_heading": "Largest files in the archive", "path": "Path",
         "size": "Size", "compressed": "Compressed",
+        "reference": "Reference-only files",
+        "reference_none": "No reference-only file is in the archive.",
+        "reference_found": "These files came from a tool whose licence forbids commercial use. Replace them before release.",
+        "reference_not_run": "No reference-only ledger was given (--reference-ledger).",
         "budget": "Archive budget", "browser": "Candidate browser QA", "match": "Archive matches the tested build",
         "pause": "Pause", "save": "Save and restore", "platform": "Platform",
         "passed": "Passed", "failed": "Failed", "not_run": "Not run", "unverified": "Unverified", "incomplete": "Incomplete",
@@ -173,6 +202,10 @@ COPY = {
         "size": "Размер", "compressed": "Сжато",
         "budget": "Бюджет архива", "browser": "Браузерный QA кандидата", "match": "Архив совпадает с проверенной сборкой",
         "pause": "Пауза", "save": "Сохранение и восстановление", "platform": "Платформа",
+        "reference": "Файлы только для референса",
+        "reference_none": "В архиве нет файлов, отмеченных как «только референс».",
+        "reference_found": "Эти файлы сделаны инструментом, лицензия которого запрещает коммерческое использование. Замените их до релиза.",
+        "reference_not_run": "Реестр «только референс» не передан (--reference-ledger).",
         "passed": "Пройдено", "failed": "Ошибка", "not_run": "Не запускалось", "unverified": "Не подтверждено",
         "incomplete": "Не полностью",
         "limit": "Лимит", "measured": "Измерено", "commit": "Коммит кандидата", "step": "Шаг",
@@ -213,6 +246,15 @@ def render_html(report, out, lang):
                           f'<dl class="kv"><dt>{copy["measured"]}</dt><dd>{size(archive["archive_bytes"])}</dd>'
                           f'<dt>{copy["limit"]}</dt><dd>{size(budget["max_archive_bytes"])}</dd></dl>'
                           f'<div class="meter" data-status="{budget["status"]}"><span style="width:{share:.1f}%"></span></div>'))
+    reference = report.get("reference_only", {"status": "not_run"})
+    if reference["status"] == "not_run":
+        cards.append(card(copy["reference"], "not_run", copy, f'<p>{copy["reference_not_run"]}</p>'))
+    elif reference["matches"]:
+        items = "".join(f'<dt><code>{escape(item["path"])}</code></dt><dd>{escape(item["tool"])}</dd>'
+                        for item in reference["matches"])
+        cards.append(card(copy["reference"], "failed", copy, f'<p>{copy["reference_found"]}</p><dl class="kv">{items}</dl>'))
+    else:
+        cards.append(card(copy["reference"], "passed", copy, f'<p>{copy["reference_none"]}</p>'))
     if qa:
         rows = []
         for view in qa["viewports"]:
@@ -238,7 +280,7 @@ def render_html(report, out, lang):
     for platform in report["platforms"]:
         cards.append(card(f'{copy["platform"]}: {escape(platform["name"])}', platform["status"], copy,
                           f'<p>{copy["platform_text"]}</p>'))
-    statuses = {budget["status"], report["pause"]["status"], report["save"]["status"]}
+    statuses = {budget["status"], reference["status"], report["pause"]["status"], report["save"]["status"]}
     if qa:
         statuses.add("passed" if all(view["scenario_passed"] for view in qa["viewports"]) else "failed")
     overall = ("failed", copy["overall_failed"]) if "failed" in statuses else ("unverified", copy["overall_open"])
@@ -285,6 +327,8 @@ def main(argv=None):
     parser.add_argument("--max-archive-bytes", type=positive_bytes)
     parser.add_argument("--pause-check", help="Exact name of the scenario step asserting pause behavior")
     parser.add_argument("--save-check", help="Exact name of the scenario step asserting save behavior")
+    parser.add_argument("--reference-ledger", type=Path,
+                        help="The game's .gamedev-studio-reference-only.json; matching archive files fail the report")
     parser.add_argument("--html", type=Path, help="Also write an offline HTML view of the report to this new file")
     parser.add_argument("--lang", choices=COPY, default="en", help="Language of the HTML view")
     args = parser.parse_args(argv)
@@ -292,7 +336,8 @@ def main(argv=None):
         parser.error("Named checks require --qa-result")
     try:
         report = build_report(
-            args.archive, args.qa_result, args.platform, args.max_archive_bytes, args.pause_check, args.save_check
+            args.archive, args.qa_result, args.platform, args.max_archive_bytes, args.pause_check, args.save_check,
+            args.reference_ledger,
         )
         with args.out.open("x", encoding="utf-8", newline="\n") as output:
             json.dump(report, output, ensure_ascii=False, allow_nan=False, indent=2)
@@ -303,6 +348,10 @@ def main(argv=None):
         print(error, file=sys.stderr)
         return 1
     print(f"Release report: {args.out}" + (f" and {args.html}" if args.html else ""))
+    if report["reference_only"]["status"] == "failed":
+        for item in report["reference_only"]["matches"]:
+            print(f"Reference-only file in the archive: {item['path']} ({item['tool']})", file=sys.stderr)
+        return 3
     return 0
 
 

@@ -11,7 +11,7 @@ What it does, and nothing else:
     plugin's plugin.json.
   * with --hindsight, one HTTP GET of the memory server's /health.
 It does not start Codex (`codex --version` writes helper files) or `claude plugin list` (it tidies the
-plugin cache); Codex, FFmpeg and ffprobe are only looked up on PATH. The doctor itself writes no file. For every missing piece
+plugin cache); Codex and the other optional programs of tools/catalog.json are only looked up on PATH. The doctor itself writes no file. For every missing piece
 it prints the fix and who does it.
 
 Usage: python scripts/doctor.py [--lang ru|en] [--json] [--github] [--hindsight [URL]] [--repo owner/name]
@@ -64,7 +64,9 @@ TEXT = {
         "claude": "Claude Code", "git": "Git", "git_bash": "Git Bash", "python": "Python",
         "gh": "GitHub CLI (gh)", "gh_auth": "Вход в GitHub (gh auth)", "repo": "Доступ к репозиторию {repo}",
         "decisions": "Чтение решений (issues с меткой decision)", "plugin": "Плагин gamedev-studio в Claude Code",
-        "codex": "Codex CLI", "ffmpeg": "FFmpeg и ffprobe (разбор видео)", "hindsight": "Сервер памяти Hindsight ({url})",
+        "codex": "Codex CLI", "hindsight": "Сервер памяти Hindsight ({url})",
+        "fix_catalog_claude": "{gives} Поставить: панель студии (`python scripts/studio_panel.py`) или `python scripts/studio_tools.py install {id} --yes`.",
+        "fix_catalog_person": "{gives} {manual}",
         "found": "найден: {v}", "not_found": "не найден", "too_old": "версия {v}, нужна {need} или новее",
         "older_than_tested": "версия {v}; руководство проверено на {tested}, обновите при проблемах",
         "claude_not_on_path": "установлен в {p}, но этой папки нет в PATH",
@@ -97,8 +99,6 @@ TEXT = {
         "fix_plugin_disabled": "Включите плагин: `claude plugin enable gamedev-studio@gamedev-studio`. Затем {restart}.",
         "fix_plugin_other": "Плагин подключён из другой папки. Запустите проверку из неё или обновите плагин по разделу «Обновление» руководства.",
         "fix_plugin_unreadable": "Посмотрите сами: `claude plugin list` должен показать gamedev-studio@gamedev-studio.",
-        "fix_codex": "Не обязательно. Codex CLI нужен, только если вы работаете в Codex.",
-        "fix_ffmpeg": "Не обязательно. Нужно для разбора видео (skill video-watch): `winget install --id Gyan.FFmpeg -e --source winget --accept-source-agreements --accept-package-agreements`. Затем {restart}.",
         "fix_hindsight": "Не обязательно: плагин работает без памяти. Включать её — только по решению владельца студии (раздел «Память Hindsight» руководства).",
     },
     "en": {
@@ -111,7 +111,9 @@ TEXT = {
         "claude": "Claude Code", "git": "Git", "git_bash": "Git Bash", "python": "Python",
         "gh": "GitHub CLI (gh)", "gh_auth": "Signed in to GitHub (gh auth)", "repo": "Access to the {repo} repository",
         "decisions": "Reading the decisions (issues labelled decision)", "plugin": "gamedev-studio plugin in Claude Code",
-        "codex": "Codex CLI", "ffmpeg": "FFmpeg and ffprobe (video frames)", "hindsight": "Hindsight memory server ({url})",
+        "codex": "Codex CLI", "hindsight": "Hindsight memory server ({url})",
+        "fix_catalog_claude": "{gives} Install: the studio panel (`python scripts/studio_panel.py`) or `python scripts/studio_tools.py install {id} --yes`.",
+        "fix_catalog_person": "{gives} {manual}",
         "found": "found: {v}", "not_found": "not found", "too_old": "version {v}, needs {need} or newer",
         "older_than_tested": "version {v}; the guide was checked on {tested}, update if something fails",
         "claude_not_on_path": "installed in {p}, but that folder is not on PATH",
@@ -144,8 +146,6 @@ TEXT = {
         "fix_plugin_disabled": "Enable the plugin: `claude plugin enable gamedev-studio@gamedev-studio`. Then {restart}.",
         "fix_plugin_other": "The plugin is connected from another folder. Run the check from that folder, or update the plugin as the guide's \"Updating\" says.",
         "fix_plugin_unreadable": "Look yourself: `claude plugin list` should show gamedev-studio@gamedev-studio.",
-        "fix_codex": "Optional. The Codex CLI is needed only if you work in Codex.",
-        "fix_ffmpeg": "Optional. Needed to read videos as frames (the video-watch skill): `winget install --id Gyan.FFmpeg -e --source winget --accept-source-agreements --accept-package-agreements`. Then {restart}.",
         "fix_hindsight": "Optional: the plugin works without memory. Turn it on only when the studio owner decides so (the guide's \"Hindsight memory\" section).",
     },
 }
@@ -409,18 +409,32 @@ def check_plugin(t):
     return True, t["installed"].format(v=version), "", ""
 
 
-def check_codex(t):
-    """Codex is not started: `codex --version` writes helper files. Being on PATH is enough here."""
-    path = shutil.which("codex")
-    return (True, t["on_path"].format(p=path), "", "") if path else (False, t["not_found"], t["fix_codex"], "you")
+def catalog_tools():
+    """Optional machine-wide programs from tools/catalog.json that are found on PATH (gh has its own checks)."""
+    try:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("studio_tools", Path(__file__).with_name("studio_tools.py"))
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        catalog = module.load_catalog()
+    except (ImportError, OSError, ValueError):
+        return []
+    return [tool for tool in catalog["tools"]
+            if tool["scope"] == "machine" and tool["detect"]["type"] == "which" and tool["id"] != "gh"]
 
 
-def check_ffmpeg(t):
-    """FFmpeg is only looked up on PATH; nothing is started."""
-    found = [shutil.which(name) for name in ("ffmpeg", "ffprobe")]
-    if all(found):
-        return True, t["on_path"].format(p=found[0]), "", ""
-    return False, t["not_found"], t["fix_ffmpeg"].format(restart=restart(t)), "claude_yes"
+def check_catalog_tool(t, lang, tool):
+    """A catalog program is only looked up on PATH; nothing is started."""
+    rule = tool["detect"]
+    found = [shutil.which(name) for name in rule["names"]]
+    path = found[0] if all(found) else next((p for p in map(shutil.which, rule.get("alternatives", [])) if p), None)
+    if path:
+        return True, t["on_path"].format(p=path), "", ""
+    gives = tool["gives"][lang]
+    if tool["who"] == "claude_yes":
+        return False, t["not_found"], t["fix_catalog_claude"].format(gives=gives, id=tool["id"]), "claude_yes"
+    manual = tool.get("install", {}).get("manual", {}).get(lang, "")
+    return False, t["not_found"], t["fix_catalog_person"].format(gives=gives, manual=manual), "you"
 
 
 def check_hindsight(t, url):
@@ -452,14 +466,15 @@ def checks(lang: str, repo: str, hindsight: str | None, github: bool = False) ->
         ]
     plan += [
         ("plugin", True, "claude", lambda: check_plugin(t)),
-        ("codex", False, None, lambda: check_codex(t)),
-        ("ffmpeg", False, None, lambda: check_ffmpeg(t)),
     ]
+    for tool in catalog_tools():
+        plan.append((tool["id"], False, None, lambda tool=tool: check_catalog_tool(t, lang, tool)))
     if hindsight:
         plan.append(("hindsight", False, None, lambda: check_hindsight(t, hindsight)))
     results: dict[str, dict] = {}
     for key, required, needs, func in plan:
-        label = t[key].format(repo=repo, url=hindsight or "")
+        label = t[key].format(repo=repo, url=hindsight or "") if key in t else next(
+            tool["name"] for tool in catalog_tools() if tool["id"] == key)
         if needs and not results[needs]["ok"]:
             results[key] = {"key": key, "label": label, "required": required, "ok": False, "skipped": True,
                             "detail": t["skipped_needs"].format(dep=results[needs]["label"]), "fix": "", "who": ""}

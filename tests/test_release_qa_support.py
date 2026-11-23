@@ -54,6 +54,34 @@ class ReleaseQaSupportTest(unittest.TestCase):
         self.assertEqual(report["save"], {"status": "not_run"})
         self.assertEqual([target["status"] for target in report["platforms"]], ["unverified", "unverified"])
 
+    def test_reference_only_files_block_the_release(self):
+        ledger = self.root / ".gamedev-studio-reference-only.json"
+        digest = hashlib.sha256(b"abc" * 80).hexdigest()
+        ledger.write_text(json.dumps({"version": 1, "files": {
+            digest: {"path": "anim/run.fbx", "tool": "prompt2rig"},
+            "0" * 64: {"path": "anim/other.fbx", "tool": "motion2mixamorig"},
+        }}), encoding="utf-8")
+        html = self.root / "report.html"
+        result = self.release("--reference-ledger", ledger, "--html", html, "--lang", "ru")
+        self.assertEqual(result.returncode, 3, result.stderr)
+        self.assertIn("assets/app.wasm", result.stderr)
+        report = json.loads(self.out.read_text())
+        self.assertEqual(report["reference_only"]["status"], "failed")
+        self.assertEqual(report["reference_only"]["matches"],
+                         [{"path": "assets/app.wasm", "source": "anim/run.fbx", "tool": "prompt2rig"}])
+        self.assertIn("Файлы только для референса", html.read_text(encoding="utf-8"))
+
+    def test_clean_archive_passes_the_reference_check(self):
+        ledger = self.root / "ledger.json"
+        ledger.write_text(json.dumps({"version": 1, "files": {"0" * 64: {"path": "x", "tool": "prompt2rig"}}}))
+        result = self.release("--reference-ledger", ledger)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        report = json.loads(self.out.read_text())
+        self.assertEqual(report["reference_only"], {"status": "passed", "ledger_files": 1, "matches": []})
+        self.out.unlink()
+        self.assertEqual(self.release().returncode, 0)
+        self.assertEqual(json.loads(self.out.read_text())["reference_only"], {"status": "not_run"})
+
     def test_candidate_measurements_and_partial_named_checks(self):
         pause = {"name": "still paused", "type": "step", "passed": True, "detail": "text matched"}
         save = {"name": "load after refresh", "type": "step", "passed": False, "detail": "old value"}

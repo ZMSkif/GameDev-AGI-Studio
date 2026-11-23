@@ -1,0 +1,1313 @@
+{
+  "version": 1,
+  "about": "Every optional tool GameDev Studio can use. The studio panel, the setup-tools chat flow and doctor.py read this file; tests check that they agree. Install commands are exact argument lists, never shell strings. Third-party tools are installed from their own sources and are never copied into the plugin zip.",
+  "groups": [
+    {
+      "id": "qa",
+      "name": {
+        "ru": "Проверка игр",
+        "en": "Game QA"
+      }
+    },
+    {
+      "id": "art",
+      "name": {
+        "ru": "Арт и видео",
+        "en": "Art and video"
+      }
+    },
+    {
+      "id": "skills",
+      "name": {
+        "ru": "Пакеты skills для агентов",
+        "en": "Agent skill packs"
+      }
+    },
+    {
+      "id": "ai3d",
+      "name": {
+        "ru": "AI: 3D, риг и анимация",
+        "en": "AI: 3D, rigs and motion"
+      }
+    },
+    {
+      "id": "engine",
+      "name": {
+        "ru": "Движки и редакторы",
+        "en": "Engines and editors"
+      }
+    },
+    {
+      "id": "services",
+      "name": {
+        "ru": "Платные AI-сервисы",
+        "en": "Paid AI services"
+      }
+    },
+    {
+      "id": "agents",
+      "name": {
+        "ru": "Агенты и GitHub",
+        "en": "Agents and GitHub"
+      }
+    },
+    {
+      "id": "observability",
+      "name": {
+        "ru": "Ошибки и производительность у игроков",
+        "en": "Player errors and performance"
+      }
+    },
+    {
+      "id": "memory",
+      "name": {
+        "ru": "Память студии",
+        "en": "Studio memory"
+      }
+    }
+  ],
+  "tools": [
+    {
+      "id": "playwright",
+      "group": "qa",
+      "name": "Playwright for Python",
+      "gives": {
+        "ru": "Браузерный QA: прогоняет сценарий игры на двух сборках, снимает кадры, видео и проверки раскладки.",
+        "en": "Browser QA: runs the game scenario on two builds and records captures, clips and layout checks."
+      },
+      "cost": {
+        "kind": "free"
+      },
+      "licence": "Apache-2.0",
+      "source": "https://playwright.dev/python/",
+      "who": "claude_yes",
+      "scope": "machine",
+      "detect": {
+        "type": "python_module",
+        "module": "playwright"
+      },
+      "install": {
+        "all": [
+          "{python}",
+          "-m",
+          "pip",
+          "install",
+          "{pip_user}",
+          "playwright>=1.48,<2"
+        ]
+      },
+      "used_by": [
+        "gameplay-visual-review",
+        "game-ui-workflow"
+      ],
+      "recommended": true
+    },
+    {
+      "id": "chromium",
+      "group": "qa",
+      "name": "Chromium for Playwright",
+      "gives": {
+        "ru": "Браузер, в котором раннер QA открывает сборки. Можно вместо него указать уже установленный Chrome.",
+        "en": "The browser the QA runner opens the builds in. An installed Chrome can be used instead."
+      },
+      "cost": {
+        "kind": "free"
+      },
+      "licence": "BSD-3-Clause (Chromium)",
+      "source": "https://playwright.dev/python/docs/browsers",
+      "who": "claude_yes",
+      "scope": "machine",
+      "requires": [
+        "playwright"
+      ],
+      "detect": {
+        "type": "playwright_browser",
+        "browser": "chromium",
+        "or_setting": "chromium_path"
+      },
+      "install": {
+        "all": [
+          "{python}",
+          "-m",
+          "playwright",
+          "install",
+          "chromium"
+        ]
+      },
+      "config": [
+        {
+          "key": "chromium_path",
+          "kind": "path",
+          "target": "settings",
+          "label": {
+            "ru": "Свой Chrome/Chromium (необязательно)",
+            "en": "Own Chrome/Chromium (optional)"
+          }
+        }
+      ],
+      "used_by": [
+        "gameplay-visual-review"
+      ],
+      "recommended": true
+    },
+    {
+      "id": "ffmpeg",
+      "group": "art",
+      "name": "FFmpeg",
+      "gives": {
+        "ru": "Разбор видео по кадрам с таймкодами (video-watch), обрезка и конвертация звука и клипов.",
+        "en": "Reading videos as timestamped frames (video-watch), trimming and converting sound and clips."
+      },
+      "cost": {
+        "kind": "free"
+      },
+      "licence": "LGPL-2.1+ / GPL (builds vary)",
+      "source": "https://ffmpeg.org/download.html",
+      "who": "claude_yes",
+      "scope": "machine",
+      "detect": {
+        "type": "which",
+        "names": [
+          "ffmpeg",
+          "ffprobe"
+        ]
+      },
+      "install": {
+        "windows": [
+          "winget",
+          "install",
+          "--id",
+          "Gyan.FFmpeg",
+          "-e",
+          "--source",
+          "winget",
+          "--accept-source-agreements",
+          "--accept-package-agreements"
+        ],
+        "darwin": [
+          "brew",
+          "install",
+          "ffmpeg"
+        ],
+        "manual": {
+          "ru": "Linux: установите пакет ffmpeg менеджером пакетов (например, `sudo apt install ffmpeg`).",
+          "en": "Linux: install the ffmpeg package with your package manager (for example `sudo apt install ffmpeg`)."
+        }
+      },
+      "used_by": [
+        "video-watch",
+        "game-audio-workflow",
+        "motion-reference-workflow"
+      ],
+      "recommended": true
+    },
+    {
+      "id": "img2threejs",
+      "group": "art",
+      "name": "img2threejs v2.0.0",
+      "gives": {
+        "ru": "Модель Three.js кодом по картинке-референсу, с поэтапной проверкой. Ставится в папку игры.",
+        "en": "A code-built Three.js model from a reference image, with staged checks. Installed in the game folder."
+      },
+      "cost": {
+        "kind": "free"
+      },
+      "licence": "Apache-2.0",
+      "source": "https://github.com/img2threejs/img2threejs",
+      "who": "claude_yes",
+      "scope": "game",
+      "requires_programs": [
+        "git"
+      ],
+      "detect": {
+        "type": "git_checkout",
+        "path": ".tools/img2threejs",
+        "commit": "a669e9a97cea4452b1c2310c5cca6aa0f6657c1f"
+      },
+      "install": {
+        "all": [
+          "git",
+          "clone",
+          "--depth",
+          "1",
+          "--branch",
+          "v2.0.0",
+          "https://github.com/img2threejs/img2threejs",
+          "{game}/.tools/img2threejs"
+        ]
+      },
+      "gitignore": [
+        ".tools/"
+      ],
+      "used_by": [
+        "img2threejs"
+      ]
+    },
+    {
+      "id": "blender",
+      "group": "engine",
+      "name": "Blender",
+      "gives": {
+        "ru": "Риггинг, анимация, запекание материалов и экспорт моделей в игру.",
+        "en": "Rigging, animation, material baking and model export for the game."
+      },
+      "cost": {
+        "kind": "free"
+      },
+      "licence": "GPL-3.0",
+      "source": "https://www.blender.org/download/",
+      "who": "claude_yes",
+      "scope": "machine",
+      "detect": {
+        "type": "which",
+        "names": [
+          "blender"
+        ]
+      },
+      "install": {
+        "windows": [
+          "winget",
+          "install",
+          "--id",
+          "BlenderFoundation.Blender",
+          "-e",
+          "--source",
+          "winget",
+          "--accept-source-agreements",
+          "--accept-package-agreements"
+        ],
+        "darwin": [
+          "brew",
+          "install",
+          "--cask",
+          "blender"
+        ],
+        "manual": {
+          "ru": "Linux: скачайте Blender с blender.org или поставьте пакетом дистрибутива.",
+          "en": "Linux: download Blender from blender.org or use your distribution's package."
+        }
+      },
+      "used_by": [
+        "blender-game-animation",
+        "materials-to-game",
+        "game-asset-production"
+      ]
+    },
+    {
+      "id": "godot",
+      "group": "engine",
+      "name": "Godot 4",
+      "gives": {
+        "ru": "Движок для тяжёлых и десктопных игр (профиль Godot, DEC-145).",
+        "en": "The engine for heavy and desktop games (the Godot profile, DEC-145)."
+      },
+      "cost": {
+        "kind": "free"
+      },
+      "licence": "MIT",
+      "source": "https://godotengine.org/download/",
+      "who": "claude_yes",
+      "scope": "machine",
+      "detect": {
+        "type": "which",
+        "names": [
+          "godot"
+        ],
+        "alternatives": [
+          "godot4"
+        ]
+      },
+      "install": {
+        "windows": [
+          "winget",
+          "install",
+          "--id",
+          "GodotEngine.GodotEngine",
+          "-e",
+          "--source",
+          "winget",
+          "--accept-source-agreements",
+          "--accept-package-agreements"
+        ],
+        "darwin": [
+          "brew",
+          "install",
+          "--cask",
+          "godot"
+        ],
+        "manual": {
+          "ru": "Linux: скачайте Godot 4 с godotengine.org.",
+          "en": "Linux: download Godot 4 from godotengine.org."
+        }
+      },
+      "used_by": [
+        "engine-profiles"
+      ]
+    },
+    {
+      "id": "godot-mcp",
+      "group": "engine",
+      "name": "Godot MCP connector",
+      "gives": {
+        "ru": "Агент запускает Godot-проект, читает ошибки и правит сцены. Какой коннектор брать, решается в задаче #151.",
+        "en": "The agent runs the Godot project, reads errors and edits scenes. Which connector to use is decided in task #151."
+      },
+      "cost": {
+        "kind": "free"
+      },
+      "licence": "depends on the connector chosen in #151",
+      "source": "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/151",
+      "who": "owner",
+      "scope": "game",
+      "status": "pending_decision",
+      "detect": {
+        "type": "none"
+      },
+      "used_by": [
+        "engine-profiles"
+      ]
+    },
+    {
+      "id": "fal",
+      "group": "services",
+      "name": "fal.ai",
+      "gives": {
+        "ru": "Генерация и правки изображений, видео, звука, 3D и материалов. Каждая генерация платная и только после «да» владельца.",
+        "en": "Image, video, audio, 3D and material generation and edits. Every generation is paid and needs the owner's yes."
+      },
+      "cost": {
+        "kind": "paid",
+        "note": {
+          "ru": "Оплата по использованию на вашем аккаунте fal.ai.",
+          "en": "Pay per use on your own fal.ai account."
+        }
+      },
+      "account": true,
+      "licence": "fal-client MIT; service terms of fal.ai",
+      "source": "https://fal.ai/dashboard/keys",
+      "who": "claude_yes",
+      "scope": "game",
+      "detect": {
+        "type": "python_module",
+        "module": "fal_client",
+        "secret": "FAL_KEY"
+      },
+      "install": {
+        "all": [
+          "{python}",
+          "-m",
+          "pip",
+          "install",
+          "{pip_user}",
+          "fal-client>=0.13.2,<1",
+          "python-dotenv>=1,<2"
+        ]
+      },
+      "config": [
+        {
+          "key": "FAL_KEY",
+          "kind": "secret",
+          "target": "env",
+          "label": {
+            "ru": "Ключ API fal.ai (из своего кабинета)",
+            "en": "fal.ai API key (from your dashboard)"
+          }
+        }
+      ],
+      "used_by": [
+        "fal-ai-generation",
+        "image-reference-workflow",
+        "character-sheet-pipeline"
+      ]
+    },
+    {
+      "id": "higgsfield",
+      "group": "services",
+      "name": "Higgsfield CLI",
+      "gives": {
+        "ru": "Генерация изображений, видео и 3D через ваш аккаунт Higgsfield. Задачи платные и только после «да» владельца.",
+        "en": "Image, video and 3D generation through your Higgsfield account. Jobs are paid and need the owner's yes."
+      },
+      "cost": {
+        "kind": "paid",
+        "note": {
+          "ru": "Кредиты вашего аккаунта Higgsfield.",
+          "en": "Credits of your own Higgsfield account."
+        }
+      },
+      "account": true,
+      "licence": "vendor terms",
+      "source": "https://github.com/higgsfield-ai/cli",
+      "who": "person",
+      "scope": "machine",
+      "detect": {
+        "type": "which",
+        "names": [
+          "higgsfield"
+        ]
+      },
+      "install": {
+        "manual": {
+          "ru": "Установите CLI по инструкции из официального репозитория и войдите в свой аккаунт сами.",
+          "en": "Install the CLI as its official repository says and sign in to your own account yourself."
+        }
+      },
+      "used_by": [
+        "higgsfield-workflow"
+      ]
+    },
+    {
+      "id": "gh",
+      "group": "agents",
+      "name": "GitHub CLI",
+      "gives": {
+        "ru": "Задачи, решения студии и PR из терминала. Нужен, если владелец дал доступ к GitHub.",
+        "en": "Issues, studio decisions and PRs from the terminal. Needed when the owner gave you GitHub access."
+      },
+      "cost": {
+        "kind": "free"
+      },
+      "account": true,
+      "licence": "MIT",
+      "source": "https://cli.github.com/",
+      "who": "claude_yes",
+      "scope": "machine",
+      "detect": {
+        "type": "which",
+        "names": [
+          "gh"
+        ]
+      },
+      "install": {
+        "windows": [
+          "winget",
+          "install",
+          "--id",
+          "GitHub.cli",
+          "--source",
+          "winget",
+          "--accept-source-agreements",
+          "--accept-package-agreements"
+        ],
+        "darwin": [
+          "brew",
+          "install",
+          "gh"
+        ],
+        "manual": {
+          "ru": "Linux: установите gh по инструкции cli.github.com. Вход `gh auth login` вы делаете сами.",
+          "en": "Linux: install gh as cli.github.com says. You sign in with `gh auth login` yourself."
+        }
+      },
+      "used_by": [
+        "studio-rules"
+      ]
+    },
+    {
+      "id": "codex",
+      "group": "agents",
+      "name": "Codex CLI",
+      "gives": {
+        "ru": "Второй агент для независимых проверок и работы по тем же skills студии.",
+        "en": "A second agent for independent reviews, using the same studio skills."
+      },
+      "cost": {
+        "kind": "account",
+        "note": {
+          "ru": "Нужен свой аккаунт OpenAI с подпиской.",
+          "en": "Needs your own OpenAI account with a subscription."
+        }
+      },
+      "account": true,
+      "licence": "Apache-2.0",
+      "source": "https://github.com/openai/codex",
+      "who": "person",
+      "scope": "machine",
+      "detect": {
+        "type": "which",
+        "names": [
+          "codex"
+        ]
+      },
+      "install": {
+        "manual": {
+          "ru": "Установите Codex CLI по инструкции из официального репозитория и войдите сами.",
+          "en": "Install the Codex CLI as its official repository says and sign in yourself."
+        }
+      },
+      "used_by": [
+        "studio-team"
+      ]
+    },
+    {
+      "id": "hindsight",
+      "group": "memory",
+      "name": "Hindsight memory",
+      "gives": {
+        "ru": "Долговременная память студии и проектов через MCP. Включается только по решению владельца.",
+        "en": "Long-term studio and project memory over MCP. Turned on only by the owner's decision."
+      },
+      "cost": {
+        "kind": "free"
+      },
+      "licence": "MIT",
+      "source": "https://hindsight.vectorize.io",
+      "who": "owner",
+      "scope": "game",
+      "detect": {
+        "type": "http_health",
+        "setting": "hindsight_url"
+      },
+      "config": [
+        {
+          "key": "hindsight_url",
+          "kind": "url",
+          "target": "settings",
+          "label": {
+            "ru": "Адрес сервера памяти (выдаёт владелец)",
+            "en": "Memory server URL (from the owner)"
+          }
+        }
+      ],
+      "install": {
+        "manual": {
+          "ru": "Сервер ставит и включает владелец студии (skill memory, задача #150).",
+          "en": "The studio owner installs and enables the server (the memory skill, task #150)."
+        }
+      },
+      "used_by": [
+        "memory",
+        "context-brief",
+        "lessons"
+      ]
+    },
+    {
+      "id": "awesome-gamedev-agent-skills",
+      "group": "skills",
+      "kind": "claude-plugin",
+      "name": "Awesome GameDev Agent Skills",
+      "gives": {
+        "ru": "66 skills по движкам (Godot, Three.js, PixiJS, Phaser, Unity и др.) и роутер, который сам выбирает нужные. Правила студии (studio-rules) и её решения важнее при любом расхождении.",
+        "en": "66 engine skills (Godot, Three.js, PixiJS, Phaser, Unity and more) and a router that picks the right ones. The studio's rules and decisions win whenever they differ."
+      },
+      "cost": {
+        "kind": "free"
+      },
+      "licence": "Apache-2.0",
+      "source": "https://github.com/gamedev-skills/awesome-gamedev-agent-skills",
+      "who": "claude_yes",
+      "scope": "machine",
+      "requires_programs": [
+        "claude"
+      ],
+      "detect": {
+        "type": "claude_plugin",
+        "plugin": "gamedev@awesome-gamedev-agent-skills"
+      },
+      "install": {
+        "all": [
+          [
+            "claude",
+            "plugin",
+            "marketplace",
+            "add",
+            "gamedev-skills/awesome-gamedev-agent-skills"
+          ],
+          [
+            "claude",
+            "plugin",
+            "install",
+            "gamedev@awesome-gamedev-agent-skills"
+          ]
+        ]
+      },
+      "used_by": [
+        "engine-profiles",
+        "web-stack-choice"
+      ]
+    },
+    {
+      "id": "threejs-game-skills",
+      "group": "skills",
+      "kind": "skill-pack",
+      "name": "Three.js Game Skills",
+      "gives": {
+        "ru": "9 skills для браузерных игр на Three.js: геймплей, графика, UI, отладка и QA-релиз с Playwright. Ставятся в папку игры.",
+        "en": "9 skills for Three.js browser games: gameplay, graphics, UI, debugging and Playwright QA release. Installed in the game folder."
+      },
+      "cost": {
+        "kind": "free"
+      },
+      "licence": "MIT",
+      "source": "https://github.com/majidmanzarpour/threejs-game-skills",
+      "commercial": "ok",
+      "requirements": {
+        "ru": "git. Skills копируются из закреплённой версии в .claude/skills игры; уже существующие skills не заменяются. Ключи Tripo, Gemini и ElevenLabs необязательны и платные — только с «да» владельца.",
+        "en": "git. Skills are copied from a pinned revision into the game's .claude/skills; existing skills are never replaced. Tripo, Gemini and ElevenLabs keys are optional and paid — only with the owner's yes."
+      },
+      "who": "claude_yes",
+      "scope": "game",
+      "requires_programs": [
+        "git"
+      ],
+      "detect": {
+        "type": "skill_folder",
+        "path": ".claude/skills/threejs-game-director"
+      },
+      "install": {
+        "all": [
+          [
+            "git",
+            "clone",
+            "https://github.com/majidmanzarpour/threejs-game-skills",
+            "{tools}/threejs-game-skills"
+          ],
+          [
+            "git",
+            "-C",
+            "{tools}/threejs-game-skills",
+            "checkout",
+            "--detach",
+            "8286774b22a2566bf894dbc825825c16921866af"
+          ],
+          {
+            "copy_skills": [
+              "{tools}/threejs-game-skills/skills",
+              "{game}/.claude/skills"
+            ]
+          }
+        ]
+      },
+      "used_by": [
+        "web-stack-choice",
+        "gameplay-visual-review"
+      ]
+    },
+    {
+      "id": "blender-skills",
+      "group": "skills",
+      "kind": "claude-plugin",
+      "name": "Blender Agent Skills",
+      "gives": {
+        "ru": "28 skills для Blender: моделирование, UV, текстуры, запекание, риг, анимация, оптимизация и экспорт в игру, с тестами в настоящем Blender.",
+        "en": "28 Blender skills: modeling, UVs, texturing, baking, rigging, animation, optimization and game export, tested in a real Blender."
+      },
+      "cost": {
+        "kind": "free"
+      },
+      "licence": "MIT",
+      "source": "https://github.com/EL4CTEO/blender-skills",
+      "requirements": {
+        "ru": "Blender 5.2 LTS или новее (авторы советуют 5.3).",
+        "en": "Blender 5.2 LTS or newer (5.3 recommended by the authors)."
+      },
+      "who": "claude_yes",
+      "scope": "machine",
+      "requires_programs": [
+        "claude"
+      ],
+      "detect": {
+        "type": "claude_plugin",
+        "plugin": "blender-agent-skills@blender-agent-skills"
+      },
+      "install": {
+        "all": [
+          [
+            "claude",
+            "plugin",
+            "marketplace",
+            "add",
+            "EL4CTEO/blender-skills"
+          ],
+          [
+            "claude",
+            "plugin",
+            "install",
+            "blender-agent-skills@blender-agent-skills"
+          ]
+        ]
+      },
+      "used_by": [
+        "blender-game-animation",
+        "materials-to-game"
+      ]
+    },
+    {
+      "id": "dream-loop",
+      "group": "skills",
+      "kind": "skill",
+      "name": "dream-loop",
+      "gives": {
+        "ru": "Процесс «сделай как на картинке»: агент строит сцену или игру, пока живой скриншот не совпадёт с целевым изображением.",
+        "en": "A 'make it match the picture' loop: the agent builds the scene or game until a live screenshot matches the target image."
+      },
+      "cost": {
+        "kind": "free"
+      },
+      "licence": "MIT",
+      "source": "https://github.com/achimala/dream-loop",
+      "requirements": {
+        "ru": "Целевую картинку даёте вы, или она генерируется через fal (платно, только с «да» владельца). Долгие прогоны тратят много токенов.",
+        "en": "You supply the target image, or it is generated through fal (paid, only with the owner's yes). Long runs use many tokens."
+      },
+      "who": "claude_yes",
+      "scope": "game",
+      "requires_programs": [
+        "git"
+      ],
+      "detect": {
+        "type": "skill_folder",
+        "path": ".claude/skills/dream-loop",
+        "commit": "9bddb901f7d071cfefdd21e264267c757177a9df"
+      },
+      "install": {
+        "all": [
+          [
+            "git",
+            "clone",
+            "https://github.com/achimala/dream-loop",
+            "{game}/.claude/skills/dream-loop"
+          ],
+          [
+            "git",
+            "-C",
+            "{game}/.claude/skills/dream-loop",
+            "checkout",
+            "--detach",
+            "9bddb901f7d071cfefdd21e264267c757177a9df"
+          ]
+        ]
+      },
+      "used_by": [
+        "gameplay-visual-review",
+        "img2threejs"
+      ]
+    },
+    {
+      "id": "assetfurnace",
+      "group": "ai3d",
+      "kind": "app",
+      "name": "AssetFurnace (image-to-3dlab)",
+      "gives": {
+        "ru": "Локально: из фразы или картинки — модель, чистка под игру, скелет и анимации (21 пресет), GLB для Godot и three.js. Без облака и кредитов.",
+        "en": "Local: from a sentence or picture to a model, game clean-up, a skeleton and moves (21 presets), GLB for Godot and three.js. No cloud, no credits."
+      },
+      "cost": {
+        "kind": "free"
+      },
+      "licence": "Apache-2.0 (code); each model has its own",
+      "source": "https://github.com/Bingeljell/image-to-3dlab",
+      "commercial": "check",
+      "licence_note": {
+        "ru": "Код Apache-2.0. Pixal3D и TRELLIS дают результат для коммерции; Hunyuan3D не лицензирован в ЕС, Великобритании и Южной Корее. У каждого файла есть .provenance.json с лицензиями — прикладывайте его к ассету.",
+        "en": "Code is Apache-2.0. Pixal3D and TRELLIS output is cleared for commercial use; Hunyuan3D is not licensed in the EU, the UK or South Korea. Each file has a .provenance.json with its licences — keep it with the asset."
+      },
+      "requirements": {
+        "ru": "Mac на Apple Silicon или ПК с NVIDIA/AMD; модели 5–20 ГБ (установщик спрашивает перед каждой загрузкой).",
+        "en": "An Apple Silicon Mac or an NVIDIA/AMD PC; models are 5–20 GB (the installer asks before each download)."
+      },
+      "who": "person",
+      "scope": "machine",
+      "detect": {
+        "type": "none"
+      },
+      "install": {
+        "manual": {
+          "ru": "Поставьте по разделу Install в README: на Mac/Linux — их установщик, на Windows — install.ps1 из репозитория. Его установщик запускаете вы сами.",
+          "en": "Install as the README's Install section says: their installer on Mac/Linux, install.ps1 from the repository on Windows. You run their installer yourself."
+        }
+      },
+      "used_by": [
+        "game-asset-production",
+        "img2threejs"
+      ]
+    },
+    {
+      "id": "3dgenstudio",
+      "group": "ai3d",
+      "kind": "app",
+      "name": "3D Gen Studio",
+      "gives": {
+        "ru": "Визуальный конвейер 3D: картинка, меш, UV, ретопология, текстуры, авториг, анимация и экспорт LOD — на ComfyUI и внешних API.",
+        "en": "A visual 3D pipeline: image, mesh, UVs, retopology, texturing, auto-rig, animation and LOD export — on ComfyUI and external APIs."
+      },
+      "cost": {
+        "kind": "free"
+      },
+      "licence": "3D Gen Studio Community License",
+      "source": "https://github.com/visualbruno/3DGenStudio",
+      "commercial": "outputs_ok",
+      "licence_note": {
+        "ru": "Сгенерированные модели и текстуры можно использовать в коммерческих играх. Саму программу нельзя продавать или делать платным сервисом. Модуль Kimodo скачивает Meta Llama 3 со своей лицензией; внешние API платят по своим тарифам.",
+        "en": "Generated meshes and textures may be used in commercial games. The software itself may not be sold or run as a paid service. The Kimodo module downloads Meta Llama 3 under its own licence; external APIs bill by their own prices."
+      },
+      "requirements": {
+        "ru": "Node.js и работающий ComfyUI; для локальных моделей — видеокарта NVIDIA.",
+        "en": "Node.js and a running ComfyUI; an NVIDIA GPU for local models."
+      },
+      "who": "person",
+      "scope": "machine",
+      "detect": {
+        "type": "none"
+      },
+      "install": {
+        "manual": {
+          "ru": "Установите по разделу Installation в README (desktop-установщик или npm) и подключите свой ComfyUI.",
+          "en": "Install as the README's Installation section says (desktop installer or npm) and connect your ComfyUI."
+        }
+      },
+      "used_by": [
+        "game-asset-production",
+        "materials-to-game"
+      ]
+    },
+    {
+      "id": "prompt2rig",
+      "group": "ai3d",
+      "kind": "app",
+      "name": "prompt2rig",
+      "gives": {
+        "ru": "Опишите движение словами — видео-модель его играет, а движение переносится на Mixamo-персонажа с пальцами; экспорт в Blender.",
+        "en": "Describe a motion — a video model acts it out and the motion lands on a Mixamo character, fingers included; export to Blender."
+      },
+      "cost": {
+        "kind": "paid",
+        "note": {
+          "ru": "Каждое видео генерируется на fal.ai за ваш счёт.",
+          "en": "Each clip is generated on fal.ai at your cost."
+        }
+      },
+      "account": true,
+      "licence": "Apache-2.0 (code); runtime models non-commercial",
+      "source": "https://github.com/blendi-remade/prompt2rig",
+      "commercial": "non_commercial",
+      "licence_note": {
+        "ru": "GVHMR и SMPL-X — только для некоммерческого использования, YOLO — AGPL. Подходит для прототипов и референсов движения, не для движения в продаваемой игре.",
+        "en": "GVHMR and SMPL-X are non-commercial only, YOLO is AGPL. Fine for prototypes and motion references, not for motion in a game you sell."
+      },
+      "requirements": {
+        "ru": "Node 18+ и ключ fal (его кладёте вы: в .env папки инструмента). Для HQ — Windows, NVIDIA, uv, ffmpeg, ~5 ГБ весов и регистрации SMPL-X/MANO. Запуск: node server.mjs → http://localhost:5177.",
+        "en": "Node 18+ and a fal key (you put it in the tool folder's .env). For HQ — Windows, NVIDIA, uv, ffmpeg, ~5 GB of weights and SMPL-X/MANO registrations. Run: node server.mjs → http://localhost:5177."
+      },
+      "who": "claude_yes",
+      "scope": "machine",
+      "detect": {
+        "type": "git_checkout",
+        "path": "{tools}/prompt2rig",
+        "commit": "218ce2adff35a7c04657768a85ff002ebd461c78"
+      },
+      "install": {
+        "all": [
+          [
+            "git",
+            "clone",
+            "https://github.com/blendi-remade/prompt2rig",
+            "{tools}/prompt2rig"
+          ],
+          [
+            "git",
+            "-C",
+            "{tools}/prompt2rig",
+            "checkout",
+            "--detach",
+            "218ce2adff35a7c04657768a85ff002ebd461c78"
+          ]
+        ]
+      },
+      "used_by": [
+        "motion-reference-workflow"
+      ],
+      "requires_programs": [
+        "git",
+        "node"
+      ],
+      "licence_gate": [
+        {
+          "ru": "Код можно ставить и запускать: это Apache-2.0.",
+          "en": "The code may be installed and run: it is Apache-2.0."
+        },
+        {
+          "ru": "Модели SMPL-X, MANO и веса GVHMR разрешены только для некоммерческих исследований. Регистрацию на smpl-x.is.tue.mpg.de и mano.is.tue.mpg.de делаете вы сами.",
+          "en": "The SMPL-X and MANO models and the GVHMR weights are for non-commercial research only. You register on smpl-x.is.tue.mpg.de and mano.is.tue.mpg.de yourself."
+        },
+        {
+          "ru": "Всё, что сделано инструментом, отмечается «только референс» (studio_tools.py mark-reference) и блокируется в релизном отчёте.",
+          "en": "Everything the tool makes is marked reference-only (studio_tools.py mark-reference) and is blocked by the release report."
+        },
+        {
+          "ru": "Чтобы движение шло в продаваемую игру, нужна коммерческая лицензия: SMPL-X — через Meshcapade, MANO — ps-license@tue.mpg.de; ссылку на неё записывает владелец (set-licence). Это не юридическая консультация.",
+          "en": "For motion in a game you sell you need a commercial licence: SMPL-X through Meshcapade, MANO via ps-license@tue.mpg.de; the owner records a link to it (set-licence). This is not legal advice."
+        }
+      ]
+    },
+    {
+      "id": "motion2mixamorig",
+      "group": "ai3d",
+      "kind": "app",
+      "name": "Motion2MixamoRig",
+      "gives": {
+        "ru": "Переносит движение человека с видео или позу с фото на Mixamo-персонажа; есть расширение для Blender 4.2+.",
+        "en": "Transfers a person's motion from a video, or a pose from a photo, onto a Mixamo character; includes a Blender 4.2+ extension."
+      },
+      "cost": {
+        "kind": "free"
+      },
+      "licence": "Apache-2.0 (code); pipeline non-commercial",
+      "source": "https://github.com/MaxLiu22/Motion2MixamoRig",
+      "commercial": "non_commercial",
+      "licence_note": {
+        "ru": "Весь конвейер ограничен некоммерческим использованием из-за GVHMR и SMPL-X (YOLOv8 — AGPL). Только для референсов и прототипов.",
+        "en": "The whole pipeline is limited to non-commercial use by GVHMR and SMPL-X (YOLOv8 is AGPL). References and prototypes only."
+      },
+      "requirements": {
+        "ru": "Python 3.11+ (или расширение для Blender 4.2+ из Releases — ставите вы). Первый запуск m2mr скачивает ~5 ГБ весов GVHMR. Файл SMPL-X кладёте в assets/ сами после регистрации.",
+        "en": "Python 3.11+ (or the Blender 4.2+ extension from Releases — you install it). The first m2mr run downloads ~5 GB of GVHMR weights. You put the SMPL-X file in assets/ after registering."
+      },
+      "who": "claude_yes",
+      "scope": "machine",
+      "detect": {
+        "type": "git_checkout",
+        "path": "{tools}/Motion2MixamoRig",
+        "commit": "f05a718188026b06e7ee64b47bab077970444b19"
+      },
+      "install": {
+        "windows": [
+          [
+            "git",
+            "clone",
+            "https://github.com/MaxLiu22/Motion2MixamoRig.git",
+            "{tools}/Motion2MixamoRig"
+          ],
+          [
+            "git",
+            "-C",
+            "{tools}/Motion2MixamoRig",
+            "checkout",
+            "--detach",
+            "f05a718188026b06e7ee64b47bab077970444b19"
+          ],
+          [
+            "{python}",
+            "-m",
+            "venv",
+            "{tools}/Motion2MixamoRig/.venv"
+          ],
+          [
+            "{tools}/Motion2MixamoRig/.venv/Scripts/python.exe",
+            "-m",
+            "pip",
+            "install",
+            "--upgrade",
+            "pip",
+            "setuptools",
+            "wheel"
+          ],
+          [
+            "{tools}/Motion2MixamoRig/.venv/Scripts/python.exe",
+            "-m",
+            "pip",
+            "install",
+            "numpy>=1.26"
+          ],
+          [
+            "{tools}/Motion2MixamoRig/.venv/Scripts/python.exe",
+            "-m",
+            "pip",
+            "install",
+            "--no-build-isolation",
+            "chumpy==0.70"
+          ],
+          [
+            "{tools}/Motion2MixamoRig/.venv/Scripts/python.exe",
+            "-m",
+            "pip",
+            "install",
+            "-e",
+            "{tools}/Motion2MixamoRig"
+          ]
+        ],
+        "all": [
+          [
+            "git",
+            "clone",
+            "https://github.com/MaxLiu22/Motion2MixamoRig.git",
+            "{tools}/Motion2MixamoRig"
+          ],
+          [
+            "git",
+            "-C",
+            "{tools}/Motion2MixamoRig",
+            "checkout",
+            "--detach",
+            "f05a718188026b06e7ee64b47bab077970444b19"
+          ],
+          [
+            "{python}",
+            "-m",
+            "venv",
+            "{tools}/Motion2MixamoRig/.venv"
+          ],
+          [
+            "{tools}/Motion2MixamoRig/.venv/bin/python",
+            "-m",
+            "pip",
+            "install",
+            "--upgrade",
+            "pip",
+            "setuptools",
+            "wheel"
+          ],
+          [
+            "{tools}/Motion2MixamoRig/.venv/bin/python",
+            "-m",
+            "pip",
+            "install",
+            "numpy>=1.26"
+          ],
+          [
+            "{tools}/Motion2MixamoRig/.venv/bin/python",
+            "-m",
+            "pip",
+            "install",
+            "--no-build-isolation",
+            "chumpy==0.70"
+          ],
+          [
+            "{tools}/Motion2MixamoRig/.venv/bin/python",
+            "-m",
+            "pip",
+            "install",
+            "-e",
+            "{tools}/Motion2MixamoRig"
+          ]
+        ]
+      },
+      "used_by": [
+        "motion-reference-workflow",
+        "blender-game-animation"
+      ],
+      "requires_programs": [
+        "git"
+      ],
+      "licence_gate": [
+        {
+          "ru": "Код можно ставить и запускать: это Apache-2.0.",
+          "en": "The code may be installed and run: it is Apache-2.0."
+        },
+        {
+          "ru": "Модели SMPL-X, MANO и веса GVHMR разрешены только для некоммерческих исследований. Регистрацию на smpl-x.is.tue.mpg.de и mano.is.tue.mpg.de делаете вы сами.",
+          "en": "The SMPL-X and MANO models and the GVHMR weights are for non-commercial research only. You register on smpl-x.is.tue.mpg.de and mano.is.tue.mpg.de yourself."
+        },
+        {
+          "ru": "Всё, что сделано инструментом, отмечается «только референс» (studio_tools.py mark-reference) и блокируется в релизном отчёте.",
+          "en": "Everything the tool makes is marked reference-only (studio_tools.py mark-reference) and is blocked by the release report."
+        },
+        {
+          "ru": "Чтобы движение шло в продаваемую игру, нужна коммерческая лицензия: SMPL-X — через Meshcapade, MANO — ps-license@tue.mpg.de; ссылку на неё записывает владелец (set-licence). Это не юридическая консультация.",
+          "en": "For motion in a game you sell you need a commercial licence: SMPL-X through Meshcapade, MANO via ps-license@tue.mpg.de; the owner records a link to it (set-licence). This is not legal advice."
+        }
+      ]
+    },
+    {
+      "id": "kimodo",
+      "group": "ai3d",
+      "kind": "app",
+      "name": "NVIDIA Kimodo",
+      "gives": {
+        "ru": "Движение по тексту и ключевым кадрам (локально, без облака), с ограничениями по таймлайну; коммерчески безопасная замена prompt2rig для финальной анимации.",
+        "en": "Motion from text and keyframes (local, no cloud) with timeline constraints; the commercially safe alternative to prompt2rig for final animation."
+      },
+      "cost": {
+        "kind": "free"
+      },
+      "licence": "Apache-2.0 (code); checkpoints under their own licences",
+      "source": "https://github.com/nv-tlabs/kimodo",
+      "commercial": "check",
+      "licence_note": {
+        "ru": "Модель Kimodo-SOMA-SEED-v1.1 по карточке на Hugging Face готова к коммерческому использованию (NVIDIA Open Model License). Вариант SMPL-X — только R&D. Перед релизом проверьте карточку той модели, которую взяли.",
+        "en": "Per its Hugging Face card, Kimodo-SOMA-SEED-v1.1 is ready for commercial use (NVIDIA Open Model License). The SMPL-X variant is R&D only. Before release check the card of the model you used."
+      },
+      "requirements": {
+        "ru": "Linux, NVIDIA GPU (~17 ГБ VRAM, или TEXT_ENCODER_DEVICE=cpu), Python. Зависимости — по инструкции из документации Kimodo; весa качаются с Hugging Face. Ретаргет SOMA → ваш скелет — в Blender.",
+        "en": "Linux, an NVIDIA GPU (~17 GB VRAM, or TEXT_ENCODER_DEVICE=cpu), Python. Dependencies per the Kimodo docs; weights come from Hugging Face. Retarget SOMA → your skeleton in Blender."
+      },
+      "who": "claude_yes",
+      "scope": "machine",
+      "requires_programs": [
+        "git"
+      ],
+      "detect": {
+        "type": "git_checkout",
+        "path": "{tools}/kimodo",
+        "commit": "e1c219c99b4b94ba48be1fb6a1cbc64ecee4c954"
+      },
+      "install": {
+        "all": [
+          [
+            "git",
+            "clone",
+            "https://github.com/nv-tlabs/kimodo",
+            "{tools}/kimodo"
+          ],
+          [
+            "git",
+            "-C",
+            "{tools}/kimodo",
+            "checkout",
+            "--detach",
+            "e1c219c99b4b94ba48be1fb6a1cbc64ecee4c954"
+          ]
+        ]
+      },
+      "used_by": [
+        "motion-reference-workflow",
+        "blender-game-animation"
+      ]
+    },
+    {
+      "id": "mixar",
+      "group": "ai3d",
+      "kind": "app",
+      "name": "Mixar",
+      "gives": {
+        "ru": "3D-редактор на основе Blender 5.3 с ИИ-агентом: моделинг по запросу, слои текстур, генерация 3D из текста и картинки, ретопология и UV, экспорт под web, Godot, Unity и Unreal.",
+        "en": "A Blender 5.3-based 3D editor with an AI agent: modelling from prompts, layered texturing, text- and image-to-3D, retopology and UVs, export presets for web, Godot, Unity and Unreal."
+      },
+      "cost": {
+        "kind": "paid",
+        "note": {
+          "ru": "Обычные функции Blender и рисование слоями бесплатны; ИИ-генерации тратят кредиты Mixar. Чат-агент можно пустить через свой ключ (BYOK).",
+          "en": "Blender features and layered painting are free; AI generations spend Mixar credits. The chat agent can use your own provider key (BYOK)."
+        }
+      },
+      "account": true,
+      "licence": "GPL-3.0-or-later (app); hosted backend closed",
+      "source": "https://github.com/Mixar-AI/mixar-app",
+      "commercial": "check",
+      "licence_note": {
+        "ru": "Приложение под GPL — на ваши модели это не распространяется. Генерация идёт через модели Hunyuan и другие: у Hunyuan3D лицензия не действует в ЕС, Великобритании и Южной Корее — для игр, которые там продаются, выбирайте другой провайдер.",
+        "en": "The app is GPL; that does not cover your models. Generation runs on Hunyuan and other models: Hunyuan3D's licence excludes the EU, the UK and South Korea, so pick another provider for games sold there."
+      },
+      "requirements": {
+        "ru": "Установщик с mixar.app (macOS, Windows; Linux не проверен), аккаунт Mixar. В Mixar: меню профиля → Connect MCP.",
+        "en": "The installer from mixar.app (macOS, Windows; Linux unverified), a Mixar account. In Mixar: profile menu → Connect MCP."
+      },
+      "who": "person",
+      "scope": "machine",
+      "detect": {
+        "type": "none"
+      },
+      "install": {
+        "manual": {
+          "ru": "Скачайте Mixar с https://www.mixar.app, войдите и включите Connect MCP. Затем поставьте mixar-claude.",
+          "en": "Download Mixar from https://www.mixar.app, sign in and turn on Connect MCP. Then install mixar-claude."
+        }
+      },
+      "used_by": [
+        "game-asset-production",
+        "blender-game-animation"
+      ]
+    },
+    {
+      "id": "mixar-claude",
+      "group": "ai3d",
+      "kind": "claude-plugin",
+      "name": "Mixar for Claude",
+      "gives": {
+        "ru": "Официальный плагин Mixar: агент читает сцену, строит модели скриптами, проверяет рендером и UV, экспортирует GLB для web или Godot. Генерацию картинок и видео плагин отключает.",
+        "en": "Mixar's official plugin: the agent reads the scene, builds with scripts, checks renders and UVs and exports GLB for web or Godot. It switches off image and video generation."
+      },
+      "cost": {
+        "kind": "free",
+        "note": {
+          "ru": "3D-генерации и create_layered_material тратят кредиты; перед вызовом агент спрашивает цену (mixar_tool_quote) и ваше «да».",
+          "en": "3D generations and create_layered_material spend credits; the agent asks the price (mixar_tool_quote) and your yes first."
+        }
+      },
+      "licence": "MIT (plugin)",
+      "source": "https://github.com/Mixar-AI/claude-mixar",
+      "commercial": "ok",
+      "requirements": {
+        "ru": "Установленный Mixar с включённым Connect MCP. Пока нужна версия Mixar новее 4.4.3 — со старой плагин сам откажется стартовать. Вызовы MCP Mixar хранит до 30 дней для диагностики.",
+        "en": "Mixar installed with Connect MCP on. A Mixar version newer than 4.4.3 is needed for now — the plugin refuses to start on older ones. Mixar keeps MCP call records for up to 30 days for diagnostics."
+      },
+      "who": "claude_yes",
+      "scope": "machine",
+      "requires_programs": [
+        "git"
+      ],
+      "detect": {
+        "type": "git_checkout",
+        "path": "{tools}/claude-mixar",
+        "commit": "fccc0d4b18f0d66691d3aed15d5cce843ae9da4c"
+      },
+      "install": {
+        "all": [
+          [
+            "git",
+            "clone",
+            "https://github.com/Mixar-AI/claude-mixar",
+            "{tools}/claude-mixar"
+          ],
+          [
+            "git",
+            "-C",
+            "{tools}/claude-mixar",
+            "checkout",
+            "--detach",
+            "fccc0d4b18f0d66691d3aed15d5cce843ae9da4c"
+          ]
+        ]
+      },
+      "used_by": [
+        "game-asset-production"
+      ]
+    },
+    {
+      "id": "glitchless",
+      "group": "observability",
+      "kind": "engine-addon",
+      "name": "Glitchless",
+      "gives": {
+        "ru": "Время каждого кадра у игроков, причины фризов, группировка ошибок и где игроки выходят; агент читает это по MCP и чинит следующую сборку.",
+        "en": "Frame times on players' devices, likely causes of hitches, grouped errors and where players quit; the agent reads it over MCP and fixes the next build."
+      },
+      "cost": {
+        "kind": "free"
+      },
+      "account": true,
+      "licence": "MIT",
+      "source": "https://godotengine.org/asset-library/asset/5587",
+      "requirements": {
+        "ru": "Godot 4.5+ (аддон из Godot Asset Library ставите в редакторе вы). Облако бесплатно до 5000 сессий в месяц или свой MIT-сервер. Для HTML5-игр не проверено — на web-профиле используйте QA-отчёты студии.",
+        "en": "Godot 4.5+ (you install the addon from the Godot Asset Library in the editor). Cloud is free up to 5,000 sessions a month, or your own MIT server. Not verified for HTML5 games — on the web profile use the studio's QA reports."
+      },
+      "who": "person",
+      "scope": "game",
+      "detect": {
+        "type": "none"
+      },
+      "install": {
+        "manual": {
+          "ru": "Шаги — в skill glitchless-telemetry: аддон, ключ проекта в .env игры (set-secret), MCP для агента. Отправка данных игроков включается только решением владельца (enable --decision).",
+          "en": "Steps are in the glitchless-telemetry skill: the addon, the project key in the game's .env (set-secret), MCP for the agent. Sending player data is switched on only by the owner's decision (enable --decision)."
+        }
+      },
+      "used_by": [
+        "glitchless-telemetry",
+        "engine-profiles"
+      ],
+      "config": [
+        {
+          "key": "GLITCHLESS_KEY",
+          "kind": "secret",
+          "target": "env",
+          "label": {
+            "ru": "Ключ проекта Glitchless",
+            "en": "Glitchless project key"
+          }
+        }
+      ]
+    }
+  ]
+}

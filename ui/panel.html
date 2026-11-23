@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="$lang" data-ui="$viewer_labels">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="studio-token" content="$token">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+  <title>$title · GameDev Studio</title>
+  <style>$styles</style>
+</head>
+<body class="panel-page">
+  <header class="masthead">
+    <div class="page">
+      <span class="brand">${brand_mark}GameDev Studio <small>· $game_name</small></span>
+      <nav class="tabs" role="tablist" id="tabs"></nav>
+      <button type="button" class="action small" id="stop"></button>
+    </div>
+  </header>
+  <main class="page" id="app"><p class="muted">…</p></main>
+  <div class="dialog-backdrop" id="dialog" hidden>
+    <div class="dialog featured" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+      <h2 id="dialog-title"></h2>
+      <div id="dialog-body"></div>
+      <div class="dialog-actions" id="dialog-actions"></div>
+    </div>
+  </div>
+  <aside class="drawer" id="drawer" hidden>
+    <header><b id="drawer-title"></b><span class="pill" id="drawer-status"></span>
+      <a class="action small primary" id="drawer-link" hidden></a>
+      <button type="button" class="action small" id="drawer-close"></button></header>
+    <div class="progress" id="drawer-progress" hidden><span></span></div>
+    <pre id="drawer-log"></pre>
+  </aside>
+  <script type="application/json" id="panel-texts">$texts</script>
+  <script>$panel_script</script>
+</body>
+</html>

@@ -51,3 +51,7 @@ itch.io pages returned 403 to agents (16.11.2026). Which licence families a game
 ## Source
 
 Cat Challenge `research/ASSET_SOURCES.md` (checked 16.11.2026), `STACK_PLAYBOOK.md` §6–7, `tools/merge-licenses.mjs`, `tools/make-third-party-notices.mjs`, `tools/bridge-version.mjs`, `game/e2e/release/licenses.mjs`, reviews 14, 17 and 37 of its `docs/reviews/`, and the owner's rules in its `OWNER_DECISIONS.md`.
+
+## Reference-only outputs
+
+Outputs of a catalog tool marked non-commercial (prompt2rig, Motion2MixamoRig) are recorded with `python3 scripts/studio_tools.py mark-reference <tool> <files…>` as soon as they are saved. Run `build_release_report.py --reference-ledger .gamedev-studio-reference-only.json` for every release candidate; a match blocks the release. A derived file (a hand-cleaned clip, a re-export) is still derived from the reference: mark it too unless it was re-authored from scratch. Only the owner records a commercial licence (`set-licence`) or accepts the risk (`accept-risk`); after either, the tool's outputs are ordinary assets and are not marked or blocked, but their source is still recorded.
