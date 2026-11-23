@@ -15,6 +15,8 @@ Every installable tool is in [`tools/catalog.json`](../tools/catalog.json). The 
 | prompt2rig | `blendi-remade/prompt2rig` @ `218ce2a` | Apache-2.0 code | **no** without a commercial licence: GVHMR and SMPL-X are non-commercial, YOLO is AGPL | Claude, after the person's yes (pinned clone); the person makes the fal key and SMPL-X/MANO registrations |
 | Motion2MixamoRig | `MaxLiu22/Motion2MixamoRig` @ `f05a718` | Apache-2.0 code | **no** without a commercial licence: the authors state the pipeline is non-commercial | Claude, after the person's yes (pinned clone and its own virtualenv); the Blender extension and SMPL-X file by the person |
 | NVIDIA Kimodo | `nv-tlabs/kimodo` @ `e1c219c` | Apache-2.0 code; checkpoints under their own licences | yes for checkpoints whose card allows it (Kimodo-SOMA-SEED-v1.1: NVIDIA Open Model License); the SMPL-X variant is R&D only | Claude, after the person's yes (pinned clone); GPU setup per its docs |
+| Mixar | `Mixar-AI/mixar-app` @ `f58a4cf` (v2.0.0, Blender 5.3 fork), installer from mixar.app | GPL-3.0-or-later app; closed hosted backend | yes for your models; generation through Hunyuan3D is not licensed in the EU, the UK or South Korea; AI generations spend Mixar credits | the person (installer, account, Connect MCP) |
+| Mixar for Claude | `Mixar-AI/claude-mixar` @ `fccc0d4` (official plugin, stdio MCP through Mixar's own launcher; image and video generation switched off) | MIT | yes; needs a Mixar build newer than 4.4.3; Mixar keeps MCP call records up to 30 days | Claude, after the person's yes (pinned clone; start Claude with `--plugin-dir` until it is in the plugin directory) |
 | Glitchless | Godot Asset Library entry 5587 (0.6.4) | MIT | yes; cloud free up to 5,000 sessions a month; web builds not verified | the person (addon in the Godot editor); the owner decides on sending player data; see the `glitchless-telemetry` skill |
 
 Their code was read, not run, during the review. Tools that need a shell installer, a sign-in or an editor of their own are installed by the person, following the tool's own instructions; the catalog records the instruction and the licence warning. Claude installs from pinned git revisions with exact argument lists; a tool's own model downloads happen when the person first runs it.
@@ -35,7 +37,6 @@ The skill packs add their own skills next to the studio's. The studio's `studio-
 ## Reviewed, not installable
 
 - **AI Game DevTools** (`Yuan-ManX/ai-game-devtools`): a large, regularly updated list of AI tools for game development. Use it to find candidates; anything adopted is reviewed and added to the catalog first.
-- **Mixar**: an AI-native 3D editor built on Blender, in closed early access ("Creator Circle"). There is no public build to install; revisit when it is released and its licence is published.
 
 ## Adding a tool
 

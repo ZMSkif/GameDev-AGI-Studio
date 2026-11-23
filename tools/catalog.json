@@ -1165,6 +1165,105 @@
       ]
     },
     {
+      "id": "mixar",
+      "group": "ai3d",
+      "kind": "app",
+      "name": "Mixar",
+      "gives": {
+        "ru": "3D-редактор на основе Blender 5.3 с ИИ-агентом: моделинг по запросу, слои текстур, генерация 3D из текста и картинки, ретопология и UV, экспорт под web, Godot, Unity и Unreal.",
+        "en": "A Blender 5.3-based 3D editor with an AI agent: modelling from prompts, layered texturing, text- and image-to-3D, retopology and UVs, export presets for web, Godot, Unity and Unreal."
+      },
+      "cost": {
+        "kind": "paid",
+        "note": {
+          "ru": "Обычные функции Blender и рисование слоями бесплатны; ИИ-генерации тратят кредиты Mixar. Чат-агент можно пустить через свой ключ (BYOK).",
+          "en": "Blender features and layered painting are free; AI generations spend Mixar credits. The chat agent can use your own provider key (BYOK)."
+        }
+      },
+      "account": true,
+      "licence": "GPL-3.0-or-later (app); hosted backend closed",
+      "source": "https://github.com/Mixar-AI/mixar-app",
+      "commercial": "check",
+      "licence_note": {
+        "ru": "Приложение под GPL — на ваши модели это не распространяется. Генерация идёт через модели Hunyuan и другие: у Hunyuan3D лицензия не действует в ЕС, Великобритании и Южной Корее — для игр, которые там продаются, выбирайте другой провайдер.",
+        "en": "The app is GPL; that does not cover your models. Generation runs on Hunyuan and other models: Hunyuan3D's licence excludes the EU, the UK and South Korea, so pick another provider for games sold there."
+      },
+      "requirements": {
+        "ru": "Установщик с mixar.app (macOS, Windows; Linux не проверен), аккаунт Mixar. В Mixar: меню профиля → Connect MCP.",
+        "en": "The installer from mixar.app (macOS, Windows; Linux unverified), a Mixar account. In Mixar: profile menu → Connect MCP."
+      },
+      "who": "person",
+      "scope": "machine",
+      "detect": {
+        "type": "none"
+      },
+      "install": {
+        "manual": {
+          "ru": "Скачайте Mixar с https://www.mixar.app, войдите и включите Connect MCP. Затем поставьте mixar-claude.",
+          "en": "Download Mixar from https://www.mixar.app, sign in and turn on Connect MCP. Then install mixar-claude."
+        }
+      },
+      "used_by": [
+        "game-asset-production",
+        "blender-game-animation"
+      ]
+    },
+    {
+      "id": "mixar-claude",
+      "group": "ai3d",
+      "kind": "claude-plugin",
+      "name": "Mixar for Claude",
+      "gives": {
+        "ru": "Официальный плагин Mixar: агент читает сцену, строит модели скриптами, проверяет рендером и UV, экспортирует GLB для web или Godot. Генерацию картинок и видео плагин отключает.",
+        "en": "Mixar's official plugin: the agent reads the scene, builds with scripts, checks renders and UVs and exports GLB for web or Godot. It switches off image and video generation."
+      },
+      "cost": {
+        "kind": "free",
+        "note": {
+          "ru": "3D-генерации и create_layered_material тратят кредиты; перед вызовом агент спрашивает цену (mixar_tool_quote) и ваше «да».",
+          "en": "3D generations and create_layered_material spend credits; the agent asks the price (mixar_tool_quote) and your yes first."
+        }
+      },
+      "licence": "MIT (plugin)",
+      "source": "https://github.com/Mixar-AI/claude-mixar",
+      "commercial": "ok",
+      "requirements": {
+        "ru": "Установленный Mixar с включённым Connect MCP. Пока нужна версия Mixar новее 4.4.3 — со старой плагин сам откажется стартовать. Вызовы MCP Mixar хранит до 30 дней для диагностики.",
+        "en": "Mixar installed with Connect MCP on. A Mixar version newer than 4.4.3 is needed for now — the plugin refuses to start on older ones. Mixar keeps MCP call records for up to 30 days for diagnostics."
+      },
+      "who": "claude_yes",
+      "scope": "machine",
+      "requires_programs": [
+        "git"
+      ],
+      "detect": {
+        "type": "git_checkout",
+        "path": "{tools}/claude-mixar",
+        "commit": "fccc0d4b18f0d66691d3aed15d5cce843ae9da4c"
+      },
+      "install": {
+        "all": [
+          [
+            "git",
+            "clone",
+            "https://github.com/Mixar-AI/claude-mixar",
+            "{tools}/claude-mixar"
+          ],
+          [
+            "git",
+            "-C",
+            "{tools}/claude-mixar",
+            "checkout",
+            "--detach",
+            "fccc0d4b18f0d66691d3aed15d5cce843ae9da4c"
+          ]
+        ]
+      },
+      "used_by": [
+        "game-asset-production"
+      ]
+    },
+    {
       "id": "glitchless",
       "group": "observability",
       "kind": "engine-addon",
