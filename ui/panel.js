@@ -59,6 +59,7 @@
           <span class="badge">${esc(T["scope_" + tool.scope])}</span></p></div>${statusPill(tool)}</header>
         <p class="gives">${esc(tool.gives)}</p>
         ${tool.requirements ? `<p class="requirements">${esc(T.needs)}: ${esc(tool.requirements)}</p>` : ""}
+        ${prereqList(tool.prerequisites)}
         ${tool.commercial !== "ok" ? `<p class="licence-note" data-commercial="${tool.commercial_effective}"><b>${esc(T["commercial_" + tool.commercial_effective])}.</b> ${tool.owner_accepted_risk ? "" : esc(tool.licence_note)}</p>` : ""}
         ${tool.licence_gate.length ? `<label class="switch"><input type="checkbox" data-risk="${tool.id}" ${tool.owner_accepted_risk ? "checked" : ""}><span></span>${esc(T.accept_risk)}</label>
         ${tool.owner_accepted_risk ? "" : `<details class="licence-gate"><summary>${esc(T.licence_gate)}</summary><ol>${tool.licence_gate.map((line) => `<li>${esc(line)}</li>`).join("")}</ol></details>`}` : ""}
@@ -67,6 +68,19 @@
         ${manual}${config}${owner}
         <footer>${toggle}<span class="spacer"></span>${actions.join("")}</footer>
         ${meta ? `<p class="tool-foot">${meta}</p>` : ""}</article>`;
+    }
+    function prereqList(items, onlyMissing) {
+      const shown = (items || []).filter((p) => !onlyMissing || p.met !== true);
+      if (!shown.length) return "";
+      return `<ul class="prereqs">${shown.map((p) => {
+        const state = p.met === true ? "met" : p.met === null ? "unknown" : "missing";
+        const exact = onlyMissing && p.install_steps ? `<pre class="command">${p.install_steps.map((step) => esc(step.join(" "))).join("
+")}</pre>` : "";
+        const how = p.met === true ? "" : `<p class="hint">${esc(p.why)} ${p.command
+          ? `${esc(T.prereq_claude)} ${exact ? "" : `<code>${esc(p.command)}</code>`}` : `${esc(T.prereq_person)} ${esc(p.manual)}`}</p>${exact}`;
+        return `<li data-state="${state}"><span class="prereq-mark">${state === "met" ? "✓" : state === "unknown" ? "?" : "!"}</span>
+          <b>${esc(p.name)}</b> <small>${esc(T["for_" + p.for])} · ${esc(p.detail)}</small>${how}</li>`;
+      }).join("")}</ul>`;
     }
     function toolsView() {
       const tools = state.tools;
@@ -210,11 +224,13 @@
       const install = t.closest("[data-install]");
       if (install) {
         const tool = state.tools.find((x) => x.id === install.dataset.install);
+        const missingFirst = tool.prerequisites.filter((p) => p.for === "install" && p.met === false);
         const body = `<p>${esc(T.confirm_body)}</p><pre class="command">${tool.install_steps.map((step) => esc(step.join(" "))).join("\n")}</pre>` +
           (state.platform === "windows" ? `<p class="muted">${esc(T.confirm_windows)}</p>` : "") +
-          (tool.cost !== "free" ? `<p class="callout warning">${esc(tool.cost_note)} ${esc(T.paid_note)}</p>` : "");
+          (tool.cost !== "free" ? `<p class="callout warning">${esc(tool.cost_note)} ${esc(T.paid_note)}</p>` : "") +
+          (missingFirst.length ? `<p>${esc(T.confirm_prereqs)}</p>${prereqList(missingFirst, true)}` : "");
         dialog(fmt(T.confirm_title, { name: tool.name }), body, [[T.cancel, false], [T.yes, true, async () => {
-          try { await follow(await api("/api/tools/install", { id: tool.id, confirm: true })); }
+          try { await follow(await api("/api/tools/install", { id: tool.id, confirm: true, with_prerequisites: missingFirst.length > 0 })); }
           catch (e) { dialog(T.failed, `<p>${esc(e.message)}</p>`, [[T.close, true]]); }
         }]]);
         return;

@@ -15,11 +15,13 @@ From the game folder (the one with the `.gamedev-studio` marker):
 python <plugin-root>/scripts/studio_tools.py status --json --lang ru
 ```
 
-The result lists every tool with `installed`, `detail`, `cost` (`free`, `paid`, `account`), `commercial`, `licence_note`, `requirements`, `who` (`claude_yes`, `person`, `owner`), `install_steps` and `manual`.
+The result lists every tool with `installed`, `detail`, `cost` (`free`, `paid`, `account`), `commercial`, `licence_note`, `requirements`, `who` (`claude_yes`, `person`, `owner`), `install_steps` and `manual`, and its `prerequisites`: one row per thing it needs, with `for` (`install` or `use`), `met` (`true`, `false`, or `null` when only the person can check it), `detail`, `why`, `who` (`claude_yes` with the exact `install_steps` and `command`, or `person` with `manual`). `ready_to_install` and `ready_to_use` sum them up. An installed tool is reported as installed only when the files a finished install leaves are there (`detect.verify`), so a half-finished install shows as not installed.
+
+On Windows `python3` may be the Microsoft Store alias that runs nothing: use `python`, or `py -3`.
 
 ## 2. Ask, group by group
 
-Ask with the question tool, one group per question (QA, art and video, skill packs, AI 3D, engines, paid services, agents, player analytics, memory), only about tools that are not installed. For each option, give in one line: what it gives, the price, whether an account is needed, and any licence warning. Offer these answers:
+Ask with the question tool, one group per question (QA, art and video, skill packs, AI 3D, engines, paid services, agents, player analytics, memory), only about tools that are not installed. For each option, give in one line: what it gives, the price, whether an account is needed, any licence warning, and **every prerequisite row that is not met**, for install and for use, with who installs it (for example "needs Microsoft C++ Build Tools, ~6–8 GB, Claude installs it; to use it: your SMPL-X registration"). Never let the person find out about a missing prerequisite from a failed install. Offer these answers:
 
 - **Install** — for `claude_yes` tools: you will show the exact command and run it.
 - **I'll install it myself** — for `person` tools: give the `manual` text and the source link.
@@ -35,13 +37,25 @@ Rules for the answers:
 
 ## 3. Install what was chosen
 
-For each yes, show the `install_steps` exactly as listed, then run:
+For each yes, show the `install_steps` exactly as listed, and the `install_steps` of every unmet `claude_yes` install prerequisite, then run:
 
 ```text
 python <plugin-root>/scripts/studio_tools.py install <id> --yes
 ```
 
-On Windows, mention that Windows may ask for permission. Report the result from the command's output and re-run `status` to confirm. If a step fails, show the error and stop that tool; do not try another installer.
+Add `--with-prerequisites` only when the person said yes with those prerequisite commands in front of them; Claude's own prerequisites are then installed first. A prerequisite can also be installed on its own: `studio_tools.py prereq <prerequisite-id> --yes`. Prerequisites the person installs (`who: person`) are never run by Claude: give their `manual` text, and the install stops with the list of what is missing until they are done. Every install prerequisite is checked before the first command runs, so nothing is half-installed for a known reason.
+
+On Windows, mention that Windows may ask for permission (Build Tools and other winget installers need administrator rights). Report the result from the command's output and re-run `status` to confirm. If a step fails, show the error and stop that tool; do not try another installer. A retry after a failed step is safe: a folder that is already a clone is not cloned again. If the error names something the catalog does not list (a compiler, a library, a system), say so and propose adding it as a prerequisite in `tools/catalog.json` in a plugin pull request.
+
+## Before using a tool
+
+Any skill that uses a catalog tool first runs, from the game folder:
+
+```text
+python <plugin-root>/scripts/studio_tools.py check <id> --json
+```
+
+Exit code 0: installed and every `use` prerequisite is met. Exit code 3: not ready; tell the person which rows are missing, who does each, and offer the install through this skill. Rows with `met: null` (an account, a registration, an app the studio cannot see) are asked about, not assumed.
 
 ## 4. Keys and settings
 

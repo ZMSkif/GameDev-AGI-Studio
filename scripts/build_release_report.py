@@ -356,4 +356,6 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
+    from console_io import prepare_console
+    prepare_console()
     raise SystemExit(main())

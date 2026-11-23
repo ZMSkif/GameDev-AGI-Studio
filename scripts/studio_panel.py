@@ -49,6 +49,9 @@ TEXT = {
         "scope_game": "в папку игры", "install": "Установить", "reinstall": "Переустановить", "source": "Источник",
         "enabled": "Включён для этой игры", "decision": "Ссылка на решение владельца в GitHub",
         "save": "Сохранить", "saved": "Сохранено", "key_saved": "ключ сохранён", "key_placeholder": "вставьте ключ",
+        "for_install": "для установки", "for_use": "для работы", "prereq_claude": "Поставит Claude после «да»:",
+        "prereq_person": "Делаете вы:",
+        "confirm_prereqs": "Сначала нужно это. Свои пункты Claude поставит в той же установке; пункты «делаете вы» — нет, без них установка остановится:",
         "requires": "Сначала нужен", "used_by": "Используют", "manual": "Ставите вы", "who_owner": "Включает владелец студии",
         "confirm_title": "Установить {name}?", "confirm_body": "Панель выполнит ровно эту команду из каталога студии:",
         "confirm_windows": "Windows может спросить разрешение — подтвердите его.", "cancel": "Отмена", "yes": "Да, установить",
@@ -79,6 +82,9 @@ TEXT = {
         "scope_game": "in the game folder", "install": "Install", "reinstall": "Reinstall", "source": "Source",
         "enabled": "Enabled for this game", "decision": "GitHub link of the owner's decision",
         "save": "Save", "saved": "Saved", "key_saved": "key saved", "key_placeholder": "paste the key",
+        "for_install": "to install", "for_use": "to use", "prereq_claude": "Claude installs it after a yes:",
+        "prereq_person": "You do this:",
+        "confirm_prereqs": "These come first. Claude's own items are installed in the same run; items you do are not, and the install stops without them:",
         "requires": "Needs first", "used_by": "Used by", "manual": "You install it", "who_owner": "The studio owner turns it on",
         "confirm_title": "Install {name}?", "confirm_body": "The panel will run exactly this command from the studio catalog:",
         "confirm_windows": "Windows may ask for permission — approve it.", "cancel": "Cancel", "yes": "Yes, install",
@@ -242,7 +248,8 @@ class Panel:
             raise studio_tools.ToolError("Installing needs the person's yes")
 
         def work(job):
-            result = studio_tools.install(tool, self.game, True, on_line=job.log)
+            result = studio_tools.install(tool, self.game, True, on_line=job.log, catalog=self.catalog,
+                                          with_prerequisites=body.get("with_prerequisites") is True, lang=self.lang)
             return {"ok": result["returncode"] == 0, "gitignore_added": result["gitignore_added"]}
         return self.start(Job("install", tool["name"]), work)
 
@@ -445,4 +452,6 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
+    from console_io import prepare_console
+    prepare_console()
     raise SystemExit(main())

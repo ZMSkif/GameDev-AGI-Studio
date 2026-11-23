@@ -312,4 +312,6 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
+    from console_io import prepare_console
+    prepare_console()
     sys.exit(main())

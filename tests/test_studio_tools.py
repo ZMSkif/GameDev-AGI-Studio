@@ -50,7 +50,7 @@ class CatalogTests(unittest.TestCase):
         argv = st.install_command(tool, Path("/games/robot"), python="/py")
         self.assertEqual(st.install_steps(tool, Path("/games/robot"), python="/py"), [argv])
         self.assertEqual(argv[:5], ["git", "clone", "--depth", "1", "--branch"])
-        self.assertTrue(argv[-1].endswith(".tools/img2threejs"))
+        self.assertEqual(Path(argv[-1]).parts[-2:], (".tools", "img2threejs"))
         pip = st.install_command(st.tool_by_id(self.catalog, "playwright"), Path("/g"), python="/py")
         self.assertEqual(pip[:4], ["/py", "-m", "pip", "install"])
         self.assertNotIn("{pip_user}", pip)
@@ -90,7 +90,9 @@ class ActionTests(unittest.TestCase):
         argv = popen.call_args.args[0]
         self.assertIsInstance(argv, list)
         self.assertNotIn("shell", popen.call_args.kwargs)
-        self.assertEqual(argv, st.install_command(tool, self.game))
+        expected = st.install_command(tool, self.game)
+        self.assertEqual(argv[0], "/usr/bin/git")  # the program the name resolves to, never a shell
+        self.assertEqual(argv[1:], expected[1:])
         self.assertEqual(result["gitignore_added"], [".tools/"])
         self.assertIn(".tools/", (self.game / ".gitignore").read_text(encoding="utf-8"))
 
@@ -181,16 +183,29 @@ class LicenceGateTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "licence gate"):
             st.validate_catalog(broken)
 
+    def fake_finished_m2mr(self):
+        """What a finished Motion2MixamoRig install leaves: the pinned checkout and the m2mr program in its venv."""
+        tool = st.tool_by_id(self.catalog, "motion2mixamorig")
+        folder = self.tools / "Motion2MixamoRig"
+        (folder / ".git").mkdir(parents=True)
+        (folder / ".git" / "HEAD").write_text(tool["detect"]["commit"] + "\n", encoding="utf-8")
+        program = folder / ".venv" / ("Scripts/m2mr.exe" if st.platform_key() == "windows" else "bin/m2mr")
+        program.parent.mkdir(parents=True)
+        program.write_bytes(b"")
+        return program
+
     def test_virtualenv_programs_are_not_required_up_front(self):
         tool = st.tool_by_id(self.catalog, "motion2mixamorig")
+        self.fake_finished_m2mr()
         process = mock.MagicMock()
         process.stdout = iter([])
         process.wait.return_value = 0
         with mock.patch.object(st.shutil, "which", return_value="/usr/bin/git"), \
+                mock.patch.object(st, "check_prerequisite", return_value=(True, "ok")), \
                 mock.patch.object(st.subprocess, "Popen", return_value=process) as popen:
             result = st.install(tool, self.game, True, python="/py")
         self.assertEqual(result["returncode"], 0)
-        self.assertEqual(popen.call_count, len(result["steps"]))
+        self.assertEqual(popen.call_count, len(result["steps"]) - 1)  # the folder is already a clone: no git clone
         for call in popen.call_args_list:
             self.assertIsInstance(call.args[0], list)
             self.assertNotIn("shell", call.kwargs)
@@ -260,3 +275,190 @@ class LicenceGateTests(unittest.TestCase):
         st.accept_risk(self.catalog, self.game, "prompt2rig", False)
         row = next(r for r in st.status(self.catalog, self.game, "ru") if r["id"] == "prompt2rig")
         self.assertEqual(row["commercial_effective"], "non_commercial")
+
+
+class PrerequisiteTests(unittest.TestCase):
+    """Every tool says up front what it needs to be installed and to be used, and who installs each part."""
+
+    def setUp(self):
+        scratch = TemporaryDirectory(prefix="game ")
+        self.addCleanup(scratch.cleanup)
+        self.game = Path(scratch.name) / "game"
+        self.game.mkdir()
+        (self.game / ".gamedev-studio").write_text("", encoding="utf-8")
+        self.tools = Path(scratch.name) / "tools"
+        patcher = mock.patch.dict("os.environ", {"GAMEDEV_STUDIO_TOOLS": str(self.tools)})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.catalog = st.load_catalog()
+
+    def test_known_install_needs_are_declared(self):
+        needs = {tool["id"]: tool.get("prerequisites", {}) for tool in self.catalog["tools"]}
+        self.assertIn("msvc-build-tools", needs["motion2mixamorig"]["install"])
+        self.assertIn("python-3-11", needs["motion2mixamorig"]["install"])
+        self.assertEqual(needs["kimodo"]["use"], ["linux", "nvidia-gpu-17gb"])
+        self.assertIn("node-18", needs["prompt2rig"]["use"])
+        self.assertIn("mixar-app", needs["mixar-claude"]["use"])
+        self.assertIn("blender-5-2", needs["blender-skills"]["use"])
+        for tool in self.catalog["tools"]:
+            steps = st.install_steps(tool, self.game, python="/py") or []
+            programs = {step[0] for step in steps if isinstance(step, list)}
+            with self.subTest(tool=tool["id"]):
+                if "git" in programs:
+                    self.assertIn("git", needs[tool["id"]].get("install", []))
+                if "claude" in programs:
+                    self.assertIn("claude-cli", needs[tool["id"]].get("install", []))
+        msvc = st.prerequisite_by_id(self.catalog, "msvc-build-tools")
+        self.assertEqual(msvc["platforms"], ["windows"])
+        self.assertEqual(msvc["install"]["windows"][:2], ["winget", "install"])
+
+    def test_bad_prerequisites_are_refused(self):
+        broken = copy.deepcopy(self.catalog)
+        next(t for t in broken["tools"] if t["id"] == "kimodo")["prerequisites"] = {"use": ["no-such-thing"]}
+        with self.assertRaisesRegex(ValueError, "known prerequisite ids"):
+            st.validate_catalog(broken)
+        broken = copy.deepcopy(self.catalog)
+        broken["tools"][0]["requires_programs"] = ["git"]
+        with self.assertRaisesRegex(ValueError, "replaced by prerequisites"):
+            st.validate_catalog(broken)
+        broken = copy.deepcopy(self.catalog)
+        st.prerequisite_by_id(broken, "git").pop("install")
+        with self.assertRaisesRegex(ValueError, "needs install commands"):
+            st.validate_catalog(broken)
+        broken = copy.deepcopy(self.catalog)
+        st.prerequisite_by_id(broken, "linux")["install"] = {"all": ["wsl", "--install"]}
+        with self.assertRaisesRegex(ValueError, "only claude_yes prerequisites"):
+            st.validate_catalog(broken)
+
+    def test_missing_install_prerequisite_stops_before_any_command(self):
+        tool = st.tool_by_id(self.catalog, "motion2mixamorig")
+
+        def check(pre, *args, **kwargs):
+            return (False, "missing") if pre["id"] == "msvc-build-tools" else (True, "ok")
+
+        with mock.patch.object(st, "check_prerequisite", side_effect=check), \
+                mock.patch.object(st.subprocess, "Popen") as popen:
+            with self.assertRaises(st.PrerequisiteError) as raised:
+                st.install(tool, self.game, True, python="/py", lang="ru")
+        popen.assert_not_called()
+        self.assertEqual([row["id"] for row in raised.exception.rows], ["msvc-build-tools"])
+        self.assertIn("prereq msvc-build-tools --yes", str(raised.exception))
+        self.assertIn("для установки", str(raised.exception))
+
+    def test_person_prerequisites_only_show_instructions(self):
+        with self.assertRaisesRegex(st.ToolError, "WSL2"):
+            st.install_prerequisite(self.catalog, "linux", self.game, True, lang="en")
+        with self.assertRaisesRegex(st.ToolError, "explicit yes"):
+            st.install_prerequisite(self.catalog, "msvc-build-tools", self.game, False)
+
+    def test_with_prerequisites_installs_claude_ones_first(self):
+        tool = st.tool_by_id(self.catalog, "kimodo")
+        state = {"git": False}
+
+        def check(pre, *args, **kwargs):
+            return (state.get(pre["id"], True), "x")
+
+        def fake_prereq(catalog, pid, *args, **kwargs):
+            state[pid] = True
+            return {"returncode": 0, "argv": [], "steps": [], "gitignore_added": []}
+
+        process = mock.MagicMock()
+        process.stdout = iter([])
+        process.wait.return_value = 0
+        with mock.patch.object(st, "check_prerequisite", side_effect=check), \
+                mock.patch.object(st, "install_prerequisite", side_effect=fake_prereq) as prereq, \
+                mock.patch.object(st.shutil, "which", return_value="/usr/bin/git"), \
+                mock.patch.object(st.subprocess, "Popen", return_value=process):
+            result = st.install(tool, self.game, True, with_prerequisites=True)
+        self.assertEqual(prereq.call_args.args[1], "git")
+        self.assertEqual(result["returncode"], 0)
+
+    def test_status_reports_needs_for_install_and_use(self):
+        with mock.patch.object(st, "platform_key", return_value="windows"), \
+                mock.patch.object(st, "nvidia_vram_gb", return_value=None):
+            rows = {row["id"]: row for row in st.status(self.catalog, self.game, "en")}
+        kimodo = {row["id"]: row for row in rows["kimodo"]["prerequisites"]}
+        self.assertEqual((kimodo["linux"]["for"], kimodo["linux"]["met"], kimodo["linux"]["who"]), ("use", False, "person"))
+        self.assertFalse(kimodo["nvidia-gpu-17gb"]["met"])
+        self.assertFalse(rows["kimodo"]["ready_to_use"])
+        mixar = rows["mixar-claude"]["prerequisites"]
+        self.assertIsNone(next(row for row in mixar if row["id"] == "mixar-app")["met"])
+        self.assertEqual(rows["ffmpeg"]["prerequisites"], [])
+
+    def test_unfinished_install_is_not_reported_as_installed(self):
+        tool = st.tool_by_id(self.catalog, "motion2mixamorig")
+        program = LicenceGateTests.fake_finished_m2mr(self)
+        self.assertTrue(st.detect(tool, self.game, st.load_settings(self.game))[0])
+        program.unlink()
+        installed, detail = st.detect(tool, self.game, st.load_settings(self.game))
+        self.assertFalse(installed)
+        self.assertIn("did not finish", detail)
+        process = mock.MagicMock()
+        process.stdout = iter([])
+        process.wait.return_value = 0
+        lines = []
+        with mock.patch.object(st.shutil, "which", return_value="/usr/bin/git"), \
+                mock.patch.object(st, "check_prerequisite", return_value=(True, "ok")), \
+                mock.patch.object(st.subprocess, "Popen", return_value=process):
+            result = st.install(tool, self.game, True, on_line=lines.append, python="/py")
+        self.assertEqual(result["returncode"], 1)
+        self.assertIn("did not finish", lines[-1])
+
+    def test_programs_outside_path_are_found_in_known_folders(self):
+        folder = self.tools / "Blender Foundation"
+        for version in ("Blender 4.5", "Blender 5.3"):
+            (folder / version).mkdir(parents=True)
+            (folder / version / "blender.exe").write_bytes(b"")
+        pattern = str(folder / "Blender *" / "blender.exe")
+        self.assertEqual(st.known_program([pattern]), str(folder / "Blender 5.3" / "blender.exe"))
+        self.assertIsNone(st.known_program([str(folder / "Nope *" / "x.exe"), "%NO_SUCH_VARIABLE_X%/a.exe"]))
+
+    def test_extensionless_file_on_path_is_not_a_program_on_windows(self):
+        found = {"winget": r"C:\Windows\System32\winget",
+                 "winget.EXE": r"C:\Users\u\AppData\Local\Microsoft\WindowsApps\winget.EXE"}
+        with mock.patch.object(st.sys, "platform", "win32"), \
+                mock.patch.dict("os.environ", {"PATHEXT": ".COM;.EXE"}), \
+                mock.patch.object(st.shutil, "which", side_effect=lambda name: found.get(name)):
+            self.assertEqual(st.resolve_program("winget"), found["winget.EXE"])
+
+    def test_versions_compare_by_parts(self):
+        self.assertEqual(st.version_tuple("Blender 5.3.0\nbuild date"), (5, 3, 0))
+        self.assertTrue(st.at_least((5, 3, 0), "5.2"))
+        self.assertFalse(st.at_least((4, 2, 1), "5.2"))
+        self.assertTrue(st.at_least((18, 0, 0), "18"))
+
+
+class ConsoleTests(unittest.TestCase):
+    """Piped output is UTF-8 on every system, so Claude's tools read ✓, → and Cyrillic (Windows used cp1252)."""
+
+    def test_status_prints_through_a_pipe(self):
+        import os
+        import subprocess
+        env = {key: value for key, value in os.environ.items() if key not in {"PYTHONIOENCODING", "PYTHONUTF8"}}
+        with TemporaryDirectory() as game:
+            for extra in ([], ["--json"]):
+                result = subprocess.run([sys.executable, str(ROOT / "scripts" / "studio_tools.py"), "--game", game,
+                                         "--lang", "ru", "status", *extra], capture_output=True, env=env, timeout=120)
+                with self.subTest(args=extra):
+                    self.assertEqual(result.returncode, 0, result.stderr.decode("utf-8", errors="replace"))
+                    text = result.stdout.decode("utf-8")
+                    self.assertIn("prerequisites" if extra else "не установлено", text)
+
+
+class RetryTests(unittest.TestCase):
+    def test_retry_after_a_failed_step_skips_the_existing_clone(self):
+        with TemporaryDirectory() as scratch:
+            target = Path(scratch) / "tool"
+            (target / ".git").mkdir(parents=True)
+            process = mock.MagicMock()
+            process.stdout = iter([])
+            process.wait.return_value = 0
+            lines = []
+            with mock.patch.object(st.subprocess, "Popen", return_value=process) as popen, \
+                    mock.patch.object(st.shutil, "which", return_value="/usr/bin/git"):
+                code = st._run_steps([["git", "clone", "https://example.com/x", str(target)],
+                                      ["git", "-C", str(target), "checkout", "--detach", "a" * 40]], Path(scratch), lines.append)
+            self.assertEqual(code, 0)
+            self.assertEqual(popen.call_count, 1)
+            self.assertIn("checkout", popen.call_args.args[0])
+            self.assertIn("already cloned", lines[0])

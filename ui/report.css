@@ -384,6 +384,16 @@ table.data td.num, table.data th.num { text-align: right; font-variant-numeric: 
 .licence-note[data-commercial="owner_accepted"],
 .licence-note[data-commercial="outputs_ok"] { color: #b9e9cf; background: var(--green-dim); border-color: rgba(110, 231, 160, 0.3); }
 .detail.mono { color: var(--text-muted); font-size: .7rem; overflow-wrap: anywhere; }
+.prereqs { list-style: none; margin: 0; padding: 0; display: grid; gap: .3rem; font-size: .76rem; }
+.prereqs li { padding: .4rem .55rem; border-radius: var(--radius-sm); border: 1px solid var(--hairline); background: #111114; color: var(--text-dim); }
+.prereqs li b { color: var(--text); font-weight: 600; }
+.prereqs .prereq-mark { display: inline-block; width: 1.1em; font-weight: 700; }
+.prereqs li[data-state="met"] .prereq-mark { color: #6ee7a0; }
+.prereqs li[data-state="missing"] { border-color: rgba(244, 128, 128, 0.35); background: var(--red-dim); }
+.prereqs li[data-state="missing"] .prereq-mark { color: #f48080; }
+.prereqs li[data-state="unknown"] { border-color: rgba(234, 181, 110, 0.3); }
+.prereqs li[data-state="unknown"] .prereq-mark { color: #eab56e; }
+.prereqs .hint { margin: .25rem 0 0; }
 .manual { padding: .55rem .7rem; border-radius: var(--radius-sm); background: #111114; border: 1px solid var(--hairline); color: var(--text-dim); font-size: .78rem; }
 .tool-card footer { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: .2rem; }
 .tool-card footer .spacer { flex: 1; }

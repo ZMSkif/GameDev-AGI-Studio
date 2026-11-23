@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "about": "Every optional tool GameDev Studio can use. The studio panel, the setup-tools chat flow and doctor.py read this file; tests check that they agree. Install commands are exact argument lists, never shell strings. Third-party tools are installed from their own sources and are never copied into the plugin zip.",
+  "about": "Every optional tool GameDev Studio can use. The studio panel, the setup-tools chat flow and doctor.py read this file; tests check that they agree. Install commands are exact argument lists, never shell strings. Third-party tools are installed from their own sources and are never copied into the plugin zip. Each tool lists what it needs first: prerequisites.install must be met before its install commands run, prerequisites.use before it can do its job; the shared prerequisites say how each is checked and who installs it.",
   "groups": [
     {
       "id": "qa",
@@ -63,6 +63,307 @@
       "name": {
         "ru": "Память студии",
         "en": "Studio memory"
+      }
+    }
+  ],
+  "prerequisites": [
+    {
+      "id": "git",
+      "name": "Git",
+      "why": {
+        "ru": "Инструмент скачивается из своего репозитория на закреплённый коммит.",
+        "en": "The tool is fetched from its own repository at a pinned commit."
+      },
+      "who": "claude_yes",
+      "check": {
+        "type": "which",
+        "names": [
+          "git"
+        ]
+      },
+      "install": {
+        "windows": [
+          "winget",
+          "install",
+          "-e",
+          "--source",
+          "winget",
+          "--accept-source-agreements",
+          "--accept-package-agreements",
+          "--id",
+          "Git.Git"
+        ],
+        "darwin": [
+          "xcode-select",
+          "--install"
+        ]
+      },
+      "manual": {
+        "ru": "Linux: поставьте git пакетом дистрибутива (например, sudo apt install git).",
+        "en": "Linux: install git from your distribution (for example sudo apt install git)."
+      }
+    },
+    {
+      "id": "claude-cli",
+      "name": "Claude Code CLI",
+      "why": {
+        "ru": "Пакет ставится как плагин Claude Code командой claude plugin.",
+        "en": "The pack is installed as a Claude Code plugin with the claude plugin command."
+      },
+      "who": "person",
+      "check": {
+        "type": "which",
+        "names": [
+          "claude"
+        ]
+      },
+      "manual": {
+        "ru": "Поставьте Claude Code по шагу 3 INSTALL.ru.md и перезапустите окно.",
+        "en": "Install Claude Code as in step 3 of INSTALL.md and reopen the window."
+      }
+    },
+    {
+      "id": "python-3-11",
+      "name": "Python 3.11+",
+      "why": {
+        "ru": "Инструмент создаёт свой venv из того Python, которым запущены скрипты студии.",
+        "en": "The tool builds its own venv from the Python that runs the studio scripts."
+      },
+      "who": "person",
+      "check": {
+        "type": "python_version",
+        "min": "3.11"
+      },
+      "manual": {
+        "ru": "Поставьте Python 3.11 или новее (winget install --id Python.Python.3.13 -e) и запускайте скрипты студии им.",
+        "en": "Install Python 3.11 or newer (winget install --id Python.Python.3.13 -e) and run the studio scripts with it."
+      }
+    },
+    {
+      "id": "msvc-build-tools",
+      "name": "Microsoft C++ Build Tools",
+      "platforms": [
+        "windows"
+      ],
+      "why": {
+        "ru": "На Windows pip собирает часть зависимостей из исходников (например, cython-bbox): без компилятора C++ установка падает с «Microsoft Visual C++ 14.0 or greater is required». Это бесплатно, около 6–8 ГБ, Windows попросит права администратора.",
+        "en": "On Windows pip builds some dependencies from source (for example cython-bbox): without a C++ compiler the install fails with \"Microsoft Visual C++ 14.0 or greater is required\". Free, about 6–8 GB; Windows asks for administrator rights."
+      },
+      "who": "claude_yes",
+      "check": {
+        "type": "msvc"
+      },
+      "install": {
+        "windows": [
+          "winget",
+          "install",
+          "-e",
+          "--source",
+          "winget",
+          "--accept-source-agreements",
+          "--accept-package-agreements",
+          "--id",
+          "Microsoft.VisualStudio.BuildTools",
+          "--override",
+          "--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
+        ]
+      },
+      "manual": {
+        "ru": "Либо поставьте «Visual Studio Build Tools» с нагрузкой «Разработка классических приложений на C++» с visualstudio.microsoft.com/visual-cpp-build-tools.",
+        "en": "Or install \"Visual Studio Build Tools\" with the \"Desktop development with C++\" workload from visualstudio.microsoft.com/visual-cpp-build-tools."
+      }
+    },
+    {
+      "id": "node-18",
+      "name": "Node.js 18+",
+      "why": {
+        "ru": "Инструмент запускается как сервер Node.js.",
+        "en": "The tool runs as a Node.js server."
+      },
+      "who": "claude_yes",
+      "check": {
+        "type": "program_version",
+        "names": [
+          "node"
+        ],
+        "min": "18"
+      },
+      "install": {
+        "windows": [
+          "winget",
+          "install",
+          "-e",
+          "--source",
+          "winget",
+          "--accept-source-agreements",
+          "--accept-package-agreements",
+          "--id",
+          "OpenJS.NodeJS.LTS"
+        ],
+        "darwin": [
+          "brew",
+          "install",
+          "node"
+        ]
+      },
+      "manual": {
+        "ru": "Linux: поставьте Node.js 18+ с nodejs.org или пакетом дистрибутива.",
+        "en": "Linux: install Node.js 18+ from nodejs.org or your distribution."
+      }
+    },
+    {
+      "id": "linux",
+      "name": "Linux (или WSL2)",
+      "why": {
+        "ru": "Инструмент работает только на Linux.",
+        "en": "The tool runs on Linux only."
+      },
+      "who": "person",
+      "check": {
+        "type": "platform",
+        "platforms": [
+          "linux"
+        ]
+      },
+      "manual": {
+        "ru": "На Windows: WSL2 с Ubuntu (wsl --install) и драйвер NVIDIA с CUDA для WSL; инструмент ставится и запускается внутри WSL. Или отдельная машина с Linux.",
+        "en": "On Windows: WSL2 with Ubuntu (wsl --install) and NVIDIA's CUDA-for-WSL driver; install and run the tool inside WSL. Or a separate Linux machine."
+      }
+    },
+    {
+      "id": "nvidia-gpu-17gb",
+      "name": "NVIDIA GPU ~17 GB VRAM",
+      "why": {
+        "ru": "Модель занимает около 17 ГБ видеопамяти (или TEXT_ENCODER_DEVICE=cpu — медленнее, но меньше).",
+        "en": "The model needs about 17 GB of video memory (or TEXT_ENCODER_DEVICE=cpu — slower, less memory)."
+      },
+      "who": "person",
+      "check": {
+        "type": "nvidia_gpu",
+        "min_vram_gb": 17
+      },
+      "manual": {
+        "ru": "Нужна видеокарта NVIDIA с драйвером (nvidia-smi в PATH); на меньшей карте задайте TEXT_ENCODER_DEVICE=cpu.",
+        "en": "An NVIDIA GPU with its driver (nvidia-smi on PATH); on a smaller card set TEXT_ENCODER_DEVICE=cpu."
+      }
+    },
+    {
+      "id": "blender-5-2",
+      "name": "Blender 5.2+",
+      "why": {
+        "ru": "Skills управляют Blender 5.2 LTS или новее.",
+        "en": "The skills drive Blender 5.2 LTS or newer."
+      },
+      "who": "claude_yes",
+      "check": {
+        "type": "program_version",
+        "names": [
+          "blender"
+        ],
+        "min": "5.2",
+        "known_paths": {
+          "windows": [
+            "%ProgramFiles%/Blender Foundation/Blender */blender.exe"
+          ],
+          "darwin": [
+            "/Applications/Blender.app/Contents/MacOS/Blender"
+          ]
+        }
+      },
+      "install": {
+        "tool": "blender"
+      },
+      "manual": {
+        "ru": "Если стоит старый Blender — обновите его с blender.org.",
+        "en": "If an older Blender is installed, update it from blender.org."
+      }
+    },
+    {
+      "id": "godot-4-5",
+      "name": "Godot 4.5+",
+      "why": {
+        "ru": "Аддон работает в Godot 4.5 или новее.",
+        "en": "The addon needs Godot 4.5 or newer."
+      },
+      "who": "claude_yes",
+      "check": {
+        "type": "program_version",
+        "names": [
+          "godot",
+          "godot4"
+        ],
+        "min": "4.5"
+      },
+      "install": {
+        "tool": "godot"
+      },
+      "manual": {
+        "ru": "Если стоит старый Godot — обновите его с godotengine.org.",
+        "en": "If an older Godot is installed, update it from godotengine.org."
+      }
+    },
+    {
+      "id": "mixar-app",
+      "name": "Mixar > 4.4.3 с Connect MCP",
+      "why": {
+        "ru": "Плагин управляет приложением Mixar через его MCP.",
+        "en": "The plugin drives the Mixar app through its MCP."
+      },
+      "who": "person",
+      "check": {
+        "type": "manual"
+      },
+      "manual": {
+        "ru": "Скачайте Mixar с https://www.mixar.app (версия новее 4.4.3), войдите и включите меню профиля → Connect MCP.",
+        "en": "Download Mixar from https://www.mixar.app (newer than 4.4.3), sign in and turn on profile menu → Connect MCP."
+      }
+    },
+    {
+      "id": "fal-key",
+      "name": "fal.ai key",
+      "why": {
+        "ru": "Генерация идёт через fal.ai — платно за каждый запуск, только с «да» владельца.",
+        "en": "Generation goes through fal.ai — paid per run, only with the owner's yes."
+      },
+      "who": "person",
+      "check": {
+        "type": "manual"
+      },
+      "manual": {
+        "ru": "Положите свой ключ FAL_KEY в .env папки инструмента сами (в чат ключ не вставляйте).",
+        "en": "Put your own FAL_KEY into the tool folder's .env yourself (never paste a key into the chat)."
+      }
+    },
+    {
+      "id": "smplx-models",
+      "name": "SMPL-X (и MANO) — регистрация",
+      "why": {
+        "ru": "Модели тела SMPL-X/MANO нельзя скачать автоматически: нужна ваша регистрация, лицензия некоммерческая.",
+        "en": "The SMPL-X/MANO body models cannot be downloaded automatically: they need your registration and are non-commercial."
+      },
+      "who": "person",
+      "check": {
+        "type": "manual"
+      },
+      "manual": {
+        "ru": "Зарегистрируйтесь на smpl-x.is.tue.mpg.de (и mano.is.tue.mpg.de для prompt2rig HQ) и положите файлы туда, куда говорит README инструмента.",
+        "en": "Register at smpl-x.is.tue.mpg.de (and mano.is.tue.mpg.de for prompt2rig HQ) and put the files where the tool's README says."
+      }
+    },
+    {
+      "id": "comfyui",
+      "name": "ComfyUI",
+      "why": {
+        "ru": "Приложение генерирует через ваш запущенный ComfyUI.",
+        "en": "The app generates through your running ComfyUI."
+      },
+      "who": "person",
+      "check": {
+        "type": "manual"
+      },
+      "manual": {
+        "ru": "Поставьте и запустите ComfyUI по его инструкции; для локальных моделей нужна видеокарта NVIDIA.",
+        "en": "Install and start ComfyUI per its instructions; local models need an NVIDIA GPU."
       }
     }
   ],
@@ -216,9 +517,6 @@
       "source": "https://github.com/img2threejs/img2threejs",
       "who": "claude_yes",
       "scope": "game",
-      "requires_programs": [
-        "git"
-      ],
       "detect": {
         "type": "git_checkout",
         "path": ".tools/img2threejs",
@@ -241,7 +539,12 @@
       ],
       "used_by": [
         "img2threejs"
-      ]
+      ],
+      "prerequisites": {
+        "install": [
+          "git"
+        ]
+      }
     },
     {
       "id": "blender",
@@ -262,7 +565,15 @@
         "type": "which",
         "names": [
           "blender"
-        ]
+        ],
+        "known_paths": {
+          "windows": [
+            "%ProgramFiles%/Blender Foundation/Blender */blender.exe"
+          ],
+          "darwin": [
+            "/Applications/Blender.app/Contents/MacOS/Blender"
+          ]
+        }
       },
       "install": {
         "windows": [
@@ -597,9 +908,6 @@
       "source": "https://github.com/gamedev-skills/awesome-gamedev-agent-skills",
       "who": "claude_yes",
       "scope": "machine",
-      "requires_programs": [
-        "claude"
-      ],
       "detect": {
         "type": "claude_plugin",
         "plugin": "gamedev@awesome-gamedev-agent-skills"
@@ -624,7 +932,12 @@
       "used_by": [
         "engine-profiles",
         "web-stack-choice"
-      ]
+      ],
+      "prerequisites": {
+        "install": [
+          "claude-cli"
+        ]
+      }
     },
     {
       "id": "threejs-game-skills",
@@ -647,9 +960,6 @@
       },
       "who": "claude_yes",
       "scope": "game",
-      "requires_programs": [
-        "git"
-      ],
       "detect": {
         "type": "skill_folder",
         "path": ".claude/skills/threejs-game-director"
@@ -681,7 +991,12 @@
       "used_by": [
         "web-stack-choice",
         "gameplay-visual-review"
-      ]
+      ],
+      "prerequisites": {
+        "install": [
+          "git"
+        ]
+      }
     },
     {
       "id": "blender-skills",
@@ -703,9 +1018,6 @@
       },
       "who": "claude_yes",
       "scope": "machine",
-      "requires_programs": [
-        "claude"
-      ],
       "detect": {
         "type": "claude_plugin",
         "plugin": "blender-agent-skills@blender-agent-skills"
@@ -730,7 +1042,15 @@
       "used_by": [
         "blender-game-animation",
         "materials-to-game"
-      ]
+      ],
+      "prerequisites": {
+        "install": [
+          "claude-cli"
+        ],
+        "use": [
+          "blender-5-2"
+        ]
+      }
     },
     {
       "id": "dream-loop",
@@ -752,9 +1072,6 @@
       },
       "who": "claude_yes",
       "scope": "game",
-      "requires_programs": [
-        "git"
-      ],
       "detect": {
         "type": "skill_folder",
         "path": ".claude/skills/dream-loop",
@@ -781,7 +1098,12 @@
       "used_by": [
         "gameplay-visual-review",
         "img2threejs"
-      ]
+      ],
+      "prerequisites": {
+        "install": [
+          "git"
+        ]
+      }
     },
     {
       "id": "assetfurnace",
@@ -859,7 +1181,13 @@
       "used_by": [
         "game-asset-production",
         "materials-to-game"
-      ]
+      ],
+      "prerequisites": {
+        "use": [
+          "node-18",
+          "comfyui"
+        ]
+      }
     },
     {
       "id": "prompt2rig",
@@ -917,10 +1245,6 @@
       "used_by": [
         "motion-reference-workflow"
       ],
-      "requires_programs": [
-        "git",
-        "node"
-      ],
       "licence_gate": [
         {
           "ru": "Код можно ставить и запускать: это Apache-2.0.",
@@ -938,7 +1262,17 @@
           "ru": "Чтобы движение шло в продаваемую игру, нужна коммерческая лицензия: SMPL-X — через Meshcapade, MANO — ps-license@tue.mpg.de; ссылку на неё записывает владелец (set-licence). Это не юридическая консультация.",
           "en": "For motion in a game you sell you need a commercial licence: SMPL-X through Meshcapade, MANO via ps-license@tue.mpg.de; the owner records a link to it (set-licence). This is not legal advice."
         }
-      ]
+      ],
+      "prerequisites": {
+        "install": [
+          "git"
+        ],
+        "use": [
+          "node-18",
+          "fal-key",
+          "smplx-models"
+        ]
+      }
     },
     {
       "id": "motion2mixamorig",
@@ -968,7 +1302,15 @@
       "detect": {
         "type": "git_checkout",
         "path": "{tools}/Motion2MixamoRig",
-        "commit": "f05a718188026b06e7ee64b47bab077970444b19"
+        "commit": "f05a718188026b06e7ee64b47bab077970444b19",
+        "verify": {
+          "windows": [
+            "{tools}/Motion2MixamoRig/.venv/Scripts/m2mr.exe"
+          ],
+          "all": [
+            "{tools}/Motion2MixamoRig/.venv/bin/m2mr"
+          ]
+        }
       },
       "install": {
         "windows": [
@@ -1086,9 +1428,6 @@
         "motion-reference-workflow",
         "blender-game-animation"
       ],
-      "requires_programs": [
-        "git"
-      ],
       "licence_gate": [
         {
           "ru": "Код можно ставить и запускать: это Apache-2.0.",
@@ -1106,7 +1445,17 @@
           "ru": "Чтобы движение шло в продаваемую игру, нужна коммерческая лицензия: SMPL-X — через Meshcapade, MANO — ps-license@tue.mpg.de; ссылку на неё записывает владелец (set-licence). Это не юридическая консультация.",
           "en": "For motion in a game you sell you need a commercial licence: SMPL-X through Meshcapade, MANO via ps-license@tue.mpg.de; the owner records a link to it (set-licence). This is not legal advice."
         }
-      ]
+      ],
+      "prerequisites": {
+        "install": [
+          "git",
+          "python-3-11",
+          "msvc-build-tools"
+        ],
+        "use": [
+          "smplx-models"
+        ]
+      }
     },
     {
       "id": "kimodo",
@@ -1133,9 +1482,6 @@
       },
       "who": "claude_yes",
       "scope": "machine",
-      "requires_programs": [
-        "git"
-      ],
       "detect": {
         "type": "git_checkout",
         "path": "{tools}/kimodo",
@@ -1162,7 +1508,16 @@
       "used_by": [
         "motion-reference-workflow",
         "blender-game-animation"
-      ]
+      ],
+      "prerequisites": {
+        "install": [
+          "git"
+        ],
+        "use": [
+          "linux",
+          "nvidia-gpu-17gb"
+        ]
+      }
     },
     {
       "id": "mixar",
@@ -1233,9 +1588,6 @@
       },
       "who": "claude_yes",
       "scope": "machine",
-      "requires_programs": [
-        "git"
-      ],
       "detect": {
         "type": "git_checkout",
         "path": "{tools}/claude-mixar",
@@ -1261,7 +1613,15 @@
       },
       "used_by": [
         "game-asset-production"
-      ]
+      ],
+      "prerequisites": {
+        "install": [
+          "git"
+        ],
+        "use": [
+          "mixar-app"
+        ]
+      }
     },
     {
       "id": "glitchless",
@@ -1307,7 +1667,12 @@
             "en": "Glitchless project key"
           }
         }
-      ]
+      ],
+      "prerequisites": {
+        "use": [
+          "godot-4-5"
+        ]
+      }
     }
   ]
 }
