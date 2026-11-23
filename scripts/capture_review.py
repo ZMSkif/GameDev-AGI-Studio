@@ -6,16 +6,34 @@ from html import escape
 import json
 from pathlib import Path
 import re
+from string import Template
 import sys
 from tempfile import TemporaryDirectory
 from time import perf_counter
 from urllib.parse import urlsplit
 
-from render_review import COPY, render
+from render_review import COPY, STYLES, render
 from review_evidence import ISSUE_URL, build, require_keys
 
 
 VIEWPORTS = {"portrait": (390, 844), "landscape": (844, 390), "square": (512, 512)}
+INDEX_TEMPLATE = STYLES.with_name("qa-index.html")
+INDEX_COPY = {
+    "en": {
+        "title": "Web build QA", "data": "Results JSON", "actions": "Report links",
+        "portrait": "Portrait", "landscape": "Landscape", "square": "Square",
+        "passed": "Passed", "failed": "Failed", "open": "Review captures",
+        "problems": "Diagnostics", "timing": "Time to ready", "unit": "ms",
+        "candidate": "Candidate capture", "baseline": "Baseline capture",
+    },
+    "ru": {
+        "title": "Проверка веб-сборок", "data": "Результаты JSON", "actions": "Ссылки отчёта",
+        "portrait": "Портрет", "landscape": "Альбом", "square": "Квадрат",
+        "passed": "Пройдено", "failed": "Ошибка", "open": "Смотреть кадры",
+        "problems": "Диагностика", "timing": "До готовности", "unit": "мс",
+        "candidate": "Кадр новой сборки", "baseline": "Кадр исходной сборки",
+    },
+}
 LOOPBACK = {"localhost", "127.0.0.1", "::1"}
 STEP_FIELDS = {
     "click": {"selector"}, "tap": {"selector"}, "visible": {"selector"},
@@ -302,46 +320,78 @@ def capture_viewport(browser, playwright, config, name, directory, recording, la
     try:
         build(directory, plan_path, directory / "manifest.json")
         render(directory, directory / "manifest.json", directory / "review.html",
-               f"{width} × {height}", "pending", lang)
+               f"{COPY[lang]['before']} / {COPY[lang]['after']} · {width} × {height}",
+               "pending", lang, from_capture=True)
         result["report"] = f"{name}/review.html"
     except (OSError, ValueError, RuntimeError) as error:
         result["report_error"] = str(error)
     return result
 
 
+def viewport_card(out, viewport, lang):
+    copy = INDEX_COPY[lang]
+    name = viewport["name"]
+    passed = viewport["report"] and all(build["scenario_passed"] for build in viewport["builds"].values())
+    status = "passed" if passed else "failed"
+    metrics = []
+    diagnostics = []
+    for side, result in viewport["builds"].items():
+        label = COPY[lang][side]
+        time = result["ready_ms"]
+        timing = f'{time} {copy["unit"]}' if time is not None else "—"
+        side_status = "passed" if result["scenario_passed"] else "failed"
+        metrics.append(
+            f'<div class="metric"><dt>{label}</dt><dd class="time">{timing}</dd>'
+            f'<dd class="pill" data-status="{side_status}">{copy[side_status]}</dd></div>'
+        )
+        failures = [item["detail"] for item in result["checks"] if not item["passed"]]
+        for failure in [*failures, *result["errors"]]:
+            diagnostics.append(f'<pre>{label} · {escape(failure)}</pre>')
+    if "report_error" in viewport:
+        diagnostics.append(f'<pre>{escape(viewport["report_error"])}</pre>')
+    details = ""
+    if diagnostics:
+        details = (f'<details class="diagnostics"><summary>{copy["problems"]} ({len(diagnostics)})</summary>'
+                   f'{"".join(diagnostics)}</details>')
+    thumbnail = ""
+    footer = ""
+    if viewport["report"]:
+        for side, label in (("after", "candidate"), ("before", "baseline")):
+            path = f"{name}/{side}.png"
+            if (out / path).is_file():
+                thumbnail = (f'<div class="thumb"><img src="{path}" alt="{copy[label]}" '
+                             'loading="lazy" decoding="async"></div>')
+                break
+        report = escape(viewport["report"], quote=True)
+        footer = (f'<div class="card-footer"><a class="action primary" href="{report}">'
+                  f'{copy["open"]}<span aria-hidden="true">→</span></a></div>')
+    return (
+        f'<section class="viewport-card panel"><div class="viewport-content">'
+        f'<div class="viewport-head"><div><h2>{copy[name]}</h2>'
+        f'<p>{viewport["width"]} × {viewport["height"]}</p></div>'
+        f'<span class="pill" data-status="{status}">{copy[status]}</span></div>'
+        f'{thumbnail}<p class="metrics-label">{copy["timing"]}</p>'
+        f'<dl class="metrics">{"".join(metrics)}</dl>'
+        f'{footer}{details}</div></section>'
+    )
+
+
 def write_index(out, summary, lang):
-    russian = lang == "ru"
-    title = "Проверка веб-сборок" if russian else "Web build QA"
-    status = {True: "Пройдено" if russian else "Passed", False: "Ошибка" if russian else "Failed"}
-    sections = []
-    for viewport in summary["viewports"]:
-        observed = []
-        for side, result in viewport["builds"].items():
-            name = COPY[lang][side]
-            timing = f' · {result["ready_ms"]} ms' if result["ready_ms"] is not None else ""
-            observed.append(f"<p><strong>{name}</strong> · {status[result['scenario_passed']]}{timing}</p>")
-            failures = [item["detail"] for item in result["checks"] if not item["passed"]]
-            for failure in [*failures, *result["errors"]]:
-                observed.append(f"<pre>{escape(failure)}</pre>")
-        report = viewport["report"]
-        if report:
-            observed.append(f'<a href="{escape(report, quote=True)}">{"Кадры и клипы" if russian else "Captures and clips"}</a>')
-        if "report_error" in viewport:
-            observed.append(f"<pre>{escape(viewport['report_error'])}</pre>")
-        sections.append(f'<section><h2>{viewport["width"]} × {viewport["height"]}</h2>{"".join(observed)}</section>')
-    data_label = "Результаты JSON" if russian else "JSON results"
-    issue_label = COPY[lang]["issue_label"]
-    page = (
-        f'<!doctype html><html lang="{lang}"><meta charset="utf-8">'
-        '<meta name="viewport" content="width=device-width, initial-scale=1">'
-        f'<title>{title} · GameDev Studio</title>'
-        '<style>html{color-scheme:dark;background:#131715;color:#f4f1e8;font:16px/1.55 system-ui}'
-        'body{max-width:56rem;margin:auto;padding:2rem 1.25rem}a{color:#c8ed90}'
-        'section{border-top:1px solid #383f38;padding:1rem 0}pre{white-space:pre-wrap;overflow-wrap:anywhere;color:#ff9f8c}'
-        'h1{line-height:1.08;margin:.2em 0 .4em}h2,p{margin:.4em 0}</style>'
-        f'<header><span>GameDev Studio</span><h1>{title}</h1>'
-        f'<p>{status[summary["passed"]]} · <a href="{escape(summary["issue"], quote=True)}">{issue_label}</a>'
-        f' · <a href="summary.json">{data_label}</a></p></header><main>{"".join(sections)}</main></html>'
+    copy = INDEX_COPY[lang]
+    status = "passed" if summary["passed"] else "failed"
+    issue = summary["issue"]
+    page = Template(INDEX_TEMPLATE.read_text(encoding="utf-8")).substitute(
+        lang=lang,
+        styles=STYLES.read_text(encoding="utf-8"),
+        title=copy["title"],
+        data_label=copy["data"],
+        actions_label=copy["actions"],
+        issue_url=escape(issue, quote=True),
+        issue_number=issue.rsplit("/", 1)[1],
+        issue_label=COPY[lang]["issue_label"],
+        overall_key=status,
+        overall_status=copy[status],
+        cards="".join(viewport_card(out, viewport, lang) for viewport in summary["viewports"]),
     )
     with (out / "index.html").open("x", encoding="utf-8", newline="\n") as file:
         file.write(page)
