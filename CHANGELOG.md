@@ -2,6 +2,25 @@
 
 All notable changes to the `gamedev-studio` plugin. The version lives only in `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`, and a release tag `vX.Y.Z` must match it. From the next release on, each section is the release notes for its tag (see "Releases" in `README.md`). 0.1.0 and 0.2.0 were not tagged. The v0.3.0 release notes were written by hand, in Russian and English, before this file existed.
 
+## [0.8.0] - 2026-11-23
+
+### Added
+
+- The full Mr. Mak Workspace v0.6.6 production workflows as studio skills: `image-reference-workflow`, `character-sheet-pipeline` (with its prompt files), `materials-to-game`, `motion-reference-workflow`, `blender-game-animation` (with its engine-handoff checks), `fal-ai-generation`, `higgsfield-workflow`, `img2threejs` and `video-watch`. `game-asset-production` now routes between them.
+- `fal-ai-generation` ships the queue helper; a real submit or upload requires `--owner-approval` with the GitHub link of the owner's yes, which is stored in the receipt (DEC-009, DEC-130).
+- `img2threejs` installs the upstream Apache-2.0 pipeline at the pinned v2.0.0 release in the game's own folder instead of copying it into the plugin.
+- `scripts/video_watch.py`: scene, even and dense frame sampling of a local clip with FFmpeg only, `frames.json` and a seekable offline report.
+- `scripts/reference_board.py`: concept rounds with verdicts, prompts, providers and image hashes.
+- `scripts/build_release_report.py --html`: an offline view of the pre-release report.
+- The browser runner records when each check ran, the measured regions of layout checks and expected and actual values.
+- `doctor.py` reports FFmpeg and ffprobe as optional; they are only looked up on PATH.
+
+### Changed
+
+- The VFX, animation, audio, level, UI and visual review skills now carry every rule of the Mr. Mak originals, including the VFX lifecycle checklist, adapted to the web and Godot profiles. `studio-handoff` includes the feature-handoff rules.
+- Every report uses one offline design in the Mr. Mak visual language, with a zoom viewer and the studio's own mark. The QA summary shows both captures per layout with the failed regions marked and the failures listed; each layout opens a check inspector that highlights a region on the capture and moves the clip to the moment of a check.
+- The Art Director, Asset Pipeline Artist, Art Reviewer, Gameplay Engineer, QA Engineer and Release QA Engineer roles name the new skills and reports.
+
 ## [0.7.1] - 2026-11-23
 
 ### Changed

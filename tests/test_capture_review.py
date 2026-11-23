@@ -133,7 +133,10 @@ class CaptureReviewTests(unittest.TestCase):
         data = json.loads((out / "summary.json").read_text(encoding="utf-8"))
         self.assertFalse(data["passed"])
         self.assertEqual([item["name"] for item in data["viewports"]], ["portrait", "landscape", "square"])
-        self.assertIn("Intentional fixture regression", (out / "index.html").read_text(encoding="utf-8"))
+        index = (out / "index.html").read_text(encoding="utf-8")
+        self.assertIn("Intentional fixture regression", index)
+        self.assertIn('data-failed="true"', index)
+        self.assertIn('class="stats"', index)
         for viewport in data["viewports"]:
             actual = viewport["builds"]
             self.assertTrue(actual["before"]["scenario_passed"], actual["before"])
@@ -143,6 +146,15 @@ class CaptureReviewTests(unittest.TestCase):
                                 if check["type"] == "no_overlap"))
             self.assertTrue(any(not check["passed"] for check in actual["after"]["checks"]
                                 if check["type"] == "within"))
+            overlap = next(check for check in actual["after"]["checks"]
+                           if check["type"] == "no_overlap" and not check["passed"])
+            self.assertEqual([region["role"] for region in overlap["regions"]], ["element", "element", "overlap"])
+            self.assertIn("expected", overlap)
+            self.assertIn("actual", overlap)
+            self.assertTrue(all(isinstance(check.get("at_ms"), int) for check in actual["after"]["checks"]))
+            review = (out / viewport["report"]).read_text(encoding="utf-8")
+            self.assertIn('data-show-region="r-after-', review)
+            self.assertIn('class="marker"', review)
             self.assertTrue((out / viewport["report"]).is_file())
             directory = out / viewport["name"]
             manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))

@@ -42,7 +42,13 @@ Use `tap` for an explicit touch step. A step `{"action":"reload"}` reloads the c
 
 ## Results
 
-Open `index.html` in the output directory. It links to each viewport's `review.html`. The `summary.json` records both revisions, timing to the configured readiness state, scenario results and errors. Keep the reports with their images and clips. A failed probe is evidence of what the runner observed. Use the task's independent review to record acceptance.
+Open `index.html` in the output directory. It shows the totals, then one card per layout with the baseline and candidate captures side by side, the failed checks listed in the card and their regions marked on the candidate capture. Each card opens that layout's `review.html`, the check inspector:
+
+- every check of both builds with its type, the moment it ran (measured from the page opening, which is also the start of the clip), and for failures the expected and actual values;
+- *Show on frame* highlights the measured region of a layout check on the capture; *Clip at …* moves the recorded clip to that moment;
+- every image opens in the zoom viewer (wheel or +/−, drag to pan, ←/→ to switch, a markers toggle); the gallery also has a before/after slider.
+
+`summary.json` records both revisions, timing to the configured readiness state, each check with `at_ms`, measured `regions` in CSS pixels and `expected`/`actual` where the runner measured them, plus errors. Older summaries without these fields still render. Keep the reports with their images and clips. A failed probe is evidence of what the runner observed. Use the task's independent review to record acceptance.
 
 ## Local pre-release report
 
@@ -52,6 +58,6 @@ Combine a build archive and observations from the run. Supply the ZIP correspond
 python <plugin-root>/scripts/build_release_report.py --archive <build.zip> --qa-result <summary.json> --platform playgama --platform youtube-playables --out <release-report.json>
 ```
 
-Use `--pause-check pause-verified --save-check save-restored` when the scenario has run those named assertions. `--max-archive-bytes` records the limit comparison in the JSON.
+Use `--pause-check pause-verified --save-check save-restored` when the scenario has run those named assertions. `--max-archive-bytes` records the limit comparison in the JSON. Add `--html <release-report.html> --lang ru` for an offline view of the same report: archive size against the budget, the candidate's browser results per layout, the named checks, the largest files, and every platform and archive-to-build match shown as unverified.
 
 Run platform-specific acceptance through the approved flow for the game. Use a current requirement source for each platform.

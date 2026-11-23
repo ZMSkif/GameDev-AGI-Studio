@@ -1,20 +1,44 @@
 ---
 name: game-asset-production
-description: Produce reviewable game-ready 3D assets from approved references through model, materials, rig or animation, and engine import. Use for character sheets, Blender, baked materials and repeatable export checks.
+description: Route and govern 3D and 2D game-asset production from approved references to a verified engine import — concepts, character sheets, meshes, materials, rigs, animation, VFX, UI, levels, audio and native review. Use to choose the right production skill and to hand over a game-ready asset.
 ---
 
 # Game asset production
 
-Apply the `studio-rules`, `art-acceptance` and `asset-licensing` skills. Use the current game engine profile. DEC-065 and DEC-072 govern acceptance, DEC-094 governs source provenance, and DEC-133 governs the transition from pixel concept to final 3D.
+Apply the `studio-rules`, `art-acceptance` and `asset-licensing` skills first, and use the current engine profile. DEC-065 and DEC-072 govern acceptance, DEC-094 governs provenance and licences, DEC-133 governs the move from a pixel concept to final smooth 3D, and DEC-130 forbids spending without the owner's yes.
 
-1. **Define the deliverable.** Identify the asset's approved reference, target camera and distances, engine, scale, budget, required channels and clips, and where it appears in gameplay. Confirm which local tools and accounts are available before choosing a pipeline.
-2. **Resolve the reference.** For a rigged character, start with a neutral front reference, then add other views only if they resolve missing proportions or attachment points. Keep the silhouette, alignment and optional parts consistent. For a revision, use the accepted reference itself and record the exact visual change. For motion, mark start, contact and recovery on the selected take and retain the original when trimming. Record creative choices that need the Art Director's approval.
-3. **Build and verify the mesh and materials.** Keep an editable source. Verify scale, origin, orientation, UVs and material channels. Where baking is needed, inspect normal orientation, seams and texture bleed using the target engine and expected distance. Record licensed inputs and derivative work.
-4. **Rig or animate when required.** Inspect the bind pose, naming, root motion and important contacts. Confirm clip boundaries, looping, transitions and exported actions or NLA tracks in Blender. Test idle, extreme poses and relevant attachment fit, then repeat in the game runtime using the actual controller. Use `game-animation-integration` to bind finished clips to that controller.
-5. **Hand over the playable result.** Supply the editable source, versioned export, texture or clip map and the tested revision. Take a normal-distance in-engine capture and a short clip for moving assets. Use the `review-evidence` skill to attach files and have the independent reviewer check the approved art criteria.
+Start with the intended deliverable: an image reference, editable geometry, a textured mesh, material maps, a rigged character or engine-ready animation. Inspect the supplied assets and the target engine before choosing a route.
 
-This workflow uses existing, approved tools. Paid services and external uploads follow the owner's authorization. It works with locally supplied assets and references.
+## Choose the route
 
-Sources for the workflow: [character sheets](https://github.com/witnesstodark/mr-mak-workspace/blob/v0.6.6/.agents/skills/character-sheet-pipeline/SKILL.md), [materials and baking](https://github.com/witnesstodark/mr-mak-workspace/blob/v0.6.6/.agents/skills/materials-to-game/SKILL.md), [Blender animation](https://github.com/witnesstodark/mr-mak-workspace/blob/v0.6.6/.agents/skills/blender-game-animation/SKILL.md).
+| Need | Skill |
+| --- | --- |
+| Explore silhouettes or make a faithful edit of an accepted image | `image-reference-workflow` |
+| Strict-front sheet, isolated parts and modeling references | `character-sheet-pipeline` |
+| Generate images, meshes, material maps, video or audio through fal.ai (paid) | `fal-ai-generation` |
+| Work through an existing Higgsfield account (paid) | `higgsfield-workflow` |
+| Editable procedural geometry in Three.js from a reference image | `img2threejs` |
+| Validate and deliver a PBR material, or bake high-poly onto a game mesh | `materials-to-game` |
+| Prepare or select motion references | `motion-reference-workflow` |
+| Read a clip as timestamped frames | `video-watch` |
+| Rig, skin, animate and export in Blender | `blender-game-animation` |
+| Integrate clips and locomotion transitions in the engine | `game-animation-integration` |
+| Event-driven visual effects | `game-vfx-workflow` |
+| HUD or menu from concept to live game state | `game-ui-workflow` |
+| A playable level or encounter layout | `game-level-design` |
+| Select and integrate game sounds | `game-audio-workflow` |
+| Verify the result in the actual game | `gameplay-visual-review` |
 
-[Image references](https://github.com/witnesstodark/mr-mak-workspace/blob/v0.6.6/.agents/skills/image-reference-workflow/SKILL.md) and [motion references](https://github.com/witnesstodark/mr-mak-workspace/blob/v0.6.6/.agents/skills/motion-reference-workflow/SKILL.md).
+Read the selected skill before execution. Its presence does not mean that its MCP, CLI, account or editor is connected: inspect live capabilities and exact model schemas, and keep provider choices and accepted references from the current task.
+
+## Govern the production
+
+1. **Define the deliverable.** Record the approved reference, target camera and play distance, engine, scale and units, polygon/texture/clip budget, required material channels and clips and where the asset appears in gameplay. Confirm which local tools and accounts are available before choosing a pipeline. Record the chosen route and the acceptance criteria on the piece Issue.
+2. **Resolve the reference.** A rigged character starts from a neutral strict-front reference; add other views only when they resolve missing proportions or attachment points. A revision starts from the accepted reference itself with the exact visual change written down. Motion references mark start, contact and recovery on the selected take, and the original stays when trimming. Creative choices go to the Art Director for approval (DEC-139, DEC-140).
+3. **Keep the acceptance states separate.** Concept acceptance is not mesh acceptance. Check topology, scale, origin, orientation, UVs, materials, rig, root motion and engine import as they apply. A successful API request or an attractive render is not an engine handoff. A generated mesh still needs its own topology, rig and export checks.
+4. **Keep provenance.** Every input and output carries its source, licence, provider and model, request or job ID and hash. Paid generations and external uploads happen only after the owner's yes for that batch; private references are uploaded only when the task needs them.
+5. **Hand over the playable result.** Supply the editable source, a versioned export, the texture or clip map, the tested revision, a normal-distance in-engine capture and a short clip for moving assets. Use `review-evidence` to attach the files and have the independent reviewer check them against the approved art criteria.
+
+This workflow works with locally supplied assets and references. Paid services stay optional.
+
+Sources: [Mr. Mak 3D production routing](https://github.com/witnesstodark/mr-mak-workspace/blob/v0.6.6/.agents/skills/3d-production-routing/SKILL.md) and the linked production skills (MIT, see `reference/mr-mak-notices.md`).

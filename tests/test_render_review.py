@@ -77,7 +77,7 @@ class ReviewReportTest(unittest.TestCase):
         result = self.render("--lang", "ru", "--verdict", "confirmed")
         self.assertEqual(result.returncode, 0, result.stderr)
         html = self.report.read_text(encoding="utf-8")
-        self.assertIn('<html lang="ru">', html)
+        self.assertIn('<html lang="ru" data-ui="Предыдущий', html)
         self.assertIn("<h1>Материалы приёмки</h1>", html)
         self.assertIn('data-status="confirmed">Принято<', html)
 

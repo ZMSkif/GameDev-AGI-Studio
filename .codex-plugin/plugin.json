@@ -1,6 +1,6 @@
 {
   "name": "gamedev-studio",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "description": "GameDev AGI Studio plugin: binding owner decisions, quality rules and agent roles for building games with Claude Code and Codex.",
   "author": {
     "name": "ZMSkif",

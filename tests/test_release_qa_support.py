@@ -82,6 +82,18 @@ class ReleaseQaSupportTest(unittest.TestCase):
         self.assertEqual(report["pause"]["observations"][0], {"viewport": "wide", "status": "passed"})
         self.assertEqual(report["pause"]["observations"][1], {"viewport": "square", "status": "not_run"})
 
+        self.out.unlink()
+        page = self.root / "release.html"
+        result = self.release("--qa-result", qa, "--pause-check", pause["name"], "--save-check", save["name"],
+                              "--platform", "playgama", "--html", page, "--lang", "ru")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        html = page.read_text(encoding="utf-8")
+        self.assertIn("Не полностью", html)
+        self.assertIn("Не подтверждено", html)
+        self.assertIn("assets/app.wasm", html)
+        self.assertIn("готова 13.2 мс", html)
+        self.assertIn("Есть проваленная проверка", html)
+
     def test_invalid_zip_or_qa_does_not_create_report(self):
         qa = self.root / "summary.json"
         qa.write_text("{}")
@@ -116,8 +128,9 @@ class ReleaseQaSupportTest(unittest.TestCase):
         result = self.run_cli("render_review.py", "--root", self.root, "--manifest", manifest, "--out", report)
         self.assertEqual(result.returncode, 0, result.stderr)
         html = report.read_text(encoding="utf-8")
-        self.assertIn('data-role="reference"><img src="approved%20reference.png"', html)
-        self.assertIn(f'<a href="{DECISION}">Approval record</a>', html)
+        self.assertIn('data-role="reference"><div class="media">', html)
+        self.assertIn('<img src="approved%20reference.png"', html)
+        self.assertIn(f'<a class="spacer" href="{DECISION}">Approval record</a>', html)
 
     def test_reference_rejects_a_non_github_decision_url(self):
         result = self.run_cli("review_evidence.py", "build", "--root", self.root,

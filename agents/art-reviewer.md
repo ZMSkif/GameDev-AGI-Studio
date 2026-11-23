@@ -20,6 +20,7 @@ Keep anything primitive, template-looking or mangled out of the game, by an inde
 - For wearables, check the posed-fit gate's method as well as its result, including the known-bad control and the poke-through check.
 - Parse the shipped files yourself: triangles, bytes, colliders against mesh overhang, licence rows and SHA-256 (DEC-094, #95).
 - Check that new 3D characters followed DEC-064 (#65) and that no pixelation leaked into smooth 3D (DEC-133, #135).
+- For moving assets, read the clip with `gamedev-studio:video-watch` (a dense range around contacts and impacts) and cite the timestamps and frames that show each defect.
 
 ## Does not do
 - Never edits or re-renders the shipped assets; never reviews art it made (DEC-040, #40).

@@ -10,6 +10,9 @@ import sys
 from pathlib import Path
 from zipfile import BadZipFile, ZipFile
 
+from html import escape
+
+from report_ui import attr, page, write_new
 from review_evidence import ISSUE_URL
 
 
@@ -145,6 +148,122 @@ def build_report(archive, qa_result, platforms, limit, pause_check, save_check):
     }
 
 
+COPY = {
+    "en": {
+        "title": "Pre-release report", "eyebrow": "Release candidate", "issue": "GitHub issue",
+        "archive_size": "Archive size", "files": "Files", "uncompressed": "Uncompressed", "platforms": "Targets",
+        "checks_heading": "Checks", "files_heading": "Largest files in the archive", "path": "Path",
+        "size": "Size", "compressed": "Compressed",
+        "budget": "Archive budget", "browser": "Candidate browser QA", "match": "Archive matches the tested build",
+        "pause": "Pause", "save": "Save and restore", "platform": "Platform",
+        "passed": "Passed", "failed": "Failed", "not_run": "Not run", "unverified": "Unverified", "incomplete": "Incomplete",
+        "limit": "Limit", "measured": "Measured", "commit": "Candidate commit", "step": "Step",
+        "no_budget": "No archive budget was supplied for this target.",
+        "no_qa": "No browser QA summary was supplied.",
+        "match_text": "The ZIP and the served build are measured separately. Their bytes are not compared by this tool.",
+        "platform_text": "Platform acceptance is done through that platform's own flow and current requirements.",
+        "caveat": "Only measured facts are marked as passed. Everything this tool cannot check stays unverified until the approved release flow confirms it.",
+        "note": "Generated offline from the local ZIP and the recorded browser QA summary.",
+        "ready": "ready", "ms": "ms", "overall_failed": "Blocked by a failed check", "overall_open": "Open checks remain",
+    },
+    "ru": {
+        "title": "Предрелизный отчёт", "eyebrow": "Кандидат в релиз", "issue": "Задача на GitHub",
+        "archive_size": "Размер архива", "files": "Файлов", "uncompressed": "Без сжатия", "platforms": "Платформ",
+        "checks_heading": "Проверки", "files_heading": "Самые большие файлы архива", "path": "Путь",
+        "size": "Размер", "compressed": "Сжато",
+        "budget": "Бюджет архива", "browser": "Браузерный QA кандидата", "match": "Архив совпадает с проверенной сборкой",
+        "pause": "Пауза", "save": "Сохранение и восстановление", "platform": "Платформа",
+        "passed": "Пройдено", "failed": "Ошибка", "not_run": "Не запускалось", "unverified": "Не подтверждено",
+        "incomplete": "Не полностью",
+        "limit": "Лимит", "measured": "Измерено", "commit": "Коммит кандидата", "step": "Шаг",
+        "no_budget": "Бюджет архива для этой платформы не задан.",
+        "no_qa": "Сводка браузерного QA не передана.",
+        "match_text": "ZIP и запущенная сборка измерены отдельно. Этот инструмент не сравнивает их байты.",
+        "platform_text": "Приёмка на платформе идёт через её собственный процесс и актуальные требования.",
+        "caveat": "Пройденным отмечено только измеренное. Всё, что инструмент проверить не может, остаётся неподтверждённым, пока это не подтвердит утверждённый процесс релиза.",
+        "note": "Создан офлайн из локального ZIP и записанной сводки браузерного QA.",
+        "ready": "готова", "ms": "мс", "overall_failed": "Есть проваленная проверка", "overall_open": "Остались открытые проверки",
+    },
+}
+
+
+def size(value):
+    for unit in ("B", "KB", "MB", "GB"):
+        if value < 1024 or unit == "GB":
+            return f"{value:.0f} {unit}" if unit == "B" else f"{value:.1f} {unit}"
+        value /= 1024
+
+
+def card(title, status, copy, body):
+    return (f'<section class="release-card panel" data-status="{status}"><header><h2>{title}</h2>'
+            f'<span class="pill" data-status="{status}">{copy[status]}</span></header>{body}</section>')
+
+
+def render_html(report, out, lang):
+    copy = COPY[lang]
+    archive = report["archive"]
+    qa = report["candidate_browser_qa"]
+    budget = report["archive_budget"]
+    cards = []
+    if budget["status"] == "not_run":
+        cards.append(card(copy["budget"], "not_run", copy, f'<p>{copy["no_budget"]}</p>'))
+    else:
+        share = min(100, archive["archive_bytes"] / budget["max_archive_bytes"] * 100)
+        cards.append(card(copy["budget"], budget["status"], copy,
+                          f'<dl class="kv"><dt>{copy["measured"]}</dt><dd>{size(archive["archive_bytes"])}</dd>'
+                          f'<dt>{copy["limit"]}</dt><dd>{size(budget["max_archive_bytes"])}</dd></dl>'
+                          f'<div class="meter" data-status="{budget["status"]}"><span style="width:{share:.1f}%"></span></div>'))
+    if qa:
+        rows = []
+        for view in qa["viewports"]:
+            state = "passed" if view["scenario_passed"] else "failed"
+            ready = f' · {copy["ready"]} {view["ready_ms"]:g} {copy["ms"]}' if view["ready_ms"] is not None else ""
+            rows.append(f'<dt>{escape(view["name"])}</dt><dd><span class="pill" data-status="{state}">'
+                        f'{copy[state]}</span><span class="muted">{ready}</span></dd>')
+        rows = "".join(rows)
+        status = "passed" if all(view["scenario_passed"] for view in qa["viewports"]) else "failed"
+        cards.append(card(copy["browser"], status, copy,
+                          f'<dl class="kv"><dt>{copy["commit"]}</dt><dd><code>{qa["candidate_commit"][:12]}</code></dd>{rows}</dl>'))
+    else:
+        cards.append(card(copy["browser"], "not_run", copy, f'<p>{copy["no_qa"]}</p>'))
+    cards.append(card(copy["match"], report["archive_browser_match"]["status"], copy, f'<p>{copy["match_text"]}</p>'))
+    for key in ("pause", "save"):
+        check = report[key]
+        body = ""
+        if check.get("step"):
+            observations = "".join(f'<dt>{escape(item["viewport"])}</dt><dd>{copy[item["status"]]}</dd>'
+                                   for item in check["observations"])
+            body = f'<dl class="kv"><dt>{copy["step"]}</dt><dd><code>{escape(check["step"])}</code></dd>{observations}</dl>'
+        cards.append(card(copy[key], check["status"], copy, body))
+    for platform in report["platforms"]:
+        cards.append(card(f'{copy["platform"]}: {escape(platform["name"])}', platform["status"], copy,
+                          f'<p>{copy["platform_text"]}</p>'))
+    statuses = {budget["status"], report["pause"]["status"], report["save"]["status"]}
+    if qa:
+        statuses.add("passed" if all(view["scenario_passed"] for view in qa["viewports"]) else "failed")
+    overall = ("failed", copy["overall_failed"]) if "failed" in statuses else ("unverified", copy["overall_open"])
+    largest = sorted(archive["files"], key=lambda entry: entry["bytes"], reverse=True)[:15]
+    files = (f'<table class="data"><thead><tr><th>{copy["path"]}</th><th class="num">{copy["size"]}</th>'
+             f'<th class="num">{copy["compressed"]}</th></tr></thead><tbody>'
+             + "".join(f'<tr><td><code>{escape(entry["path"])}</code></td><td class="num">{size(entry["bytes"])}</td>'
+                       f'<td class="num">{size(entry["compressed_bytes"])}</td></tr>' for entry in largest)
+             + "</tbody></table>")
+    stats = "".join(f'<div class="stat"><dt>{label}</dt><dd>{value}</dd></div>' for label, value in (
+        (copy["archive_size"], size(archive["archive_bytes"])), (copy["files"], archive["file_count"]),
+        (copy["uncompressed"], size(archive["uncompressed_bytes"])), (copy["platforms"], len(report["platforms"])),
+    ))
+    issue_link = ""
+    if qa:
+        issue_link = f'<a class="action primary" href="{attr(qa["issue"])}">{copy["issue"]} #{qa["issue"].rsplit("/", 1)[1]}</a>'
+    write_new(out, page(
+        "release-report.html", lang, title=copy["title"], eyebrow=copy["eyebrow"],
+        subtitle=f'{escape(archive["name"])} · <code title="{archive["sha256"]}">sha256 {archive["sha256"][:16]}</code>',
+        overall_key=overall[0], overall_label=overall[1], stats=stats, caveat=copy["caveat"],
+        checks_heading=copy["checks_heading"], cards="".join(cards), files_heading=copy["files_heading"],
+        file_count=archive["file_count"], files=files, note=copy["note"], issue_link=issue_link,
+    ))
+
+
 def positive_bytes(value):
     size = int(value)
     if size <= 0:
@@ -166,6 +285,8 @@ def main(argv=None):
     parser.add_argument("--max-archive-bytes", type=positive_bytes)
     parser.add_argument("--pause-check", help="Exact name of the scenario step asserting pause behavior")
     parser.add_argument("--save-check", help="Exact name of the scenario step asserting save behavior")
+    parser.add_argument("--html", type=Path, help="Also write an offline HTML view of the report to this new file")
+    parser.add_argument("--lang", choices=COPY, default="en", help="Language of the HTML view")
     args = parser.parse_args(argv)
     if not args.qa_result and (args.pause_check or args.save_check):
         parser.error("Named checks require --qa-result")
@@ -176,10 +297,12 @@ def main(argv=None):
         with args.out.open("x", encoding="utf-8", newline="\n") as output:
             json.dump(report, output, ensure_ascii=False, allow_nan=False, indent=2)
             output.write("\n")
+        if args.html:
+            render_html(report, args.html, args.lang)
     except (BadZipFile, OSError, ValueError, RuntimeError) as error:
         print(error, file=sys.stderr)
         return 1
-    print(f"Release report: {args.out}")
+    print(f"Release report: {args.out}" + (f" and {args.html}" if args.html else ""))
     return 0
 
 

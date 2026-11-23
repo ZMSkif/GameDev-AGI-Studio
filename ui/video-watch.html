@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="$lang" data-ui="$viewer_labels">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src file: data:; media-src file:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+  <title>$title · GameDev Studio</title>
+  <style>$styles</style>
+</head>
+<body>
+  <header class="masthead">
+    <div class="page">
+      <span class="brand">${brand_mark}GameDev Studio</span>
+      <nav class="actions"><a class="action" href="frames.json">frames.json</a></nav>
+    </div>
+  </header>
+  <main class="page">
+    <header class="summary-title">
+      <div>
+        <p class="eyebrow">$eyebrow</p>
+        <h1>$title</h1>
+        <p class="subtitle">$subtitle</p>
+      </div>
+    </header>
+    <dl class="stats">$stats</dl>
+    $player
+    $timeline
+    <section class="section" style="--ratio: $ratio">
+      <div class="section-head"><h2>$grid_heading</h2></div>
+      <div class="frame-grid">$cards</div>
+    </section>
+    <p class="note">$note</p>
+    <p class="note">$sha_label: <code>$sha</code></p>
+  </main>
+  <script>$script</script>
+</body>
+</html>
