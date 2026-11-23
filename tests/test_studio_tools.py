@@ -383,6 +383,7 @@ class PrerequisiteTests(unittest.TestCase):
         self.assertFalse(rows["kimodo"]["ready_to_use"])
         mixar = rows["mixar-claude"]["prerequisites"]
         self.assertIsNone(next(row for row in mixar if row["id"] == "mixar-app")["met"])
+        self.assertEqual(rows["mixar-claude"]["confirm_with_person"], ["mixar-app"])
         self.assertEqual(rows["ffmpeg"]["prerequisites"], [])
 
     def test_unfinished_install_is_not_reported_as_installed(self):

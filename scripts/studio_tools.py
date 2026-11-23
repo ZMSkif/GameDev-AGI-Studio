@@ -1015,7 +1015,8 @@ def status(catalog, game, lang="en"):
                                      "owner_accepted" if state.get("owner_accepted_risk") else tool.get("commercial", "ok")),
             "prerequisites": prerequisites,
             "ready_to_install": all(row["met"] is not False for row in prerequisites if row["for"] == "install"),
-            "ready_to_use": installed and all(row["met"] is True for row in prerequisites if row["for"] == "use"),
+            "ready_to_use": installed and all(row["met"] is not False for row in prerequisites if row["for"] == "use"),
+            "confirm_with_person": [row["id"] for row in prerequisites if row["met"] is None],
         })
     return rows
 
@@ -1039,7 +1040,7 @@ def readiness(catalog, game, tid, lang="en"):
     """One tool's state for an agent about to use it: installed, and what is still missing to install or use it."""
     row = next(item for item in status(catalog, game, lang) if item["id"] == tid)
     return {key: row[key] for key in ("id", "name", "installed", "detail", "who", "manual", "install_steps",
-                                      "requirements", "prerequisites", "ready_to_install", "ready_to_use",
+                                      "requirements", "prerequisites", "ready_to_install", "ready_to_use", "confirm_with_person",
                                       "commercial_effective", "licence_gate")}
 
 

@@ -15,7 +15,7 @@ From the game folder (the one with the `.gamedev-studio` marker):
 python <plugin-root>/scripts/studio_tools.py status --json --lang ru
 ```
 
-The result lists every tool with `installed`, `detail`, `cost` (`free`, `paid`, `account`), `commercial`, `licence_note`, `requirements`, `who` (`claude_yes`, `person`, `owner`), `install_steps` and `manual`, and its `prerequisites`: one row per thing it needs, with `for` (`install` or `use`), `met` (`true`, `false`, or `null` when only the person can check it), `detail`, `why`, `who` (`claude_yes` with the exact `install_steps` and `command`, or `person` with `manual`). `ready_to_install` and `ready_to_use` sum them up. An installed tool is reported as installed only when the files a finished install leaves are there (`detect.verify`), so a half-finished install shows as not installed.
+The result lists every tool with `installed`, `detail`, `cost` (`free`, `paid`, `account`), `commercial`, `licence_note`, `requirements`, `who` (`claude_yes`, `person`, `owner`), `install_steps` and `manual`, and its `prerequisites`: one row per thing it needs, with `for` (`install` or `use`), `met` (`true`, `false`, or `null` when only the person can check it), `detail`, `why`, `who` (`claude_yes` with the exact `install_steps` and `command`, or `person` with `manual`). `ready_to_install` and `ready_to_use` sum them up (nothing known to be missing); `confirm_with_person` lists the rows only the person can confirm. An installed tool is reported as installed only when the files a finished install leaves are there (`detect.verify`), so a half-finished install shows as not installed.
 
 On Windows `python3` may be the Microsoft Store alias that runs nothing: use `python`, or `py -3`.
 
@@ -55,7 +55,7 @@ Any skill that uses a catalog tool first runs, from the game folder:
 python <plugin-root>/scripts/studio_tools.py check <id> --json
 ```
 
-Exit code 0: installed and every `use` prerequisite is met. Exit code 3: not ready; tell the person which rows are missing, who does each, and offer the install through this skill. Rows with `met: null` (an account, a registration, an app the studio cannot see) are asked about, not assumed.
+Exit code 0: installed and no `use` prerequisite is missing. Exit code 3: not ready; tell the person which rows are missing (`met: false`), who does each, and offer the install through this skill. `confirm_with_person` lists the rows only the person can confirm (`met: null`: an account, a key, a registration, an app the studio cannot see): ask about them once before the first use in a session, and never assume them.
 
 ## 4. Keys and settings
 

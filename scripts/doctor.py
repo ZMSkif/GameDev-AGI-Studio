@@ -80,7 +80,7 @@ TEXT = {
         "disabled": "установлен, но выключен",
         "other_place": "установлен из другого места ({p}), версия {v}; в этой папке {want}",
         "state_unreadable": "не удалось прочитать список плагинов ({why})",
-        "on_path": "есть в PATH: {p}",
+        "on_path": "есть в PATH: {p}", "found_at": "установлен: {p} (не в PATH)",
         "unreachable": "не отвечает", "healthy": "отвечает, база подключена",
         "skipped_needs": "пропущено: сначала исправьте «{dep}»",
         "restart": "закройте этот терминал, откройте новое окно PowerShell и выполните `cd \"{root}\"`, затем `claude --continue`",
@@ -127,7 +127,7 @@ TEXT = {
         "disabled": "installed but disabled",
         "other_place": "installed from another place ({p}), version {v}; this folder is {want}",
         "state_unreadable": "could not read the plugin list ({why})",
-        "on_path": "on PATH: {p}",
+        "on_path": "on PATH: {p}", "found_at": "installed: {p} (not on PATH)",
         "unreachable": "not answering", "healthy": "answering, database connected",
         "skipped_needs": "skipped: fix \"{dep}\" first",
         "restart": "close this terminal, open a new PowerShell window and run `cd \"{root}\"`, then `claude --continue`",
@@ -409,6 +409,9 @@ def check_plugin(t):
     return True, t["installed"].format(v=version), "", ""
 
 
+STUDIO_TOOLS = None
+
+
 def catalog_tools():
     """Optional machine-wide programs from tools/catalog.json that are found on PATH (gh has its own checks)."""
     try:
@@ -419,6 +422,8 @@ def catalog_tools():
         catalog = module.load_catalog()
     except (ImportError, OSError, ValueError):
         return []
+    global STUDIO_TOOLS
+    STUDIO_TOOLS = module
     return [tool for tool in catalog["tools"]
             if tool["scope"] == "machine" and tool["detect"]["type"] == "which" and tool["id"] != "gh"]
 
@@ -430,6 +435,10 @@ def check_catalog_tool(t, lang, tool):
     path = found[0] if all(found) else next((p for p in map(shutil.which, rule.get("alternatives", [])) if p), None)
     if path:
         return True, t["on_path"].format(p=path), "", ""
+    if STUDIO_TOOLS is not None:  # installers such as Blender's MSI do not add the program to PATH
+        known = STUDIO_TOOLS.known_program(rule.get("known_paths", {}).get(STUDIO_TOOLS.platform_key(), []))
+        if known:
+            return True, t["found_at"].format(p=known), "", ""
     gives = tool["gives"][lang]
     if tool["who"] == "claude_yes":
         return False, t["not_found"], t["fix_catalog_claude"].format(gives=gives, id=tool["id"]), "claude_yes"
