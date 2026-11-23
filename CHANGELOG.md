@@ -2,6 +2,13 @@
 
 All notable changes to the `gamedev-studio` plugin. The version lives only in `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`, and a release tag `vX.Y.Z` must match it. From the next release on, each section is the release notes for its tag (see "Releases" in `README.md`). 0.1.0 and 0.2.0 were not tagged. The v0.3.0 release notes were written by hand, in Russian and English, before this file existed.
 
+## [0.7.0] - 2026-11-23
+
+### Added
+
+- A browser runner for repeatable before/after captures, optional clips and configured checks across portrait, landscape and square layouts. Each project supplies its own builds and scenario.
+- Approved reference images in review bundles and an offline pre-release report for a local ZIP and recorded QA observations.
+
 ## [0.6.0] - 2026-11-23
 
 ### Added

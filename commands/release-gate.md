@@ -7,6 +7,7 @@ Run the release gate for: `$ARGUMENTS` (platform first, default `playgama`; then
 
 1. Apply the `studio-rules` and `playgama-release` skills. Re-read the live platform rules (Playgama MCP `get_game_checklist`, `get_bridge_sdk_docs`) and date them; mark them `UNVERIFIED` if the MCP is not connected.
 2. Fix the exact build: version, commit and, for an archive, its SHA-256 (`/gamedev-studio:package-playgama` makes one).
+   For an existing local ZIP, use the [pre-release report](../reference/browser-visual-qa.md#local-pre-release-report) to record archive size and any measured browser QA observations.
 3. Delegate the gate to the `gamedev-studio:release-qa-engineer` subagent with the build, the platform's QA matrix and the previous release's report. In Codex, play that role from `agents/release-qa-engineer.md` in a fresh session.
 4. When it reports, delegate the archive to the `gamedev-studio:pre-publish-reviewer` subagent, a different agent from the one that ran the gate (DEC-040, #40).
 5. Archive both verdicts verbatim (`/gamedev-studio:archive-reviews`).

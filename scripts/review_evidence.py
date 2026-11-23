@@ -10,7 +10,13 @@ from pathlib import Path, PurePosixPath
 
 
 ISSUE_URL = re.compile(r"https://github\.com/[\w.-]+/[\w.-]+/issues/[1-9][0-9]*", re.ASCII)
-ROLES = {"before", "after", "clip", "build", "test", "source", "export"}
+DECISION_URL = re.compile(
+    r"https://github\.com/[\w.-]+/[\w.-]+/(?:issues|pull)/[1-9][0-9]*"
+    r"(?:#issuecomment-[1-9][0-9]*)?",
+    re.ASCII,
+)
+IMAGE_SUFFIXES = {".avif", ".gif", ".jpeg", ".jpg", ".png", ".webp"}
+ROLES = {"before", "after", "clip", "build", "test", "source", "export", "reference"}
 
 
 def require_keys(value, expected, label):
@@ -35,6 +41,8 @@ def load_document(path, manifest):
     paths = set()
     for index, entry in enumerate(files, 1):
         keys = {"path", "role"}
+        if isinstance(entry, dict) and "decision_url" in entry:
+            keys.add("decision_url")
         require_keys(entry, keys | {"sha256", "bytes"} if manifest else keys, f"File {index}")
         role = entry["role"]
         if not isinstance(role, str) or role not in ROLES:
@@ -48,12 +56,18 @@ def load_document(path, manifest):
         if name.casefold() in paths:
             raise ValueError(f"Duplicate evidence path: {name}")
         paths.add(name.casefold())
+        if role == "reference" and PurePosixPath(name).suffix.lower() not in IMAGE_SUFFIXES:
+            raise ValueError(f"File {index} must be a raster image for a reference")
+        if "decision_url" in entry:
+            url = entry["decision_url"]
+            if role != "reference" or not isinstance(url, str) or not DECISION_URL.fullmatch(url):
+                raise ValueError(f"File {index} decision_url must link a reference to a GitHub issue or pull request")
         if manifest:
             sha, size = entry["sha256"], entry["bytes"]
             if (not isinstance(sha, str) or not re.fullmatch(r"[0-9a-f]{64}", sha)
                     or type(size) is not int or size < 0):
                 raise ValueError(f"File {index} has an invalid hash or byte count")
-    if all(entry["role"] == "source" for entry in files):
+    if all(entry["role"] in {"source", "reference"} for entry in files):
         raise ValueError("Include at least one output or capture")
     return document
 
