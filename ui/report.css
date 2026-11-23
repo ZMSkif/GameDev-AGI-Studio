@@ -376,7 +376,11 @@ table.data td.num, table.data th.num { text-align: right; font-variant-numeric: 
 .cost-note { color: var(--amber); font-size: .78rem; }
 .requirements { color: var(--text-dim); font-size: .76rem; }
 .licence-note { padding: .5rem .65rem; border-radius: var(--radius-sm); font-size: .76rem; color: #e6c79e; background: var(--amber-dim); border: 1px solid rgba(234, 181, 110, 0.3); }
+.licence-gate { font-size: .76rem; color: var(--muted, #b8b3bd); }
+.licence-gate summary { cursor: pointer; color: var(--accent, #f0a0b0); }
+.licence-gate ol { margin: .4rem 0 0 1.1rem; padding: 0; display: grid; gap: .3rem; }
 .licence-note[data-commercial="non_commercial"] { color: #f2b3b3; background: var(--red-dim); border-color: rgba(244, 128, 128, 0.35); }
+.licence-note[data-commercial="licensed"],
 .licence-note[data-commercial="outputs_ok"] { color: #b9e9cf; background: var(--green-dim); border-color: rgba(110, 231, 160, 0.3); }
 .detail.mono { color: var(--text-muted); font-size: .7rem; overflow-wrap: anywhere; }
 .manual { padding: .55rem .7rem; border-radius: var(--radius-sm); background: #111114; border: 1px solid var(--hairline); color: var(--text-dim); font-size: .78rem; }

@@ -45,7 +45,19 @@ DETECTS = {"which", "python_module", "playwright_browser", "git_checkout", "http
 COMMERCIAL = {"ok", "outputs_ok", "non_commercial", "check"}
 CONFIG_KINDS = {"secret": "env", "url": "settings", "path": "settings"}
 PLATFORMS = {"win32": "windows", "darwin": "darwin"}
-TOKENS = {"{python}", "{game}", "{pip_user}"}
+TOKENS = {"{python}", "{game}", "{pip_user}", "{tools}"}
+REFERENCE_LEDGER = ".gamedev-studio-reference-only.json"
+LICENCE_URL = re.compile(r"^https://[^\s]+$")
+
+
+def tools_home():
+    """Machine-wide folder for third-party tools the studio installs from their own sources."""
+    return Path(os.environ.get("GAMEDEV_STUDIO_TOOLS") or Path.home() / ".gamedev-studio" / "tools")
+
+
+def expand(value, game, python=None):
+    return (value.replace("{python}", python or sys.executable).replace("{game}", str(Path(game)))
+            .replace("{tools}", str(tools_home())))
 DECISION_URL = re.compile(r"^https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/(issues|pull)/\d+(#[A-Za-z0-9_-]+)?$")
 ENV_KEY = re.compile(r"^[A-Z][A-Z0-9_]{1,63}$")
 TEXT = {
@@ -113,8 +125,12 @@ def validate_catalog(data):
                 continue
             if key not in {"all", "windows", "darwin", "linux"}:
                 raise ValueError(f"{tid}: unknown install platform {key}")
-            steps = argv if isinstance(argv, list) and argv and all(isinstance(a, list) for a in argv) else [argv]
+            steps = argv if isinstance(argv, list) and argv and all(isinstance(a, (list, dict)) for a in argv) else [argv]
             for step in steps:
+                if isinstance(step, dict):
+                    if set(step) != {"copy_skills"} or not isinstance(step["copy_skills"], list) or len(step["copy_skills"]) != 2:
+                        raise ValueError(f"{tid}: a non-command step must be {{\"copy_skills\": [from, to]}}")
+                    continue
                 if not isinstance(step, list) or not step or not all(isinstance(a, str) and a for a in step):
                     raise ValueError(f"{tid}: install.{key} must be a list of arguments or a list of steps")
                 if any(re.search(r"[;&|`$]", a) and a not in TOKENS for a in step):
@@ -133,6 +149,10 @@ def validate_catalog(data):
             _localized(item.get("label"), f"{tid}.config.label")
         if tool["cost"]["kind"] == "paid" and not tool.get("account"):
             raise ValueError(f"{tid}: a paid tool needs an account")
+        for item in tool.get("licence_gate", []):
+            _localized(item, f"{tid}.licence_gate")
+        if tool.get("licence_gate") and tool.get("commercial") != "non_commercial":
+            raise ValueError(f"{tid}: a licence gate belongs to a non-commercial tool")
         if tool.get("commercial", "ok") not in COMMERCIAL:
             raise ValueError(f"{tid}: commercial must be one of {sorted(COMMERCIAL)}")
         if tool.get("commercial", "ok") != "ok":
@@ -279,7 +299,8 @@ def detect(tool, game, settings, lang="en"):
                 return True, text["browser_found"].format(p=hits[-1])
         return False, text["missing"]
     if kind == "git_checkout":
-        path = Path(game) / rule["path"]
+        path = Path(expand(rule["path"], game))
+        path = path if path.is_absolute() else Path(game) / path
         head = git_head(path)
         if head is None:
             return False, text["missing"]
@@ -333,16 +354,20 @@ def install_steps(tool, game, python=None):
     spec = install.get(platform_key()) or install.get("all")
     if not spec:
         return None
-    steps = spec if all(isinstance(item, list) for item in spec) else [spec]
+    steps = spec if all(isinstance(item, (list, dict)) for item in spec) else [spec]
     result = []
     for step in steps:
+        if isinstance(step, dict):
+            source, target = (expand(value, game, python) for value in step["copy_skills"])
+            result.append({"copy_skills": [source, target]})
+            continue
         argv = []
         for arg in step:
             if arg == "{pip_user}":
                 if not in_virtualenv():
                     argv.append("--user")
                 continue
-            argv.append(arg.replace("{python}", python or sys.executable).replace("{game}", str(Path(game))))
+            argv.append(expand(arg, game, python))
         result.append(argv)
     return result
 
@@ -351,6 +376,32 @@ def install_command(tool, game, python=None):
     """The first install step (most tools have exactly one)."""
     steps = install_steps(tool, game, python)
     return steps[0] if steps else None
+
+
+def describe_step(step):
+    if isinstance(step, dict):
+        source, target = step["copy_skills"]
+        return f"copy every skill folder from {source} to {target}"
+    return " ".join(step)
+
+
+def copy_skills(source, target, on_line):
+    """Copy each folder with a SKILL.md into the target, never replacing a skill that is already there."""
+    source, target = Path(source), Path(target)
+    if not source.is_dir():
+        on_line(f"missing {source}")
+        return 1
+    target.mkdir(parents=True, exist_ok=True)
+    for folder in sorted(source.iterdir()):
+        if not (folder / "SKILL.md").is_file():
+            continue
+        destination = target / folder.name
+        if destination.exists():
+            on_line(f"kept existing {destination.name}")
+            continue
+        shutil.copytree(folder, destination)
+        on_line(f"added skill {destination.name}")
+    return 0
 
 
 def manual_text(tool, lang):
@@ -371,11 +422,20 @@ def install(tool, game, yes, on_line=None, python=None):
         if not shutil.which(program):
             raise ToolError(f"{tool['id']} needs {program} first")
     for argv in steps:
+        if isinstance(argv, dict) or str(tools_home()) in argv[0]:
+            continue  # copied skills, or a program an earlier step creates (a tool's own virtualenv)
         if not Path(argv[0]).is_file() and not shutil.which(argv[0]):
             raise ToolError(f"{argv[0]} is not available on this computer; install the tool by hand")
     on_line = on_line or (lambda line: None)
     code = 0
+    tools_home().mkdir(parents=True, exist_ok=True)
     for argv in steps:
+        if isinstance(argv, dict):
+            on_line("· " + describe_step(argv))
+            code = copy_skills(*argv["copy_skills"], on_line)
+            if code != 0:
+                break
+            continue
         on_line("$ " + " ".join(argv))
         process = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                                    encoding="utf-8", errors="replace", cwd=str(game))
@@ -384,7 +444,7 @@ def install(tool, game, yes, on_line=None, python=None):
         code = process.wait()
         if code != 0:
             break
-    argv = steps[-1]
+    argv = steps[-1] if isinstance(steps[-1], list) else []
     added = []
     if code == 0 and tool.get("gitignore"):
         added = ensure_gitignore(game, tool["gitignore"])
@@ -461,6 +521,66 @@ def set_secret(catalog, game, tid, key, value):
     return {"saved": True, "gitignore_added": added}
 
 
+def set_licence(catalog, game, tid, url):
+    """Record the owner's evidence of a commercial licence for a non-commercial tool, or clear it."""
+    tool = tool_by_id(catalog, tid)
+    if not tool.get("licence_gate"):
+        raise ToolError(f"{tid} needs no separate commercial licence")
+    url = (url or "").strip()
+    if url and not LICENCE_URL.fullmatch(url):
+        raise ToolError("Give an https link to the licence or to the Issue that records it")
+    data = load_settings(game)
+    entry = data["tools"].setdefault(tid, {})
+    if url:
+        entry["commercial_licence"] = url
+    else:
+        entry.pop("commercial_licence", None)
+    save_settings(game, data)
+    return entry
+
+
+def file_hash(path):
+    import hashlib
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def load_ledger(game):
+    path = Path(game) / REFERENCE_LEDGER
+    return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {"version": 1, "files": {}}
+
+
+def mark_reference(catalog, game, tid, files):
+    """Record outputs of a tool that may not ship, so the release report blocks them."""
+    tool = tool_by_id(catalog, tid)
+    settings = load_settings(game)
+    if tool.get("commercial") != "non_commercial":
+        raise ToolError(f"{tid} has no commercial restriction to record")
+    if settings["tools"].get(tid, {}).get("commercial_licence"):
+        raise ToolError(f"{tid} has a recorded commercial licence; its outputs are not reference-only")
+    ledger = load_ledger(game)
+    from datetime import datetime, timezone
+    added = []
+    for name in files:
+        path = Path(name).resolve()
+        if not path.is_file():
+            raise ToolError(f"Not a file: {name}")
+        digest = file_hash(path)
+        try:
+            shown = path.relative_to(Path(game).resolve()).as_posix()
+        except ValueError:
+            shown = path.name
+        ledger["files"][digest] = {"path": shown, "tool": tid,
+                                   "marked": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}
+        added.append(shown)
+    target = Path(game) / REFERENCE_LEDGER
+    target.write_text(json.dumps(ledger, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return added
+
+
 # ---------------------------------------------------------------- status
 
 def status(catalog, game, lang="en"):
@@ -492,6 +612,9 @@ def status(catalog, game, lang="en"):
             "requirements": tool.get("requirements", {}).get(lang, ""), "kind": tool.get("kind", "program"),
             "requires": tool.get("requires", []), "used_by": tool.get("used_by", []), "config": config,
             "owner_only": tool["who"] == "owner", "owner_label": text["owner_only"],
+            "licence_gate": [item[lang] for item in tool.get("licence_gate", [])],
+            "commercial_licence": state.get("commercial_licence", ""),
+            "commercial_effective": "licensed" if state.get("commercial_licence") else tool.get("commercial", "ok"),
         })
     return rows
 
@@ -519,6 +642,12 @@ def main(argv=None):
     secret = commands.add_parser("set-secret")
     secret.add_argument("id")
     secret.add_argument("key")
+    licence = commands.add_parser("set-licence", help="Record (or clear with an empty value) a commercial licence link")
+    licence.add_argument("id")
+    licence.add_argument("url", nargs="?", default="")
+    mark = commands.add_parser("mark-reference", help="Record files made by a non-commercial tool as reference-only")
+    mark.add_argument("id")
+    mark.add_argument("files", nargs="+")
     args = parser.parse_args(argv)
     game = (args.game or find_game()).resolve()
     try:
@@ -530,7 +659,7 @@ def main(argv=None):
             else:
                 for row in rows:
                     mark = "✓" if row["installed"] else ("…" if row["pending"] else "·")
-                    print(f"{mark} {row['id']:<12} {row['cost']:<7} {row['detail']}")
+                    print(f"{mark} {row['id']:<28} {row['cost']:<7} {row['commercial_effective']:<14} {row['detail']}")
             return 0
         tool = tool_by_id(catalog, args.id)
         if args.command == "install":
@@ -538,6 +667,13 @@ def main(argv=None):
             return 0 if result["returncode"] == 0 else 1
         if args.command == "enable":
             print(json.dumps(set_enabled(catalog, game, args.id, not args.off, args.decision), ensure_ascii=False))
+            return 0
+        if args.command == "set-licence":
+            print(json.dumps(set_licence(catalog, game, args.id, args.url), ensure_ascii=False))
+            return 0
+        if args.command == "mark-reference":
+            for name in mark_reference(catalog, game, args.id, args.files):
+                print(f"reference-only: {name}")
             return 0
         if args.command == "set":
             set_setting(catalog, game, args.id, args.key, args.value)

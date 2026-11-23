@@ -28,7 +28,7 @@ Ask with the question tool, one group per question (QA, art and video, skill pac
 
 Rules for the answers:
 
-- A tool marked `commercial: non_commercial` gets the warning in the question itself ("not for a game you sell"). Never recommend it for released content.
+- A tool marked `commercial: non_commercial` gets the warning in the question itself ("for prototypes and reference; its files cannot ship in a game you sell"). It can be installed like any other `claude_yes` tool; read its `licence_gate` lines to the person, and after install remind them that every output is recorded with `studio_tools.py mark-reference` and blocked by the release report. `commercial_effective: licensed` means the owner recorded a commercial licence; never record one yourself.
 - Paid services (`cost: paid`): installing their free client is fine after a yes; every generation still needs the owner's yes on the Issue.
 - Owner tools (`who: owner`, for example memory): only the owner turns them on, with the GitHub link of the decision. Do not ask anyone else to decide.
 - Tools with `pending_decision` are shown as waiting for their decision and never installed.

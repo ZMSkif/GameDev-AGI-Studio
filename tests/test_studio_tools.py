@@ -142,3 +142,100 @@ class ActionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LicenceGateTests(unittest.TestCase):
+    """Non-commercial tools are installable, but their outputs are tracked and kept out of releases."""
+
+    def setUp(self):
+        scratch = TemporaryDirectory(prefix="game ")
+        self.addCleanup(scratch.cleanup)
+        self.game = Path(scratch.name) / "game"
+        self.game.mkdir()
+        (self.game / ".gamedev-studio").write_text("", encoding="utf-8")
+        self.tools = Path(scratch.name) / "tools"
+        patcher = mock.patch.dict("os.environ", {"GAMEDEV_STUDIO_TOOLS": str(self.tools)})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.catalog = st.load_catalog()
+
+    def test_motion_tools_are_pinned_installs_with_a_gate(self):
+        for tid in ("prompt2rig", "motion2mixamorig"):
+            with self.subTest(tool=tid):
+                tool = st.tool_by_id(self.catalog, tid)
+                self.assertEqual(tool["who"], "claude_yes")
+                self.assertEqual(tool["commercial"], "non_commercial")
+                self.assertTrue(tool["licence_gate"])
+                steps = st.install_steps(tool, self.game, python="/py")
+                self.assertEqual(steps[0][:2], ["git", "clone"])
+                self.assertTrue(steps[0][-1].startswith(str(self.tools)))
+                self.assertEqual(steps[1][-1], tool["detect"]["commit"])
+        steps = st.install_steps(st.tool_by_id(self.catalog, "motion2mixamorig"), self.game, python="/py")
+        self.assertEqual(steps[2], ["/py", "-m", "venv", str(self.tools / "Motion2MixamoRig" / ".venv")])
+        self.assertTrue(all(step[0].startswith(str(self.tools)) for step in steps[3:]))
+
+    def test_gate_only_on_non_commercial_tools(self):
+        broken = copy.deepcopy(self.catalog)
+        tool = next(t for t in broken["tools"] if t["id"] == "ffmpeg")
+        tool["licence_gate"] = [{"ru": "x", "en": "x"}]
+        with self.assertRaisesRegex(ValueError, "licence gate"):
+            st.validate_catalog(broken)
+
+    def test_virtualenv_programs_are_not_required_up_front(self):
+        tool = st.tool_by_id(self.catalog, "motion2mixamorig")
+        process = mock.MagicMock()
+        process.stdout = iter([])
+        process.wait.return_value = 0
+        with mock.patch.object(st.shutil, "which", return_value="/usr/bin/git"), \
+                mock.patch.object(st.subprocess, "Popen", return_value=process) as popen:
+            result = st.install(tool, self.game, True, python="/py")
+        self.assertEqual(result["returncode"], 0)
+        self.assertEqual(popen.call_count, len(result["steps"]))
+        for call in popen.call_args_list:
+            self.assertIsInstance(call.args[0], list)
+            self.assertNotIn("shell", call.kwargs)
+
+    def test_copy_skills_keeps_existing_skills(self):
+        source = self.tools / "pack" / "skills"
+        for name in ("alpha", "beta"):
+            (source / name).mkdir(parents=True)
+            (source / name / "SKILL.md").write_text(name, encoding="utf-8")
+        (source / "notes").mkdir()
+        target = self.game / ".claude" / "skills"
+        (target / "beta").mkdir(parents=True)
+        (target / "beta" / "SKILL.md").write_text("mine", encoding="utf-8")
+        lines = []
+        self.assertEqual(st.copy_skills(source, target, lines.append), 0)
+        self.assertEqual((target / "alpha" / "SKILL.md").read_text(encoding="utf-8"), "alpha")
+        self.assertEqual((target / "beta" / "SKILL.md").read_text(encoding="utf-8"), "mine")
+        self.assertFalse((target / "notes").exists())
+        self.assertIn("kept existing beta", lines)
+
+    def test_threejs_skills_install_without_npm(self):
+        steps = st.install_steps(st.tool_by_id(self.catalog, "threejs-game-skills"), self.game)
+        self.assertEqual(steps[-1], {"copy_skills": [str(self.tools / "threejs-game-skills" / "skills"),
+                                                     str(self.game / ".claude" / "skills")]})
+        self.assertFalse(any(isinstance(step, list) and step[0] == "npx" for step in steps))
+
+    def test_mark_reference_and_licence(self):
+        take = self.game / "anim" / "run.fbx"
+        take.parent.mkdir()
+        take.write_bytes(b"motion")
+        self.assertEqual(st.mark_reference(self.catalog, self.game, "prompt2rig", [str(take)]), ["anim/run.fbx"])
+        ledger = st.load_ledger(self.game)
+        record = ledger["files"][st.file_hash(take)]
+        self.assertEqual((record["path"], record["tool"]), ("anim/run.fbx", "prompt2rig"))
+        with self.assertRaisesRegex(st.ToolError, "no commercial restriction"):
+            st.mark_reference(self.catalog, self.game, "kimodo", [str(take)])
+        with self.assertRaisesRegex(st.ToolError, "https link"):
+            st.set_licence(self.catalog, self.game, "prompt2rig", "http://example.com")
+        with self.assertRaisesRegex(st.ToolError, "needs no separate"):
+            st.set_licence(self.catalog, self.game, "ffmpeg", "https://example.com")
+        st.set_licence(self.catalog, self.game, "prompt2rig", DECISION)
+        row = next(r for r in st.status(self.catalog, self.game, "en") if r["id"] == "prompt2rig")
+        self.assertEqual(row["commercial_effective"], "licensed")
+        with self.assertRaisesRegex(st.ToolError, "recorded commercial licence"):
+            st.mark_reference(self.catalog, self.game, "prompt2rig", [str(take)])
+        st.set_licence(self.catalog, self.game, "prompt2rig", "")
+        row = next(r for r in st.status(self.catalog, self.game, "en") if r["id"] == "prompt2rig")
+        self.assertEqual(row["commercial_effective"], "non_commercial")

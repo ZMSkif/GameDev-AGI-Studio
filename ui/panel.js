@@ -59,7 +59,11 @@
           <span class="badge">${esc(T["scope_" + tool.scope])}</span></p></div>${statusPill(tool)}</header>
         <p class="gives">${esc(tool.gives)}</p>
         ${tool.requirements ? `<p class="requirements">${esc(T.needs)}: ${esc(tool.requirements)}</p>` : ""}
-        ${tool.commercial !== "ok" ? `<p class="licence-note" data-commercial="${tool.commercial}"><b>${esc(T["commercial_" + tool.commercial])}.</b> ${esc(tool.licence_note)}</p>` : ""}
+        ${tool.commercial !== "ok" ? `<p class="licence-note" data-commercial="${tool.commercial_effective}"><b>${esc(T["commercial_" + tool.commercial_effective])}.</b> ${esc(tool.licence_note)}</p>` : ""}
+        ${tool.licence_gate.length ? `<details class="licence-gate"><summary>${esc(T.licence_gate)}</summary><ol>${tool.licence_gate.map((line) => `<li>${esc(line)}</li>`).join("")}</ol></details>
+        <form class="field" data-licence="${tool.id}"><label>${esc(T.licence_link)}</label>
+          <div class="field-row"><input type="url" spellcheck="false" placeholder="https://…" value="${esc(tool.commercial_licence)}">
+          <button class="action small" type="submit">${esc(T.save)}</button></div></form>` : ""}
         ${tool.cost_note ? `<p class="cost-note">${esc(tool.cost_note)}${tool.cost === "paid" ? " " + esc(T.paid_note) : ""}</p>` : ""}
         <p class="detail mono">${esc(tool.detail)}</p>
         ${manual}${config}${owner}
@@ -238,7 +242,9 @@
           return;
         }
         const input = form.querySelector("input");
-        if (form.dataset.owner) {
+        if (form.dataset.licence) {
+          await api("/api/tools/licence", { id: form.dataset.licence, url: input.value.trim() });
+        } else if (form.dataset.owner) {
           await api("/api/tools/enable", { id: form.dataset.owner, enabled: Boolean(input.value.trim()), decision: input.value.trim() });
         } else {
           await api("/api/tools/config", { id: form.dataset.config, key: form.dataset.key, value: input.value });

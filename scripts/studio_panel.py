@@ -65,6 +65,8 @@ TEXT = {
         "paid_note": "Каждая генерация — только после «да» владельца в задаче.", "game": "Игра",
         "needs": "Нужно", "commercial_outputs_ok": "Результаты можно продавать",
         "commercial_non_commercial": "Не для коммерческого релиза", "commercial_check": "Проверьте лицензию моделей",
+        "commercial_licensed": "Коммерческая лицензия записана", "licence_gate": "Как использовать",
+        "licence_link": "Ссылка на коммерческую лицензию (или Issue с ней)",
     },
     "en": {
         "title": "Studio", "tab_tools": "Tools", "tab_qa": "QA", "tab_reports": "Reports",
@@ -91,6 +93,8 @@ TEXT = {
         "paid_note": "Every generation needs the owner's yes on the task.", "game": "Game",
         "needs": "Needs", "commercial_outputs_ok": "Outputs may be sold",
         "commercial_non_commercial": "Not for a commercial release", "commercial_check": "Check the model licences",
+        "commercial_licensed": "Commercial licence recorded", "licence_gate": "How to use it",
+        "licence_link": "Link to the commercial licence (or the Issue that records it)",
     },
 }
 EXAMPLE_SCENARIO = {
@@ -290,6 +294,8 @@ class Panel:
         if route == "/api/tools/enable":
             return studio_tools.set_enabled(self.catalog, self.game, str(body.get("id", "")), bool(body.get("enabled")),
                                             body.get("decision") or None)
+        if route == "/api/tools/licence":
+            return studio_tools.set_licence(self.catalog, self.game, str(body.get("id", "")), str(body.get("url", "")))
         if route == "/api/tools/config":
             tool = studio_tools.tool_by_id(self.catalog, str(body.get("id", "")))
             item = studio_tools.config_item(tool, str(body.get("key", "")))

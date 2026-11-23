@@ -642,13 +642,13 @@
       "source": "https://github.com/majidmanzarpour/threejs-game-skills",
       "commercial": "ok",
       "requirements": {
-        "ru": "Node.js (npx). Ключи Tripo, Gemini и ElevenLabs необязательны и платные — только с «да» владельца.",
-        "en": "Node.js (npx). Tripo, Gemini and ElevenLabs keys are optional and paid — only with the owner's yes."
+        "ru": "git. Skills копируются из закреплённой версии в .claude/skills игры; уже существующие skills не заменяются. Ключи Tripo, Gemini и ElevenLabs необязательны и платные — только с «да» владельца.",
+        "en": "git. Skills are copied from a pinned revision into the game's .claude/skills; existing skills are never replaced. Tripo, Gemini and ElevenLabs keys are optional and paid — only with the owner's yes."
       },
       "who": "claude_yes",
       "scope": "game",
       "requires_programs": [
-        "npx"
+        "git"
       ],
       "detect": {
         "type": "skill_folder",
@@ -656,16 +656,26 @@
       },
       "install": {
         "all": [
-          "npx",
-          "-y",
-          "skills",
-          "add",
-          "majidmanzarpour/threejs-game-skills",
-          "--skill",
-          "*",
-          "-a",
-          "claude-code",
-          "-y"
+          [
+            "git",
+            "clone",
+            "https://github.com/majidmanzarpour/threejs-game-skills",
+            "{tools}/threejs-game-skills"
+          ],
+          [
+            "git",
+            "-C",
+            "{tools}/threejs-game-skills",
+            "checkout",
+            "--detach",
+            "8286774b22a2566bf894dbc825825c16921866af"
+          ],
+          {
+            "copy_skills": [
+              "{tools}/threejs-game-skills/skills",
+              "{game}/.claude/skills"
+            ]
+          }
         ]
       },
       "used_by": [
@@ -876,22 +886,58 @@
         "en": "GVHMR and SMPL-X are non-commercial only, YOLO is AGPL. Fine for prototypes and motion references, not for motion in a game you sell."
       },
       "requirements": {
-        "ru": "Node 18+ и ключ fal; для HQ — Windows, NVIDIA, uv, ffmpeg и ~5 ГБ весов, регистрация SMPL-X.",
-        "en": "Node 18+ and a fal key; for HQ — Windows, NVIDIA, uv, ffmpeg, ~5 GB of weights and an SMPL-X registration."
+        "ru": "Node 18+ и ключ fal (его кладёте вы: в .env папки инструмента). Для HQ — Windows, NVIDIA, uv, ffmpeg, ~5 ГБ весов и регистрации SMPL-X/MANO. Запуск: node server.mjs → http://localhost:5177.",
+        "en": "Node 18+ and a fal key (you put it in the tool folder's .env). For HQ — Windows, NVIDIA, uv, ffmpeg, ~5 GB of weights and SMPL-X/MANO registrations. Run: node server.mjs → http://localhost:5177."
       },
-      "who": "person",
+      "who": "claude_yes",
       "scope": "machine",
       "detect": {
-        "type": "none"
+        "type": "git_checkout",
+        "path": "{tools}/prompt2rig",
+        "commit": "218ce2adff35a7c04657768a85ff002ebd461c78"
       },
       "install": {
-        "manual": {
-          "ru": "Поставьте по Quick start в README. Ключ fal и регистрации SMPL-X/MANO делаете вы.",
-          "en": "Install as the README's Quick start says. You create the fal key and the SMPL-X/MANO registrations."
-        }
+        "all": [
+          [
+            "git",
+            "clone",
+            "https://github.com/blendi-remade/prompt2rig",
+            "{tools}/prompt2rig"
+          ],
+          [
+            "git",
+            "-C",
+            "{tools}/prompt2rig",
+            "checkout",
+            "--detach",
+            "218ce2adff35a7c04657768a85ff002ebd461c78"
+          ]
+        ]
       },
       "used_by": [
         "motion-reference-workflow"
+      ],
+      "requires_programs": [
+        "git",
+        "node"
+      ],
+      "licence_gate": [
+        {
+          "ru": "Код можно ставить и запускать: это Apache-2.0.",
+          "en": "The code may be installed and run: it is Apache-2.0."
+        },
+        {
+          "ru": "Модели SMPL-X, MANO и веса GVHMR разрешены только для некоммерческих исследований. Регистрацию на smpl-x.is.tue.mpg.de и mano.is.tue.mpg.de делаете вы сами.",
+          "en": "The SMPL-X and MANO models and the GVHMR weights are for non-commercial research only. You register on smpl-x.is.tue.mpg.de and mano.is.tue.mpg.de yourself."
+        },
+        {
+          "ru": "Всё, что сделано инструментом, отмечается «только референс» (studio_tools.py mark-reference) и блокируется в релизном отчёте.",
+          "en": "Everything the tool makes is marked reference-only (studio_tools.py mark-reference) and is blocked by the release report."
+        },
+        {
+          "ru": "Чтобы движение шло в продаваемую игру, нужна коммерческая лицензия: SMPL-X — через Meshcapade, MANO — ps-license@tue.mpg.de; ссылку на неё записывает владелец (set-licence). Это не юридическая консультация.",
+          "en": "For motion in a game you sell you need a commercial licence: SMPL-X through Meshcapade, MANO via ps-license@tue.mpg.de; the owner records a link to it (set-licence). This is not legal advice."
+        }
       ]
     },
     {
@@ -914,19 +960,204 @@
         "en": "The whole pipeline is limited to non-commercial use by GVHMR and SMPL-X (YOLOv8 is AGPL). References and prototypes only."
       },
       "requirements": {
-        "ru": "Python 3.11+ или Blender 4.2+; ~5 ГБ весов; проверено на macOS Apple Silicon.",
-        "en": "Python 3.11+ or Blender 4.2+; ~5 GB of weights; tested on Apple Silicon macOS."
+        "ru": "Python 3.11+ (или расширение для Blender 4.2+ из Releases — ставите вы). Первый запуск m2mr скачивает ~5 ГБ весов GVHMR. Файл SMPL-X кладёте в assets/ сами после регистрации.",
+        "en": "Python 3.11+ (or the Blender 4.2+ extension from Releases — you install it). The first m2mr run downloads ~5 GB of GVHMR weights. You put the SMPL-X file in assets/ after registering."
       },
-      "who": "person",
+      "who": "claude_yes",
       "scope": "machine",
       "detect": {
-        "type": "none"
+        "type": "git_checkout",
+        "path": "{tools}/Motion2MixamoRig",
+        "commit": "f05a718188026b06e7ee64b47bab077970444b19"
       },
       "install": {
-        "manual": {
-          "ru": "Скачайте расширение из Releases и установите в Blender (Get Extensions → Install from Disk) или поставьте CLI по README.",
-          "en": "Download the extension from Releases and install it in Blender (Get Extensions → Install from Disk), or install the CLI as the README says."
+        "windows": [
+          [
+            "git",
+            "clone",
+            "https://github.com/MaxLiu22/Motion2MixamoRig.git",
+            "{tools}/Motion2MixamoRig"
+          ],
+          [
+            "git",
+            "-C",
+            "{tools}/Motion2MixamoRig",
+            "checkout",
+            "--detach",
+            "f05a718188026b06e7ee64b47bab077970444b19"
+          ],
+          [
+            "{python}",
+            "-m",
+            "venv",
+            "{tools}/Motion2MixamoRig/.venv"
+          ],
+          [
+            "{tools}/Motion2MixamoRig/.venv/Scripts/python.exe",
+            "-m",
+            "pip",
+            "install",
+            "--upgrade",
+            "pip",
+            "setuptools",
+            "wheel"
+          ],
+          [
+            "{tools}/Motion2MixamoRig/.venv/Scripts/python.exe",
+            "-m",
+            "pip",
+            "install",
+            "numpy>=1.26"
+          ],
+          [
+            "{tools}/Motion2MixamoRig/.venv/Scripts/python.exe",
+            "-m",
+            "pip",
+            "install",
+            "--no-build-isolation",
+            "chumpy==0.70"
+          ],
+          [
+            "{tools}/Motion2MixamoRig/.venv/Scripts/python.exe",
+            "-m",
+            "pip",
+            "install",
+            "-e",
+            "{tools}/Motion2MixamoRig"
+          ]
+        ],
+        "all": [
+          [
+            "git",
+            "clone",
+            "https://github.com/MaxLiu22/Motion2MixamoRig.git",
+            "{tools}/Motion2MixamoRig"
+          ],
+          [
+            "git",
+            "-C",
+            "{tools}/Motion2MixamoRig",
+            "checkout",
+            "--detach",
+            "f05a718188026b06e7ee64b47bab077970444b19"
+          ],
+          [
+            "{python}",
+            "-m",
+            "venv",
+            "{tools}/Motion2MixamoRig/.venv"
+          ],
+          [
+            "{tools}/Motion2MixamoRig/.venv/bin/python",
+            "-m",
+            "pip",
+            "install",
+            "--upgrade",
+            "pip",
+            "setuptools",
+            "wheel"
+          ],
+          [
+            "{tools}/Motion2MixamoRig/.venv/bin/python",
+            "-m",
+            "pip",
+            "install",
+            "numpy>=1.26"
+          ],
+          [
+            "{tools}/Motion2MixamoRig/.venv/bin/python",
+            "-m",
+            "pip",
+            "install",
+            "--no-build-isolation",
+            "chumpy==0.70"
+          ],
+          [
+            "{tools}/Motion2MixamoRig/.venv/bin/python",
+            "-m",
+            "pip",
+            "install",
+            "-e",
+            "{tools}/Motion2MixamoRig"
+          ]
+        ]
+      },
+      "used_by": [
+        "motion-reference-workflow",
+        "blender-game-animation"
+      ],
+      "requires_programs": [
+        "git"
+      ],
+      "licence_gate": [
+        {
+          "ru": "Код можно ставить и запускать: это Apache-2.0.",
+          "en": "The code may be installed and run: it is Apache-2.0."
+        },
+        {
+          "ru": "Модели SMPL-X, MANO и веса GVHMR разрешены только для некоммерческих исследований. Регистрацию на smpl-x.is.tue.mpg.de и mano.is.tue.mpg.de делаете вы сами.",
+          "en": "The SMPL-X and MANO models and the GVHMR weights are for non-commercial research only. You register on smpl-x.is.tue.mpg.de and mano.is.tue.mpg.de yourself."
+        },
+        {
+          "ru": "Всё, что сделано инструментом, отмечается «только референс» (studio_tools.py mark-reference) и блокируется в релизном отчёте.",
+          "en": "Everything the tool makes is marked reference-only (studio_tools.py mark-reference) and is blocked by the release report."
+        },
+        {
+          "ru": "Чтобы движение шло в продаваемую игру, нужна коммерческая лицензия: SMPL-X — через Meshcapade, MANO — ps-license@tue.mpg.de; ссылку на неё записывает владелец (set-licence). Это не юридическая консультация.",
+          "en": "For motion in a game you sell you need a commercial licence: SMPL-X through Meshcapade, MANO via ps-license@tue.mpg.de; the owner records a link to it (set-licence). This is not legal advice."
         }
+      ]
+    },
+    {
+      "id": "kimodo",
+      "group": "ai3d",
+      "kind": "app",
+      "name": "NVIDIA Kimodo",
+      "gives": {
+        "ru": "Движение по тексту и ключевым кадрам (локально, без облака), с ограничениями по таймлайну; коммерчески безопасная замена prompt2rig для финальной анимации.",
+        "en": "Motion from text and keyframes (local, no cloud) with timeline constraints; the commercially safe alternative to prompt2rig for final animation."
+      },
+      "cost": {
+        "kind": "free"
+      },
+      "licence": "Apache-2.0 (code); checkpoints under their own licences",
+      "source": "https://github.com/nv-tlabs/kimodo",
+      "commercial": "check",
+      "licence_note": {
+        "ru": "Модель Kimodo-SOMA-SEED-v1.1 по карточке на Hugging Face готова к коммерческому использованию (NVIDIA Open Model License). Вариант SMPL-X — только R&D. Перед релизом проверьте карточку той модели, которую взяли.",
+        "en": "Per its Hugging Face card, Kimodo-SOMA-SEED-v1.1 is ready for commercial use (NVIDIA Open Model License). The SMPL-X variant is R&D only. Before release check the card of the model you used."
+      },
+      "requirements": {
+        "ru": "Linux, NVIDIA GPU (~17 ГБ VRAM, или TEXT_ENCODER_DEVICE=cpu), Python. Зависимости — по инструкции из документации Kimodo; весa качаются с Hugging Face. Ретаргет SOMA → ваш скелет — в Blender.",
+        "en": "Linux, an NVIDIA GPU (~17 GB VRAM, or TEXT_ENCODER_DEVICE=cpu), Python. Dependencies per the Kimodo docs; weights come from Hugging Face. Retarget SOMA → your skeleton in Blender."
+      },
+      "who": "claude_yes",
+      "scope": "machine",
+      "requires_programs": [
+        "git"
+      ],
+      "detect": {
+        "type": "git_checkout",
+        "path": "{tools}/kimodo",
+        "commit": "e1c219c99b4b94ba48be1fb6a1cbc64ecee4c954"
+      },
+      "install": {
+        "all": [
+          [
+            "git",
+            "clone",
+            "https://github.com/nv-tlabs/kimodo",
+            "{tools}/kimodo"
+          ],
+          [
+            "git",
+            "-C",
+            "{tools}/kimodo",
+            "checkout",
+            "--detach",
+            "e1c219c99b4b94ba48be1fb6a1cbc64ecee4c954"
+          ]
+        ]
       },
       "used_by": [
         "motion-reference-workflow",
@@ -949,8 +1180,8 @@
       "licence": "MIT",
       "source": "https://godotengine.org/asset-library/asset/5587",
       "requirements": {
-        "ru": "Godot 4.5+ (аддон из Godot Asset Library). Облако бесплатно до 5000 сессий в месяц или свой сервер. Работа с web-сборками не проверена.",
-        "en": "Godot 4.5+ (an addon from the Godot Asset Library). Cloud is free up to 5,000 sessions a month, or run your own server. Web builds were not verified."
+        "ru": "Godot 4.5+ (аддон из Godot Asset Library ставите в редакторе вы). Облако бесплатно до 5000 сессий в месяц или свой MIT-сервер. Для HTML5-игр не проверено — на web-профиле используйте QA-отчёты студии.",
+        "en": "Godot 4.5+ (you install the addon from the Godot Asset Library in the editor). Cloud is free up to 5,000 sessions a month, or your own MIT server. Not verified for HTML5 games — on the web profile use the studio's QA reports."
       },
       "who": "person",
       "scope": "game",
@@ -959,13 +1190,24 @@
       },
       "install": {
         "manual": {
-          "ru": "Поставьте аддон из Godot Asset Library и следуйте его настройке; данные игроков отправляются только с решения владельца и с учётом правил платформы.",
-          "en": "Install the addon from the Godot Asset Library and follow its setup; player data is sent only with the owner's decision and within the platform's rules."
+          "ru": "Шаги — в skill glitchless-telemetry: аддон, ключ проекта в .env игры (set-secret), MCP для агента. Отправка данных игроков включается только решением владельца (enable --decision).",
+          "en": "Steps are in the glitchless-telemetry skill: the addon, the project key in the game's .env (set-secret), MCP for the agent. Sending player data is switched on only by the owner's decision (enable --decision)."
         }
       },
       "used_by": [
-        "engine-profiles",
-        "web-monetization"
+        "glitchless-telemetry",
+        "engine-profiles"
+      ],
+      "config": [
+        {
+          "key": "GLITCHLESS_KEY",
+          "kind": "secret",
+          "target": "env",
+          "label": {
+            "ru": "Ключ проекта Glitchless",
+            "en": "Glitchless project key"
+          }
+        }
       ]
     }
   ]

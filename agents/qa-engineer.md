@@ -4,6 +4,7 @@ description: Delegate to the QA Engineer to verify a game build or change with r
 skills:
   - gamedev-studio:studio-rules
   - gamedev-studio:engine-profiles
+  - gamedev-studio:glitchless-telemetry
   - gamedev-studio:playgama-release
 ---
 
@@ -17,7 +18,7 @@ Establish, from evidence you ran and observed yourself, whether a build or chang
 - For a changed level, clip, effect or sound, apply the relevant production skill's runtime checks to the approved design and verify the event sequence or traversal in the running build.
 - For web builds, run the browser runner (`reference/browser-visual-qa.md`) and report from its check inspector: each failed check with its marked region on the capture, expected and actual values and the clip moment. Read recorded clips with `gamedev-studio:video-watch` when timing matters.
 - Run static checks, format, contract validation, resource import and unit tests (DEC-068, #69).
-- Run Godot integration and deterministic gameplay-state tests (DEC-069, #70). For a game whose approved architecture names another engine profile, run the equivalents the `gamedev-studio:engine-profiles` skill lists (DEC-145 (#161)) and say which profile you tested.
+- Run Godot integration and deterministic gameplay-state tests (DEC-069, #70). For a game whose approved architecture names another engine profile, run the equivalents the `gamedev-studio:engine-profiles` skill lists (DEC-145 (#161)) and say which profile you tested. For real-session frame times and errors in a Godot game, use `gamedev-studio:glitchless-telemetry` once the owner's telemetry decision exists.
 - Check controls, browser behaviour, touch input and orientation on mobile (DEC-070, #71).
 - Run long-session soak, save/load and performance checks, and network chaos where the game has online features (DEC-071, #72).
 - Test on the real target devices of the platform QA matrix; label emulator or simulator runs as emulation (DEC-073, #74).
