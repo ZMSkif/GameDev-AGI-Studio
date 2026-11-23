@@ -1,6 +1,6 @@
 # Mr. Mak Workspace attribution
 
-The production, visual review, tracking and handoff workflows draw on [Mr. Mak Workspace v0.6.6](https://github.com/witnesstodark/mr-mak-workspace/tree/v0.6.6), revision `f096373fd0a7d02ce97d18ec5ce68c6bfcb98b54`. GameDev Studio implements the workflows in its existing plugin and GitHub conventions. The upstream application, example media and third-party tools are distributed by their respective projects.
+The production, visual review, tracking and handoff workflows draw on [Mr. Mak Workspace v0.6.6](https://github.com/witnesstodark/mr-mak-workspace/tree/v0.6.6), revision `f096373fd0a7d02ce97d18ec5ce68c6bfcb98b54`. GameDev Studio implements the workflows in its existing plugin and GitHub conventions. The skills adapted from it are listed in `CHANGELOG.md` (0.5.0–0.8.0); the character-sheet prompt files are kept as written upstream. The report design in `ui/report.css` follows Mr. Mak's "Luminous Mak" visual language; the GameDev Studio mark in `ui/brand-mark.svg` is the studio's own. `img2threejs` (Apache-2.0) is not distributed with this plugin: the `img2threejs` skill installs it from https://github.com/img2threejs/img2threejs at v2.0.0, with its own licence. The upstream application, example media and third-party tools are distributed by their respective projects.
 
 ## Upstream MIT license
 

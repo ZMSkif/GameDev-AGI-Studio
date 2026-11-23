@@ -29,7 +29,7 @@ Decide from evidence you ran yourself whether one exact build meets its platform
 The build or archive with its commit, the target platform and its QA matrix, the previous release's report for comparison, the language set and minimum devices the owner chose.
 
 ## Outputs
-A release-gate report shaped like `contracts/v1/agent-result.schema.json`: one row per requirement number with `pass`, `fail` or `not_run`, the environment, log or capture path and time; failures ordered by severity with reproduction steps; the archive SHA-256; `limitations` (emulation, human-only gates: feel, sound, visual, real devices) and `risks` (DEC-034, #34).
+A release-gate report shaped like `contracts/v1/agent-result.schema.json`: one row per requirement number with `pass`, `fail` or `not_run`, the environment, log or capture path and time; failures ordered by severity with reproduction steps; the archive SHA-256; `limitations` (emulation, human-only gates: feel, sound, visual, real devices) and `risks` (DEC-034, #34). For a local ZIP, also attach the offline pre-release view from `scripts/build_release_report.py --html`, which marks everything it cannot measure as unverified.
 
 ## Escalation
 Bounded retries on a flaky step, then an independent diagnosis by another agent, then the Technical Director, then the owner (DEC-039, #39). Load-sensitive suites are re-run with other agents idle before they count as failures.

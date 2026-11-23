@@ -22,7 +22,7 @@ _spec.loader.exec_module(dr)
 class FakeTools:
     """Stands in for shutil.which and subprocess.run; records every argv and env it was given."""
 
-    def __init__(self, present=("claude", "git", "bash", "python", "gh", "codex"), answers=None):
+    def __init__(self, present=("claude", "git", "bash", "python", "gh", "codex", "ffmpeg", "ffprobe"), answers=None):
         self.present, self.answers, self.calls, self.envs = set(present), dict(answers or {}), [], []
 
     def which(self, name):
@@ -142,7 +142,15 @@ class ReadOnlyTest(DoctorCase):
         tools = FakeTools()
         self.check(tools, "--github")
         self.assertNotIn("codex", [c[0] for c in tools.calls])
+        self.assertFalse({"ffmpeg", "ffprobe"} & {c[0] for c in tools.calls})
         self.assertNotIn(["claude", "plugin", "list"], [c[:3] for c in tools.calls])
+
+    def test_missing_ffmpeg_is_optional(self):
+        code, rows = self.check(FakeTools(present=("claude", "git", "bash", "python", "codex")))
+        self.assertEqual(code, 0, rows)
+        self.assertFalse(rows["ffmpeg"]["ok"])
+        self.assertFalse(rows["ffmpeg"]["required"])
+        self.assertIn("video-watch", rows["ffmpeg"]["fix"])
 
     def test_without_github_flag_no_gh_command_runs(self):
         tools = FakeTools()

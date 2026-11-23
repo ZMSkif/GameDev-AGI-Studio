@@ -1,17 +1,18 @@
 <!doctype html>
-<html lang="$lang">
+<html lang="$lang" data-ui="$viewer_labels">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src file:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src file: data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
   <title>$title · GameDev Studio</title>
   <style>$styles</style>
 </head>
 <body>
   <header class="masthead">
     <div class="page">
-      <span class="brand"><span class="brand-mark" aria-hidden="true"></span>GameDev Studio</span>
+      <span class="brand">${brand_mark}GameDev Studio</span>
       <nav class="actions" aria-label="$actions_label">
+        <button type="button" class="action" data-toggle-markers aria-pressed="true">$markers_label</button>
         <a class="action" href="summary.json">$data_label</a>
         <a class="action primary" href="$issue_url">$issue_label #$issue_number</a>
       </nav>
@@ -19,10 +20,18 @@
   </header>
   <main class="page">
     <header class="summary-title">
-      <h1>$title</h1>
-      <span class="pill" data-status="$overall_key">$overall_status</span>
+      <div>
+        <p class="eyebrow">$eyebrow</p>
+        <h1>$title</h1>
+        <p class="subtitle">$subtitle</p>
+      </div>
+      <span class="pill large" data-status="$overall_key">$overall_status</span>
     </header>
+    <dl class="stats">$stats</dl>
+    <div class="section-head"><h2>$layouts_label<span class="count">$layout_count</span></h2></div>
     <div class="viewport-grid">$cards</div>
+    <p class="note">$note</p>
   </main>
+  <script>$script</script>
 </body>
 </html>

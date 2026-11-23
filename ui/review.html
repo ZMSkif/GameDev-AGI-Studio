@@ -1,34 +1,35 @@
 <!doctype html>
-<html lang="$lang">
+<html lang="$lang" data-ui="$viewer_labels">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src file:; media-src file:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src file: data:; media-src file:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
   <title>$title · GameDev Studio</title>
   <style>$styles</style>
 </head>
 <body>
   <header class="masthead">
     <div class="page">
-      <span class="brand"><span class="brand-mark" aria-hidden="true"></span>GameDev Studio</span>
-      <a class="action primary" href="$issue_url">$issue_label #$issue_number</a>
+      <span class="brand">${brand_mark}GameDev Studio</span>
+      <nav class="actions" aria-label="$issue_label">
+        $marker_toggle
+        <a class="action primary" href="$issue_url">$issue_label #$issue_number</a>
+      </nav>
     </div>
   </header>
   <main class="page">
     <header class="report-heading">
       <div>$back_link<h1>$title</h1></div>
       <dl class="metadata">
-        <div>
-          <dt>$revision_label</dt>
-          <dd><a href="$commit_url" title="$commit"><code>$short_commit</code></a></dd>
-        </div>
+        $revisions
         <div>
           <dt>$verdict_heading</dt>
           <dd class="pill" data-status="$verdict_key">$verdict_label</dd>
         </div>
       </dl>
     </header>
-    <section aria-labelledby="captures-heading">
+    $inspector
+    <section class="section" aria-labelledby="captures-heading">
       <div class="section-head">
         <h2 id="captures-heading">$capture_heading</h2>
         <div id="switches" class="switches" hidden>
@@ -52,47 +53,6 @@
     </details>
     <p class="note">$file_note</p>
   </main>
-  <script>
-    const gallery = document.querySelector("#gallery");
-    const before = [...gallery.querySelectorAll('[data-role="before"] img')];
-    const after = [...gallery.querySelectorAll('[data-role="after"] img')];
-
-    if (before.length === 1 && after.length === 1) {
-      const originals = [before[0], after[0]];
-      const comparison = document.querySelector("#comparison");
-      const layered = document.querySelector("#layered");
-      const reveal = document.querySelector("#reveal");
-      const gridButton = document.querySelector("#grid-button");
-      const compareButton = document.querySelector("#compare-button");
-      const switches = document.querySelector("#switches");
-
-      function enableComparison() {
-        const [earlier, later] = originals;
-        if (!switches.hidden || !earlier.naturalWidth ||
-            earlier.naturalWidth !== later.naturalWidth ||
-            earlier.naturalHeight !== later.naturalHeight) return;
-        const ratio = earlier.naturalWidth / earlier.naturalHeight;
-        layered.style.setProperty("--ratio", ratio);
-        layered.style.maxWidth = (ratio * 62) + "vh";
-        const base = later.cloneNode();
-        const top = earlier.cloneNode();
-        top.className = "before";
-        layered.prepend(base, top);
-        switches.hidden = false;
-      }
-
-      for (const image of originals) image.addEventListener("load", enableComparison);
-      enableComparison();
-      function setCompare(compare) {
-        comparison.hidden = !compare;
-        for (const image of originals) image.closest("figure").hidden = compare;
-        gridButton.setAttribute("aria-pressed", String(!compare));
-        compareButton.setAttribute("aria-pressed", String(compare));
-      }
-      reveal.addEventListener("input", () => layered.style.setProperty("--position", reveal.value + "%"));
-      gridButton.addEventListener("click", () => setCompare(false));
-      compareButton.addEventListener("click", () => setCompare(true));
-    }
-  </script>
+  <script>$script</script>
 </body>
 </html>

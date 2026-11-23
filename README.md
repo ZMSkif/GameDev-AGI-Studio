@@ -39,7 +39,16 @@ The skills cite the studio decisions they apply and link to their sources.
 | `memory` | studio and project memory in Hindsight over MCP: banks, what to store, the four modes, the start recipe |
 | `context-brief` | one worker brief per piece card: decisions, skills, files, review notes, memories, ports |
 | `lessons` | recurring failure classes from the review archive, stored as lessons, with proposed plugin changes |
-| `game-asset-production` | Blender source to engine-ready characters, props, materials and animation |
+| `game-asset-production` | the 3D/2D production route and acceptance states from reference to engine import |
+| `image-reference-workflow` | concept rounds and faithful single-feature edits with a take ledger |
+| `character-sheet-pipeline` | strict-front sheets, isolated parts and the verification rubric (`prompts/`) |
+| `materials-to-game` | PBR maps, high-to-low bake-down, colour spaces and glTF export checks |
+| `motion-reference-workflow` | motion reference takes, appearance transfer and contact-level review |
+| `blender-game-animation` | rigging, skinning, clips, bake, export and clean reimport in Blender |
+| `img2threejs` | procedural Three.js models from a reference image (upstream Apache-2.0, installed per game) |
+| `fal-ai-generation` | fal.ai generation and job recovery; the helper refuses to spend without the owner's recorded yes |
+| `higgsfield-workflow` | Higgsfield CLI discovery, owner-approved jobs and resume without duplicates |
+| `video-watch` | a local clip as timestamped frames with a seekable offline report (FFmpeg only) |
 | `game-ui-workflow` | approved UI reference to working, responsive game screens |
 | `game-vfx-workflow` | readable game effects, timing on gameplay events and runtime checks |
 | `game-animation-integration` | clip integration, locomotion and action timing in the running game |
@@ -63,7 +72,9 @@ What each CLI was seen to load for 0.4.0:
 
 Open a local report in the browser to compare game captures, watch review clips and check the tested revision. Generate one from the existing evidence manifest with `scripts/render_review.py`. The report uses the original files from the evidence bundle. See the [review evidence instructions](skills/review-evidence/SKILL.md).
 
-For repeatable before/after captures of locally served web builds, use [browser visual QA](reference/browser-visual-qa.md). The project supplies its own builds, revision IDs and scene steps. The runner writes comparison reports and observations that can also be included in a local pre-release report.
+For repeatable before/after captures of locally served web builds, use [browser visual QA](reference/browser-visual-qa.md). The project supplies its own builds, revision IDs and scene steps. The runner writes a summary with every layout, a check inspector that marks each failed check's region on the capture with expected and actual values and the clip moment, and observations that can also be included in a local pre-release report (`scripts/build_release_report.py --html`).
+
+`scripts/reference_board.py` renders concept rounds as a [reference board](reference/reference-boards.md) and `scripts/video_watch.py` turns a clip into timestamped frames. All reports share one offline design in `ui/` (the Luminous Mak visual language of Mr. Mak Workspace, MIT) with a zoom viewer, and carry the studio's own mark (`ui/brand-mark.svg`).
 
 The [optional Mr. Mak setup](reference/mr-mak-workspace.md) covers desktop and mobile access to CLI chats. See the [upstream attribution](reference/mr-mak-notices.md).
 

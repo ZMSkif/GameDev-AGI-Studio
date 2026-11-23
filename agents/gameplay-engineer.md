@@ -16,7 +16,7 @@ Implement the approved design as modular, tested code in the game's engine profi
 - Implement features from the approved GDD and architecture; check requirements and dependencies before a complex change (DEC-048, #48; DEC-049, #49).
 - Keep to the modular architecture and keep gameplay state separate from rendering, UI and input (DEC-047, #47; DEC-054, #54).
 - For screen work, apply the `gamedev-studio:game-ui-workflow` skill to the approved reference and capture implemented states in the playable build.
-- For runtime feedback, select `gamedev-studio:game-animation-integration`, `gamedev-studio:game-vfx-workflow` or `gamedev-studio:game-audio-workflow` according to the approved change. Use `gamedev-studio:game-level-design` when applying an approved layout to a scene.
+- For runtime feedback, select `gamedev-studio:game-animation-integration`, `gamedev-studio:game-vfx-workflow` or `gamedev-studio:game-audio-workflow` according to the approved change. For an approved procedural Three.js model, integrate the `gamedev-studio:img2threejs` output through the game's own modules. Use `gamedev-studio:game-level-design` when applying an approved layout to a scene.
 - Work in a separate branch or worktree and open a pull request; never write directly to `main` (DEC-001, #1; DEC-051, #51).
 - Write unit and deterministic gameplay-state tests with the change and run them (DEC-068, #69; DEC-069, #70 in the Godot profile; the `engine-profiles` skill lists the equivalents of other profiles).
 - Fix bugs by reproducing first, finding the root cause, adding a regression test, and passing independent QA (DEC-075, #76). Ordinary bug fixes need no owner approval (DEC-082, #83).

@@ -11,7 +11,7 @@ What it does, and nothing else:
     plugin's plugin.json.
   * with --hindsight, one HTTP GET of the memory server's /health.
 It does not start Codex (`codex --version` writes helper files) or `claude plugin list` (it tidies the
-plugin cache); Codex is only looked up on PATH. The doctor itself writes no file. For every missing piece
+plugin cache); Codex, FFmpeg and ffprobe are only looked up on PATH. The doctor itself writes no file. For every missing piece
 it prints the fix and who does it.
 
 Usage: python scripts/doctor.py [--lang ru|en] [--json] [--github] [--hindsight [URL]] [--repo owner/name]
@@ -64,7 +64,7 @@ TEXT = {
         "claude": "Claude Code", "git": "Git", "git_bash": "Git Bash", "python": "Python",
         "gh": "GitHub CLI (gh)", "gh_auth": "Вход в GitHub (gh auth)", "repo": "Доступ к репозиторию {repo}",
         "decisions": "Чтение решений (issues с меткой decision)", "plugin": "Плагин gamedev-studio в Claude Code",
-        "codex": "Codex CLI", "hindsight": "Сервер памяти Hindsight ({url})",
+        "codex": "Codex CLI", "ffmpeg": "FFmpeg и ffprobe (разбор видео)", "hindsight": "Сервер памяти Hindsight ({url})",
         "found": "найден: {v}", "not_found": "не найден", "too_old": "версия {v}, нужна {need} или новее",
         "older_than_tested": "версия {v}; руководство проверено на {tested}, обновите при проблемах",
         "claude_not_on_path": "установлен в {p}, но этой папки нет в PATH",
@@ -98,6 +98,7 @@ TEXT = {
         "fix_plugin_other": "Плагин подключён из другой папки. Запустите проверку из неё или обновите плагин по разделу «Обновление» руководства.",
         "fix_plugin_unreadable": "Посмотрите сами: `claude plugin list` должен показать gamedev-studio@gamedev-studio.",
         "fix_codex": "Не обязательно. Codex CLI нужен, только если вы работаете в Codex.",
+        "fix_ffmpeg": "Не обязательно. Нужно для разбора видео (skill video-watch): `winget install --id Gyan.FFmpeg -e --source winget --accept-source-agreements --accept-package-agreements`. Затем {restart}.",
         "fix_hindsight": "Не обязательно: плагин работает без памяти. Включать её — только по решению владельца студии (раздел «Память Hindsight» руководства).",
     },
     "en": {
@@ -110,7 +111,7 @@ TEXT = {
         "claude": "Claude Code", "git": "Git", "git_bash": "Git Bash", "python": "Python",
         "gh": "GitHub CLI (gh)", "gh_auth": "Signed in to GitHub (gh auth)", "repo": "Access to the {repo} repository",
         "decisions": "Reading the decisions (issues labelled decision)", "plugin": "gamedev-studio plugin in Claude Code",
-        "codex": "Codex CLI", "hindsight": "Hindsight memory server ({url})",
+        "codex": "Codex CLI", "ffmpeg": "FFmpeg and ffprobe (video frames)", "hindsight": "Hindsight memory server ({url})",
         "found": "found: {v}", "not_found": "not found", "too_old": "version {v}, needs {need} or newer",
         "older_than_tested": "version {v}; the guide was checked on {tested}, update if something fails",
         "claude_not_on_path": "installed in {p}, but that folder is not on PATH",
@@ -144,6 +145,7 @@ TEXT = {
         "fix_plugin_other": "The plugin is connected from another folder. Run the check from that folder, or update the plugin as the guide's \"Updating\" says.",
         "fix_plugin_unreadable": "Look yourself: `claude plugin list` should show gamedev-studio@gamedev-studio.",
         "fix_codex": "Optional. The Codex CLI is needed only if you work in Codex.",
+        "fix_ffmpeg": "Optional. Needed to read videos as frames (the video-watch skill): `winget install --id Gyan.FFmpeg -e --source winget --accept-source-agreements --accept-package-agreements`. Then {restart}.",
         "fix_hindsight": "Optional: the plugin works without memory. Turn it on only when the studio owner decides so (the guide's \"Hindsight memory\" section).",
     },
 }
@@ -413,6 +415,14 @@ def check_codex(t):
     return (True, t["on_path"].format(p=path), "", "") if path else (False, t["not_found"], t["fix_codex"], "you")
 
 
+def check_ffmpeg(t):
+    """FFmpeg is only looked up on PATH; nothing is started."""
+    found = [shutil.which(name) for name in ("ffmpeg", "ffprobe")]
+    if all(found):
+        return True, t["on_path"].format(p=found[0]), "", ""
+    return False, t["not_found"], t["fix_ffmpeg"].format(restart=restart(t)), "claude_yes"
+
+
 def check_hindsight(t, url):
     try:
         with urllib.request.urlopen(f"{url.rstrip('/')}/health", timeout=5) as resp:
@@ -443,6 +453,7 @@ def checks(lang: str, repo: str, hindsight: str | None, github: bool = False) ->
     plan += [
         ("plugin", True, "claude", lambda: check_plugin(t)),
         ("codex", False, None, lambda: check_codex(t)),
+        ("ffmpeg", False, None, lambda: check_ffmpeg(t)),
     ]
     if hindsight:
         plan.append(("hindsight", False, None, lambda: check_hindsight(t, hindsight)))
