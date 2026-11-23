@@ -234,8 +234,29 @@ class LicenceGateTests(unittest.TestCase):
         st.set_licence(self.catalog, self.game, "prompt2rig", DECISION)
         row = next(r for r in st.status(self.catalog, self.game, "en") if r["id"] == "prompt2rig")
         self.assertEqual(row["commercial_effective"], "licensed")
-        with self.assertRaisesRegex(st.ToolError, "recorded commercial licence"):
+        with self.assertRaisesRegex(st.ToolError, "cleared for commercial use"):
             st.mark_reference(self.catalog, self.game, "prompt2rig", [str(take)])
         st.set_licence(self.catalog, self.game, "prompt2rig", "")
         row = next(r for r in st.status(self.catalog, self.game, "en") if r["id"] == "prompt2rig")
+        self.assertEqual(row["commercial_effective"], "non_commercial")
+
+
+    def test_owner_accepted_risk_stops_marking_and_releases_files(self):
+        take = self.game / "run.fbx"
+        take.write_bytes(b"motion")
+        st.mark_reference(self.catalog, self.game, "prompt2rig", [str(take)])
+        other = self.game / "pose.fbx"
+        other.write_bytes(b"pose")
+        st.mark_reference(self.catalog, self.game, "motion2mixamorig", [str(other)])
+        result = st.accept_risk(self.catalog, self.game, "prompt2rig")
+        self.assertEqual(result["released"], 1)
+        self.assertEqual([item["tool"] for item in st.load_ledger(self.game)["files"].values()], ["motion2mixamorig"])
+        row = next(r for r in st.status(self.catalog, self.game, "ru") if r["id"] == "prompt2rig")
+        self.assertEqual(row["commercial_effective"], "owner_accepted")
+        with self.assertRaisesRegex(st.ToolError, "cleared for commercial use"):
+            st.mark_reference(self.catalog, self.game, "prompt2rig", [str(take)])
+        with self.assertRaisesRegex(st.ToolError, "no commercial restriction"):
+            st.accept_risk(self.catalog, self.game, "ffmpeg")
+        st.accept_risk(self.catalog, self.game, "prompt2rig", False)
+        row = next(r for r in st.status(self.catalog, self.game, "ru") if r["id"] == "prompt2rig")
         self.assertEqual(row["commercial_effective"], "non_commercial")

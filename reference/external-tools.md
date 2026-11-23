@@ -25,6 +25,7 @@ prompt2rig and Motion2MixamoRig are usable dev tools: blocking, previs, timing a
 
 - `studio_tools.py mark-reference <tool> <files…>` records each output's SHA-256 in the game's `.gamedev-studio-reference-only.json`;
 - `build_release_report.py --reference-ledger …` fails, with exit code 3, if any of those files is in the build ZIP;
+- the owner may switch on *Use in a game I sell, at my own risk* (`studio_tools.py accept-risk <tool>`): the tool's outputs are then not marked, files already recorded for it are released from the ledger, and the release report does not block them;
 - if the owner obtains commercial licences (SMPL-X through Meshcapade, MANO via ps-license@tue.mpg.de, and the GVHMR authors' terms), the owner records the link with `set-licence` and outputs are no longer marked.
 
 For final motion, Kimodo with a commercially licensed checkpoint, hand animation or licensed mocap are the commercial routes. Record the source and licence of every asset (DEC-094). This is not legal advice.

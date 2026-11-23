@@ -59,11 +59,9 @@
           <span class="badge">${esc(T["scope_" + tool.scope])}</span></p></div>${statusPill(tool)}</header>
         <p class="gives">${esc(tool.gives)}</p>
         ${tool.requirements ? `<p class="requirements">${esc(T.needs)}: ${esc(tool.requirements)}</p>` : ""}
-        ${tool.commercial !== "ok" ? `<p class="licence-note" data-commercial="${tool.commercial_effective}"><b>${esc(T["commercial_" + tool.commercial_effective])}.</b> ${esc(tool.licence_note)}</p>` : ""}
-        ${tool.licence_gate.length ? `<details class="licence-gate"><summary>${esc(T.licence_gate)}</summary><ol>${tool.licence_gate.map((line) => `<li>${esc(line)}</li>`).join("")}</ol></details>
-        <form class="field" data-licence="${tool.id}"><label>${esc(T.licence_link)}</label>
-          <div class="field-row"><input type="url" spellcheck="false" placeholder="https://…" value="${esc(tool.commercial_licence)}">
-          <button class="action small" type="submit">${esc(T.save)}</button></div></form>` : ""}
+        ${tool.commercial !== "ok" ? `<p class="licence-note" data-commercial="${tool.commercial_effective}"><b>${esc(T["commercial_" + tool.commercial_effective])}.</b> ${tool.owner_accepted_risk ? "" : esc(tool.licence_note)}</p>` : ""}
+        ${tool.licence_gate.length ? `<label class="switch"><input type="checkbox" data-risk="${tool.id}" ${tool.owner_accepted_risk ? "checked" : ""}><span></span>${esc(T.accept_risk)}</label>
+        ${tool.owner_accepted_risk ? "" : `<details class="licence-gate"><summary>${esc(T.licence_gate)}</summary><ol>${tool.licence_gate.map((line) => `<li>${esc(line)}</li>`).join("")}</ol></details>`}` : ""}
         ${tool.cost_note ? `<p class="cost-note">${esc(tool.cost_note)}${tool.cost === "paid" ? " " + esc(T.paid_note) : ""}</p>` : ""}
         <p class="detail mono">${esc(tool.detail)}</p>
         ${manual}${config}${owner}
@@ -225,10 +223,14 @@
       if (t.closest("#stop")) { await api("/api/shutdown", {}).catch(() => {}); document.body.innerHTML = `<main class="page"><p class="callout">${esc(T.stopped)}</p></main>`; }
     });
     document.addEventListener("change", async (event) => {
-      const toggle = event.target.closest("[data-enable]");
+      const toggle = event.target.closest("[data-enable], [data-risk]");
       if (!toggle) return;
-      try { await api("/api/tools/enable", { id: toggle.dataset.enable, enabled: toggle.checked }); }
-      catch (e) { toggle.checked = !toggle.checked; flash(toggle.parentElement, e.message, true); }
+      try {
+        if (toggle.dataset.risk) await api("/api/tools/risk", { id: toggle.dataset.risk, accepted: toggle.checked });
+        else await api("/api/tools/enable", { id: toggle.dataset.enable, enabled: toggle.checked });
+      }
+      catch (e) { toggle.checked = !toggle.checked; flash(toggle.parentElement, e.message, true); return; }
+      if (toggle.dataset.risk) await refresh();
     });
     document.addEventListener("submit", async (event) => {
       event.preventDefault();

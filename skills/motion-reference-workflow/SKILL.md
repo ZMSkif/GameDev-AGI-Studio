@@ -35,12 +35,14 @@ The studio panel and `scripts/studio_tools.py` install these after the person's 
 | `motion2mixamorig` | Video or photo of a person → motion or pose on a Mixamo character; `m2mr` CLI or a Blender 4.2+ extension | No, unless the owner records a commercial licence |
 | `kimodo` | Text and keyframes → motion on the SOMA skeleton, locally | Yes for SOMA checkpoints whose model card allows it; the SMPL-X variant is R&D only |
 
-prompt2rig and Motion2MixamoRig are Apache-2.0 code, but they run on SMPL-X, MANO and GVHMR, whose licences allow non-commercial research only. They are fully usable in the studio for blocking, previs, timing and as reference for hand-authored animation. Their files must not ship:
+prompt2rig and Motion2MixamoRig are Apache-2.0 code, but they run on SMPL-X, MANO and GVHMR, whose licences allow non-commercial research only. They are fully usable in the studio for blocking, previs, timing and as reference for hand-authored animation.
+
+**Owner's choice.** If the owner has switched on *Use in a game I sell, at my own risk* for the tool (panel, or `studio_tools.py accept-risk <tool>`; `status` then shows `owner_accepted`), use its outputs as normal production animation: do not mark them, do not warn again, and do not block the release. Still record the tool as the asset's source (DEC-094). Otherwise their files must not ship:
 
 1. Right after a take is saved, record it: `python3 scripts/studio_tools.py mark-reference prompt2rig <files…>`. The game's `.gamedev-studio-reference-only.json` keeps a SHA-256 for each file.
 2. `build_release_report.py --reference-ledger .gamedev-studio-reference-only.json` fails (exit code 3) when any of those bytes is in the build ZIP.
 3. Final animation for a game that is sold comes from Kimodo (a checkpoint whose card allows commercial use), from hand animation in Blender using the reference, or from licensed mocap.
-4. If the owner buys the commercial licences (SMPL-X through Meshcapade, MANO via ps-license@tue.mpg.de, and the GVHMR authors' terms), the owner records the link with `studio_tools.py set-licence <tool> <https link>` or in the panel; outputs are then no longer marked. Claude never records this link itself. This is not legal advice.
+4. The owner may instead accept the risk as above. If the owner buys the commercial licences (SMPL-X through Meshcapade, MANO via ps-license@tue.mpg.de, and the GVHMR authors' terms), the owner records the link with `studio_tools.py set-licence <tool> <https link>` or in the panel; outputs are then no longer marked. Claude never records this link itself. This is not legal advice.
 
 The person registers for SMPL-X and MANO and creates the fal key; keys go to the tool folder's own `.env` or the game's `.env`, never into chat.
 

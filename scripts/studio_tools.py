@@ -539,6 +539,39 @@ def set_licence(catalog, game, tid, url):
     return entry
 
 
+def accept_risk(catalog, game, tid, accepted=True):
+    """The owner's choice to use a non-commercial tool's outputs commercially at their own risk.
+
+    Stored in the game's settings; afterwards the tool's outputs are not marked and the release
+    report no longer blocks files already recorded for it.
+    """
+    tool = tool_by_id(catalog, tid)
+    if not tool.get("licence_gate"):
+        raise ToolError(f"{tid} has no commercial restriction")
+    data = load_settings(game)
+    entry = data["tools"].setdefault(tid, {})
+    released = 0
+    if accepted:
+        from datetime import datetime, timezone
+        entry["owner_accepted_risk"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        ledger = load_ledger(game)
+        kept = {digest: item for digest, item in ledger["files"].items() if item.get("tool") != tid}
+        released = len(ledger["files"]) - len(kept)
+        if released:
+            ledger["files"] = kept
+            (Path(game) / REFERENCE_LEDGER).write_text(json.dumps(ledger, ensure_ascii=False, indent=2) + "\n",
+                                                        encoding="utf-8")
+    else:
+        entry.pop("owner_accepted_risk", None)
+    save_settings(game, data)
+    return {"tool": tid, "owner_accepted_risk": entry.get("owner_accepted_risk", ""), "released": released}
+
+
+def unrestricted(settings, tid):
+    entry = settings["tools"].get(tid, {})
+    return bool(entry.get("commercial_licence") or entry.get("owner_accepted_risk"))
+
+
 def file_hash(path):
     import hashlib
     digest = hashlib.sha256()
@@ -559,8 +592,8 @@ def mark_reference(catalog, game, tid, files):
     settings = load_settings(game)
     if tool.get("commercial") != "non_commercial":
         raise ToolError(f"{tid} has no commercial restriction to record")
-    if settings["tools"].get(tid, {}).get("commercial_licence"):
-        raise ToolError(f"{tid} has a recorded commercial licence; its outputs are not reference-only")
+    if unrestricted(settings, tid):
+        raise ToolError(f"{tid} is cleared for commercial use in this game; its outputs are not reference-only")
     ledger = load_ledger(game)
     from datetime import datetime, timezone
     added = []
@@ -614,7 +647,9 @@ def status(catalog, game, lang="en"):
             "owner_only": tool["who"] == "owner", "owner_label": text["owner_only"],
             "licence_gate": [item[lang] for item in tool.get("licence_gate", [])],
             "commercial_licence": state.get("commercial_licence", ""),
-            "commercial_effective": "licensed" if state.get("commercial_licence") else tool.get("commercial", "ok"),
+            "owner_accepted_risk": state.get("owner_accepted_risk", ""),
+            "commercial_effective": ("licensed" if state.get("commercial_licence") else
+                                     "owner_accepted" if state.get("owner_accepted_risk") else tool.get("commercial", "ok")),
         })
     return rows
 
@@ -645,6 +680,9 @@ def main(argv=None):
     licence = commands.add_parser("set-licence", help="Record (or clear with an empty value) a commercial licence link")
     licence.add_argument("id")
     licence.add_argument("url", nargs="?", default="")
+    risk = commands.add_parser("accept-risk", help="Owner: use a non-commercial tool's outputs commercially at own risk")
+    risk.add_argument("id")
+    risk.add_argument("--off", action="store_true")
     mark = commands.add_parser("mark-reference", help="Record files made by a non-commercial tool as reference-only")
     mark.add_argument("id")
     mark.add_argument("files", nargs="+")
@@ -670,6 +708,9 @@ def main(argv=None):
             return 0
         if args.command == "set-licence":
             print(json.dumps(set_licence(catalog, game, args.id, args.url), ensure_ascii=False))
+            return 0
+        if args.command == "accept-risk":
+            print(json.dumps(accept_risk(catalog, game, args.id, not args.off), ensure_ascii=False))
             return 0
         if args.command == "mark-reference":
             for name in mark_reference(catalog, game, args.id, args.files):
