@@ -2,6 +2,26 @@
 
 All notable changes to the `gamedev-studio` plugin. The version lives only in `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`, and a release tag `vX.Y.Z` must match it. From the next release on, each section is the release notes for its tag (see "Releases" in `README.md`). 0.1.0 and 0.2.0 were not tagged. The v0.3.0 release notes were written by hand, in Russian and English, before this file existed.
 
+## [0.10.0] - 2026-11-23
+
+### Added
+
+- Prerequisites in `tools/catalog.json`: every tool lists what it needs **to install** (`prerequisites.install`, checked before its first command runs) and **to use** (`prerequisites.use`). A shared top-level `prerequisites` list says how each is checked (`which`, `program_version`, `python_version`, `msvc`, `platform`, `nvidia_gpu`, `tool`, `manual`), why it is needed and who installs it, with the exact winget/brew command for the ones Claude may install. Declared so far: Git, Claude Code CLI, Python 3.11+, Microsoft C++ Build Tools (Windows), Node.js 18+, Linux/WSL2, NVIDIA GPU ~17 GB, Blender 5.2+, Godot 4.5+, Mixar app, fal key, SMPL-X/MANO registration, ComfyUI.
+- `studio_tools.py check <id> [--json]` for agents before they use a tool (exit 3: not ready, with the missing rows and who does each; `confirm_with_person` lists what only the person can confirm, such as a key or a registration); `studio_tools.py prereq <id> --yes`; `install --with-prerequisites`. A missing install prerequisite stops the install before anything runs, with the list of what is missing and who installs it.
+- `status` and the panel show each prerequisite with its state (met, missing, check yourself) for install and for use; the install dialog lists the missing prerequisites with their exact commands before the yes.
+- `studio-rules` rule (j): know what a tool needs before installing or using it; propose a catalog prerequisite instead of another installer when a tool fails for something unlisted.
+
+### Fixed
+
+- Windows: every script now writes UTF-8 to a pipe (`scripts/console_io.py`). `studio_tools.py status` crashed with `'charmap' codec can't encode character` in Claude's tools, so `/gamedev-studio:setup-tools` failed as shipped; Windows' own error texts (cp1251) broke two tests with `stderr` = None.
+- Windows: catalog paths that start with `{tools}` or `{game}` get the system's separators (no more `C:\...	ools/Motion2MixamoRig/.venv`).
+- A half-finished install is no longer shown as installed: `detect.verify` (Motion2MixamoRig: the `m2mr` program in its venv) is checked by `status` and after each install.
+- Blender outside PATH (its MSI installer never adds it) is found in its install folder (`detect.known_paths`), in `status` and in `doctor.py`. Before, a Blender the person already had was reported as missing, and installing it ran winget's Blender MSI, which replaced the existing version (found 23.11.2026: 5.2 replaced by 5.3; settings in `%APPDATA%` are kept and can be loaded on first start).
+- An extensionless file on PATH (for example an empty `C:\Windows\System32\winget`) is no longer taken for the program; installs start the real `winget.exe`.
+- Retrying an install after a failed later step no longer fails on `git clone` into the existing folder.
+- Motion2MixamoRig on Windows needs Microsoft C++ Build Tools (`cython-bbox` is built from source); it is now declared and installed first after a yes.
+- Windows: C/C++ builds in install steps failed with "Unable to find a compatible Visual Studio installation" even with Build Tools installed: `vcvarsall.bat` calls `vswhere.exe` by name, its folder is not on PATH, and the error text it prints breaks setuptools' reading of the environment. Install steps now get the Visual Studio Installer folder on PATH.
+
 ## [0.9.0] - 2026-11-23
 
 ### Added

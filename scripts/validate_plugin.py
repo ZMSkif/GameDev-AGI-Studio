@@ -567,4 +567,6 @@ def main(argv: list[str]) -> int:
 
 
 if __name__ == "__main__":
+    from console_io import prepare_console
+    prepare_console()
     sys.exit(main(sys.argv))
