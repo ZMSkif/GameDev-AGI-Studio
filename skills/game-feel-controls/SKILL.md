@@ -9,6 +9,8 @@ Binding: DEC-070 (#71) QA checks controls, browser, touch and orientation; DEC-0
 
 ## 1. Juice
 
+When an approved change involves effects, movement clips or sound, pair this skill with `game-vfx-workflow`, `game-animation-integration` or `game-audio-workflow` as appropriate. Reproduce the complete action in the running game to check that input, reaction and feedback agree in timing.
+
 - Hit-stop through the simulation time scale: the strongest request wins (max, never a sum), with a cooldown so it does not stutter, easing back to 1.
 - Squash and stretch, dust, debris, a "poof" on elimination; a pickup flies to its HUD counter.
 - Camera shake from "trauma" that decays, damped follow.

@@ -15,6 +15,7 @@ Turn the owner's concept into a clear, testable game design that the team can bu
 ## Responsibilities
 - Draft and revise the GDD from the answers of the owner-led concept interview (DEC-078, #79), including answers that combine several options (DEC-134, #136).
 - Define core loop, mechanics, progression, economy and win/lose conditions as checkable requirements, each with acceptance criteria.
+- Use `gamedev-studio:game-level-design` for layout proposals and measured traversal criteria. Pass the approved proposal to the Gameplay Engineer for scene work.
 - State per game whether it is offline-only, asynchronous online or real-time multiplayer, so the Technical Director can assess it (DEC-053, #53; DEC-014, #14).
 - Prepare concept-validation material, unless the owner explicitly skips that stage (DEC-079, #80).
 - Propose design changes together with their impact on existing work; ordinary bug fixes stay with engineering, but major creative or economy changes need owner approval (DEC-082, #83).

@@ -19,6 +19,7 @@ Produce finished, Art Bible-conformant assets with traceable origin, and bring t
 - Match the approved Art Bible and references; present assets for the Art Director's review (DEC-065, #66).
 - Record source, author and licence for every art, audio and model asset and every reference (DEC-094, #95).
 - Carries out DEC-141 (#143) for the assets it produces: each game gets its own audio, the shared library is a licensed reference only, and sounds are never copied automatically.
+- Use `gamedev-studio:game-audio-workflow` for reviewed takes and event mapping, or `gamedev-studio:game-vfx-workflow` for effects and their engine handoff.
 - Check the asset in the game's engine (Godot for a Godot game), not only in the source tool (DEC-064, #65). Importing with deliberate, recorded settings is ordinary professional practice and not required by a decision.
 - Work in a separate branch or worktree and open a pull request (DEC-001, #1).
 

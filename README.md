@@ -41,8 +41,12 @@ The skills cite the studio decisions they apply and link to their sources.
 | `lessons` | recurring failure classes from the review archive, stored as lessons, with proposed plugin changes |
 | `game-asset-production` | Blender source to engine-ready characters, props, materials and animation |
 | `game-ui-workflow` | approved UI reference to working, responsive game screens |
+| `game-vfx-workflow` | readable game effects, timing on gameplay events and runtime checks |
+| `game-animation-integration` | clip integration, locomotion and action timing in the running game |
+| `game-level-design` | proposed layouts, accurate scale and traversing the implemented level |
+| `game-audio-workflow` | event-to-sound mapping, mix checks and pause/resume |
 | `gameplay-visual-review` | comparable captures and independent review in a playable build |
-| `review-evidence` | Issue/PR review card and SHA-256 verification of the attached files |
+| `review-evidence` | Issue/PR review card, SHA-256 verification and a browser view of the evidence bundle |
 | `studio-handoff` | pause and resume a piece in a fresh session from a GitHub checkpoint |
 
 ### Commands (Claude Code)
@@ -55,7 +59,11 @@ What each CLI was seen to load for 0.4.0:
 
 `python scripts/archive_reviews.py` saves reviewer verdicts verbatim from a session transcript.
 
-To run your existing CLI chats from desktop or phone, see [Mr. Mak with GameDev Studio](reference/mr-mak-workspace.md) and the [upstream attribution](reference/mr-mak-notices.md).
+### Visual review
+
+Open a local report in the browser to compare game captures, watch review clips and check the tested revision. Generate one from the existing evidence manifest with `scripts/render_review.py`. The report uses the original files from the evidence bundle. See the [review evidence instructions](skills/review-evidence/SKILL.md).
+
+The [optional Mr. Mak setup](reference/mr-mak-workspace.md) covers desktop and mobile access to CLI chats. See the [upstream attribution](reference/mr-mak-notices.md).
 
 ### Memory (Hindsight)
 
