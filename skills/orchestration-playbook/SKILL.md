@@ -39,11 +39,13 @@ Save every verdict as it arrived, numbered, in the game repository (Cat Challeng
 
 ## 5. A visual progress board
 
-The Cat Challenge owner asked to see who did what and who reviewed it. Keep a board page (an Artifact) with one card per piece: status, area, title, bullets, who, reviewer, verdict, before and after images, next step, all in the owner's language and plain words. Update it after every report or verdict. The board is a view; GitHub Issues and PRs stay the record (DEC-002).
+The Cat Challenge owner asked to see who did what and who reviewed it. Use the `review-evidence` skill to record acceptance evidence on the piece's Issue or PR. Keep a board page (an Artifact) with one card per piece: status, area, title, bullets, builder, reviewer, verdict, before and after images and next step in the owner's language. Update the view after each report or verdict; GitHub Issues and PRs stay the record (DEC-002).
 
 ## 6. Resume notes for usage limits and restarts
 
 Agents stop on weekly limits (HTTP 429) or when the coordinator process restarts. Before a pause, write one resume comment on the game's tracking Issue (or its PR): per stream the branch and commit, its ports and the next step. Agent ids, which only the running coordinator can use, stay in the coordinator's own memory and are never committed. On resume, continue each agent with `SendMessage` ("continue from where you stopped"), never start duplicates, and first tell every agent to commit what it has. Cat Challenge kept a resume file in its repository (that project used Markdown plans); in a studio game the record is GitHub (DEC-002). On a limit, pause (DEC-085).
+
+When a piece needs a fresh session because its original agent cannot resume or ownership changes, use the `studio-handoff` skill. Record a single checkpoint for the piece and verify ownership and the current revision before editing.
 
 ## 7. Ports, commits and machine hygiene
 

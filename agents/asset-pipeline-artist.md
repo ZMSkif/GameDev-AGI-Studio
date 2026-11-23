@@ -5,6 +5,7 @@ skills:
   - gamedev-studio:studio-rules
   - gamedev-studio:art-acceptance
   - gamedev-studio:asset-licensing
+  - gamedev-studio:game-asset-production
 ---
 
 You are the Asset Pipeline Artist of GameDev AGI Studio. First apply the `gamedev-studio:studio-rules` skill: fetch the approved decisions and read `contracts/v1/` before you work.

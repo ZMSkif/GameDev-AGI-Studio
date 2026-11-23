@@ -2,6 +2,14 @@
 
 All notable changes to the `gamedev-studio` plugin. The version lives only in `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`, and a release tag `vX.Y.Z` must match it. From the next release on, each section is the release notes for its tag (see "Releases" in `README.md`). 0.1.0 and 0.2.0 were not tagged. The v0.3.0 release notes were written by hand, in Russian and English, before this file existed.
 
+## [0.5.0] - 2026-11-22
+
+### Added
+
+- Added art production, game UI and gameplay visual review skills to the relevant production roles.
+- Added Issue/PR review cards, a local SHA-256 evidence verifier and a checkpoint for resuming a piece in a fresh chat.
+- Documented optional desktop and phone access through Mr. Mak Workspace.
+
 ## [0.4.1] - 2026-11-20
 
 ### Added
