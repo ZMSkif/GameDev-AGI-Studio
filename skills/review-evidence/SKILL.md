@@ -36,7 +36,7 @@ python <plugin-root>/scripts/review_evidence.py build --root <evidence-dir> --pl
 python <plugin-root>/scripts/review_evidence.py verify --root <evidence-dir> --manifest <manifest.json>
 ```
 
-Roles are `before`, `after`, `clip`, `build`, `test`, `source` and `export`. `build` writes JSON to stdout by default and refuses to overwrite an existing output file. `verify` reports changed or missing files. Use a trusted copy of the manifest. Successful verification establishes file identity by size and SHA-256. The independent reviewer establishes quality and acceptance separately.
+Roles are `before`, `after`, `clip`, `build`, `test`, `source`, `export` and `reference`. Add an approved project reference with `{"role":"reference","path":"captures/reference.png","decision_url":"https://github.com/example/project/issues/42"}`. The report shows the reference with its approval link alongside the game's captures. `build` writes JSON to stdout by default and refuses to overwrite an existing output file. `verify` reports changed or missing files. Use a trusted copy of the manifest. Successful verification establishes file identity by size and SHA-256. The independent reviewer establishes quality and acceptance separately.
 
 ## Open the evidence in a browser
 

@@ -9,11 +9,10 @@ from string import Template
 import sys
 from urllib.parse import quote
 
-from review_evidence import load_document, measure
+from review_evidence import IMAGE_SUFFIXES, load_document, measure
 
 
 TEMPLATE = Path(__file__).resolve().parents[1] / "ui" / "review.html"
-IMAGES = {".avif", ".gif", ".jpeg", ".jpg", ".png", ".webp"}
 VIDEOS = {".mp4", ".ogv", ".webm"}
 COPY = {
     "en": {
@@ -26,6 +25,7 @@ COPY = {
         "unsupported_video": "Your browser cannot play this video.",
         "before": "Before", "after": "After", "clip": "Clip", "build": "Build",
         "test": "Test", "source": "Source", "export": "Export", "bytes_unit": "B",
+        "reference": "Reference", "decision_label": "Approval record",
         "confirmed": "Confirmed", "blocked": "Blocked", "pending": "Pending",
     },
     "ru": {
@@ -38,6 +38,7 @@ COPY = {
         "unsupported_video": "Браузер не может воспроизвести это видео.",
         "before": "До", "after": "После", "clip": "Видео", "build": "Сборка",
         "test": "Тест", "source": "Исходник", "export": "Экспорт", "bytes_unit": "Б",
+        "reference": "Референс", "decision_label": "Решение об утверждении",
         "confirmed": "Принято", "blocked": "Заблокировано", "pending": "Ожидается",
     },
 }
@@ -65,7 +66,7 @@ def preview(root, directory, entry, copy):
     path = PurePosixPath(entry["path"])
     label = copy[entry["role"]]
     name = escape(path.name)
-    if path.suffix.lower() in IMAGES:
+    if path.suffix.lower() in IMAGE_SUFFIXES:
         url = asset_url(root, directory, entry)
         media = f'<img src="{url}" alt="{label}. {name}" decoding="async">'
     elif path.suffix.lower() in VIDEOS:
@@ -76,9 +77,13 @@ def preview(root, directory, entry, copy):
         )
     else:
         return ""
+    decision = ""
+    if "decision_url" in entry:
+        url = escape(entry["decision_url"], quote=True)
+        decision = f'<a href="{url}">{copy["decision_label"]}</a>'
     return (
         f'<figure class="capture" data-role="{entry["role"]}">{media}'
-        f'<figcaption><strong>{label}</strong><span>{name}</span></figcaption></figure>'
+        f'<figcaption><strong>{label}</strong><span>{name}</span>{decision}</figcaption></figure>'
     )
 
 

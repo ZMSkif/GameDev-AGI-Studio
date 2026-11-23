@@ -51,7 +51,7 @@ The skills cite the studio decisions they apply and link to their sources.
 
 ### Commands (Claude Code)
 
-`/gamedev-studio:new-web-game`, `/gamedev-studio:release-gate`, `/gamedev-studio:package-playgama`, `/gamedev-studio:review-piece`, `/gamedev-studio:archive-reviews`, `/gamedev-studio:brief-piece`, `/gamedev-studio:mine-lessons`, `/gamedev-studio:review-card` and `/gamedev-studio:handoff-piece`. Each is a short wrapper over a skill, and no command has a skill's name.
+`/gamedev-studio:new-web-game`, `/gamedev-studio:release-gate`, `/gamedev-studio:package-playgama`, `/gamedev-studio:review-piece`, `/gamedev-studio:archive-reviews`, `/gamedev-studio:brief-piece`, `/gamedev-studio:mine-lessons`, `/gamedev-studio:review-card`, `/gamedev-studio:capture-review` and `/gamedev-studio:handoff-piece`. Each is a short wrapper over a skill, and no command has a skill's name.
 
 What each CLI was seen to load for 0.4.0:
 - **Claude Code 2.1.325:** `claude --plugin-dir . plugin details gamedev-studio` lists 24 skills and commands together (the 17 skills and the 7 commands), the 14 roles and the 2 hooks.
@@ -62,6 +62,8 @@ What each CLI was seen to load for 0.4.0:
 ### Visual review
 
 Open a local report in the browser to compare game captures, watch review clips and check the tested revision. Generate one from the existing evidence manifest with `scripts/render_review.py`. The report uses the original files from the evidence bundle. See the [review evidence instructions](skills/review-evidence/SKILL.md).
+
+For repeatable before/after captures of locally served web builds, use [browser visual QA](reference/browser-visual-qa.md). The project supplies its own builds, revision IDs and scene steps. The runner writes comparison reports and observations that can also be included in a local pre-release report.
 
 The [optional Mr. Mak setup](reference/mr-mak-workspace.md) covers desktop and mobile access to CLI chats. See the [upstream attribution](reference/mr-mak-notices.md).
 

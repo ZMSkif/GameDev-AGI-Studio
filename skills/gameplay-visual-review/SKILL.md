@@ -12,4 +12,8 @@ Apply the `studio-rules` skill. Use the piece's acceptance lines and the `art-ac
 3. **Check appearance and behavior.** Compare to the accepted reference and test the relevant input or state changes in the running game. Inspect both narrow and wide supported screens when layout is affected. Record external blockers, missing test devices and any differences between the review build and release build.
 4. **Attach evidence.** Use the `review-evidence` skill for the Issue, exact revision, captures and verbatim reviewer verdict. A screenshot only establishes a visual state. Timing, interaction and sustained performance need their own evidence.
 
+## Browser QA
+
+For a web build, use [browser visual QA](../../reference/browser-visual-qa.md) when a project has a reproducible scenario. Run it at the two revisions and report failures, captures and the tested widths. Use real device evidence when the acceptance line calls for a physical device or platform integration.
+
 Source for the workflow: [Mr. Mak gameplay visual review](https://github.com/witnesstodark/mr-mak-workspace/blob/v0.6.6/.agents/skills/gameplay-visual-review/SKILL.md).
