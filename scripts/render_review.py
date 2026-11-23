@@ -13,10 +13,11 @@ from review_evidence import IMAGE_SUFFIXES, load_document, measure
 
 
 TEMPLATE = Path(__file__).resolve().parents[1] / "ui" / "review.html"
+STYLES = TEMPLATE.with_name("report.css")
 VIDEOS = {".mp4", ".ogv", ".webm"}
 COPY = {
     "en": {
-        "default_title": "Review evidence", "issue_label": "Open GitHub issue",
+        "default_title": "Review evidence", "issue_label": "GitHub issue", "back_label": "All viewports",
         "revision_label": "Reviewed revision", "verdict_heading": "Recorded verdict",
         "capture_heading": "Captures", "gallery_label": "Gallery", "compare_label": "Compare",
         "range_label": "Amount of the Before capture shown", "file_details": "File details",
@@ -29,7 +30,7 @@ COPY = {
         "confirmed": "Confirmed", "blocked": "Blocked", "pending": "Pending",
     },
     "ru": {
-        "default_title": "Материалы приёмки", "issue_label": "Открыть задачу на GitHub",
+        "default_title": "Материалы приёмки", "issue_label": "Задача на GitHub", "back_label": "Все размеры",
         "revision_label": "Проверенный коммит", "verdict_heading": "Записанный вердикт",
         "capture_heading": "Кадры и видео", "gallery_label": "Галерея", "compare_label": "Сравнить",
         "range_label": "Доля видимой области кадра до изменений", "file_details": "Сведения о файлах",
@@ -82,7 +83,7 @@ def preview(root, directory, entry, copy):
         url = escape(entry["decision_url"], quote=True)
         decision = f'<a href="{url}">{copy["decision_label"]}</a>'
     return (
-        f'<figure class="capture" data-role="{entry["role"]}">{media}'
+        f'<figure class="capture panel" data-role="{entry["role"]}">{media}'
         f'<figcaption><strong>{label}</strong><span>{name}</span>{decision}</figcaption></figure>'
     )
 
@@ -94,7 +95,7 @@ def file_row(entry, copy):
     )
 
 
-def render(root, manifest, out, title, verdict, lang):
+def render(root, manifest, out, title, verdict, lang, *, from_capture=False):
     root = root.resolve(strict=True)
     if not root.is_dir():
         raise ValueError("The evidence root must be a directory")
@@ -103,7 +104,10 @@ def render(root, manifest, out, title, verdict, lang):
 
     directory = out.parent.resolve(strict=True)
     copy = COPY[lang]
-    gallery = "".join(preview(root, directory, entry, copy) for entry in document["files"])
+    # Keep the two stills together when the manifest interleaves captures and clips.
+    priority = {"before": 0, "after": 1, "reference": 2}
+    gallery_entries = sorted(document["files"], key=lambda entry: priority.get(entry["role"], 3))
+    gallery = "".join(preview(root, directory, entry, copy) for entry in gallery_entries)
     if not gallery:
         gallery = f'<p class="empty">{copy["empty_gallery"]}</p>'
     issue = document["issue"]
@@ -114,7 +118,10 @@ def render(root, manifest, out, title, verdict, lang):
     rendered = template.substitute(
         **copy,
         lang=lang,
+        styles=STYLES.read_text(encoding="utf-8"),
         title=escape(title or copy["default_title"]),
+        back_link=(f'<a class="back-link" href="../index.html"><span aria-hidden="true">←</span> '
+                   f'{copy["back_label"]}</a>' if from_capture else ""),
         issue_url=escape(issue, quote=True),
         issue_number=issue_number,
         commit_url=escape(f"{repo}/commit/{commit}", quote=True),

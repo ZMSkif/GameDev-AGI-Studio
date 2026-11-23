@@ -156,6 +156,9 @@ class CaptureReviewTests(unittest.TestCase):
         self.assertEqual(fixed.returncode, 0, fixed.stderr)
         self.assertIn("Пройдено", (self.root / "fixed" / "index.html").read_text(encoding="utf-8"))
         if video:
+            report = (self.root / "fixed" / "square" / "review.html").read_text(encoding="utf-8")
+            self.assertIn('href="../index.html"', report)
+            self.assertLess(report.index('src="after.png"'), report.index('src="before.webm"'))
             for clip in ("before.webm", "after.webm"):
                 self.assertGreater((self.root / "fixed" / "square" / clip).stat().st_size, 0)
 

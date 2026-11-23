@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="$lang">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src file:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+  <title>$title · GameDev Studio</title>
+  <style>$styles</style>
+</head>
+<body>
+  <header class="masthead">
+    <div class="page">
+      <span class="brand"><span class="brand-mark" aria-hidden="true"></span>GameDev Studio</span>
+      <nav class="actions" aria-label="$actions_label">
+        <a class="action" href="summary.json">$data_label</a>
+        <a class="action primary" href="$issue_url">$issue_label #$issue_number</a>
+      </nav>
+    </div>
+  </header>
+  <main class="page">
+    <header class="summary-title">
+      <h1>$title</h1>
+      <span class="pill" data-status="$overall_key">$overall_status</span>
+    </header>
+    <div class="viewport-grid">$cards</div>
+  </main>
+</body>
+</html>
