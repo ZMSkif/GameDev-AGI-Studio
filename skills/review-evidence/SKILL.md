@@ -38,4 +38,14 @@ python <plugin-root>/scripts/review_evidence.py verify --root <evidence-dir> --m
 
 Roles are `before`, `after`, `clip`, `build`, `test`, `source` and `export`. `build` writes JSON to stdout by default and refuses to overwrite an existing output file. `verify` reports changed or missing files. Use a trusted copy of the manifest. Successful verification establishes file identity by size and SHA-256. The independent reviewer establishes quality and acceptance separately.
 
+## Open the evidence in a browser
+
+Generate a review page directly from the checked files. Give it a title from the task and record a verdict only when you have the independent result.
+
+```text
+python <plugin-root>/scripts/render_review.py --root <evidence-dir> --manifest <manifest.json> --out <evidence-dir>/review.html --title "Mobile HUD review"
+```
+
+Open the generated HTML in your browser. Use `--lang ru` for Russian labels. A pair of before and after images of the same dimensions enables the comparison slider. Keep the page and its evidence files in their original relative locations. The page links to the Issue and revision for the decision and discussion. Store or share the bundle using the project's existing evidence policy.
+
 Sources for the workflow: [Mr. Mak cards](https://github.com/witnesstodark/mr-mak-workspace/blob/v0.6.6/docs/editable-cards.md) and [asset delivery evidence](https://github.com/witnesstodark/mr-mak-workspace/blob/v0.6.6/scripts/asset-delivery/README.md).

@@ -2,6 +2,13 @@
 
 All notable changes to the `gamedev-studio` plugin. The version lives only in `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`, and a release tag `vX.Y.Z` must match it. From the next release on, each section is the release notes for its tag (see "Releases" in `README.md`). 0.1.0 and 0.2.0 were not tagged. The v0.3.0 release notes were written by hand, in Russian and English, before this file existed.
 
+## [0.6.0] - 2026-11-23
+
+### Added
+
+- A local browser report for verified review evidence, with game captures, clip playback, file hashes and links to the task and tested revision.
+- Game production workflows for VFX, runtime animation, level design and game audio, wired into the studio's production and review roles.
+
 ## [0.5.0] - 2026-11-22
 
 ### Added
