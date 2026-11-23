@@ -4,7 +4,7 @@
 
 This file is the single source of the web stack tables. Other skills link here instead of copying them.
 
-Source: Cat Challenge `STACK_PLAYBOOK.md`, agreed by Claude, Codex (round 8 «ПОДТВЕРЖДАЮ») and an advisor on 16.11.2026. Labels: **shipped** = imported by the Cat Challenge r17 build, published to the Playgama sandbox (checked in its code on 19.11.2026); **decided** = agreed but not imported by a shipped build. All timings are emulation, not devices.
+Source: the stack playbook of the studio's first shipped web game, agreed by Claude, Codex and an advisor on 16.11.2026. Labels: **shipped** = imported by that game's build published to the Playgama sandbox (checked in its code on 19.11.2026); **decided** = agreed but not imported by a shipped build. All timings are emulation, not devices.
 
 ## 1. Criteria, in this order
 
@@ -13,7 +13,7 @@ Source: Cat Challenge `STACK_PLAYBOOK.md`, agreed by Claude, Codex (round 8 «П
 2. **Maintenance:** a live repository that answers bugs. A fresh release is not required (tween.js 2024 and Howler 2023 are fine).
 3. **Weight of the start-up path only.** Heavy, high-quality content is allowed; load it after `game_ready` (per round, in the menu, during the tutorial). Moving it past `game_ready` does not make it free: it still costs time to the first match, memory and heat.
 
-The owner's rule (Cat Challenge, 16.11.2026): never cut quality to save kilobytes; weight limits apply only to what is needed before the first interactive frame.
+Studio rule (16.11.2026): never cut quality to save kilobytes; weight limits apply only to what is needed before the first interactive frame.
 
 ## 2. Renderer by game type
 
@@ -40,7 +40,7 @@ The owner's rule (Cat Challenge, 16.11.2026): never cut quality to save kilobyte
 
 Weights are gzip deltas of a separate build on top of the Three core (`research/bench/libsize.mjs`): an estimate, not the exact addition to a game.
 
-| # | Subsystem | Choice | Status in Cat Challenge r17 | Weight | Own work on top |
+| # | Subsystem | Choice | Status in the first shipped game | Weight | Own work on top |
 |---|---|---|---|---:|---|
 | 1 | Characters and animation | ready CC0 clips + own or reworked models, offline retarget in Blender, `AnimationMixer` | shipped | — | the 10-step character process (`art-acceptance` skill); procedural ears, tail, gaze, squash and stretch |
 | 2 | Tweens | `@tweenjs/tween.js`; CSS and WAAPI for DOM | **decided, not shipped**: installed but never imported; the shipped game tweens with its own `@gamekit/fx` pool | 3.8 KiB | tween time only from the game loop (pause, hit-stop) |
@@ -59,7 +59,7 @@ Weights are gzip deltas of a separate build on top of the Three core (`research/
 | 15 | Text in 3D | DOM overlay by default; `troika-three-text` only with a local font and a CSP check of its worker | not used | 41–46 KiB | — |
 | 16 | 2D physics (2D games) | `planck` (47 KB) or `matter-js` (28 KB); Rapier2D only when needed (0.9–1.3 MB) | not used | — | — |
 
-**Own and reusable core** (in the Cat Challenge repo as `gamekit`; see the `gamekit` skill): the platform adapter and platform profiles; shared time, pause and resume; a loader with retry, abort and disposal; WebGL context-loss handling; data version, seed and input log for bug replay; the asset provenance registry and a Credits screen generated from it; accessibility (safe areas, contrast, reduced motion); the packaging script with network and platform-limit audits.
+**Own and reusable core** (`gamekit`; see the `gamekit` skill): the platform adapter and platform profiles; shared time, pause and resume; a loader with retry, abort and disposal; WebGL context-loss handling; data version, seed and input log for bug replay; the asset provenance registry and a Credits screen generated from it; accessibility (safe areas, contrast, reduced motion); the packaging script with network and platform-limit audits.
 
 Game physics, render-object disposal and context-loss recovery are modules behind shared interfaces, not one shared implementation. Reuse is confirmed only by a second game of another type.
 
@@ -72,7 +72,7 @@ Game physics, render-object disposal and context-loss recovery are modules behin
 5. Start-up cost (weak-phone emulation): Jolt 1,023 KiB, 6.36 s; Rapier wasm 1,351 KiB, 8.82 s; Babylon + Havok 1,195–1,541 KiB, 7.78–9.32 s. Controller quality was not compared by these numbers.
 6. Measure physics performance only under constant full load: every participant active for the whole interval, the counter checked at the end.
 
-Cat Challenge result: P1 closed at iteration 2 of 2, 83/83 tests, audited by Codex; 20 active participants cost about 0.06 ms per tick in Chrome.
+Result in the first shipped game: P1 closed at iteration 2 of 2, 83/83 tests, audited by Codex; 20 active participants cost about 0.06 ms per tick in Chrome.
 
 ## 6. Start-up metrics and the bench
 
@@ -80,7 +80,7 @@ Measure both, always:
 - time to **`game_ready`** (interactive menu or first playable frame);
 - time to the **first controllable match**, including lazily loaded physics and round assets.
 
-The bench (`research/bench/` in the Cat Challenge repo, reusable):
+A load bench that worked (build it in the game's repository, for example `research/bench/`):
 - Vite 8 and headless Chrome through `playwright-core`;
 - CDP profiles "phone" (CPU ×4, 10 Mbit/s, RTT 80 ms) and "weak phone" (CPU ×6, 1.6 Mbit/s, RTT 150 ms);
 - one readiness protocol, `__bench.readyAt`; an error makes the run FAILED;

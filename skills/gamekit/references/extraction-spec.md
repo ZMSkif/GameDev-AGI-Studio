@@ -25,14 +25,14 @@ A package version is certified only when all of these pass in CI and an independ
 2. the README states the contract, the platform requirements it covers (by number) and the known traps;
 3. determinism where claimed: a golden hash computed twice (npc, arcade-physics, quests);
 4. no engine, DOM, clock or `Math.random` in engine-neutral packages (source lint);
-5. a consumer test: the Cat Challenge build switched to the published version passes its full suite and e2e, and its archive differs only in import paths;
+5. a consumer test: the first game's build switched to the published version passes its full suite and e2e, and its archive differs only in import paths;
 6. for a style-bearing package (theme, fx), a visual check that reuse does not carry one game's look into another (the reason DEC-066 exists).
 
 ## 4. Starter template (DEC-132)
 
-- Variants: `three-3d` (proven by Cat Challenge), `three-2d-lite` (Three + `OrthographicCamera` + DOM UI; experimental until a game ships on it), and `pixi-2d` only after the first rich-2D game.
+- Variants: `three-3d` (proven by a shipped game), `three-2d-lite` (Three + `OrthographicCamera` + DOM UI; experimental until a game ships on it), and `pixi-2d` only after the first rich-2D game.
 - Common parts: the `platform → save → audio → input` skeleton on the mock platform behind the platform adapter (DEC-056, #56); per platform profile its own wiring (DEC-057, #57), e.g. for Playgama: Bridge first in `index.html`, `playgama-bridge-config.json` and `vite.config.ts` with `playgamaBridge({ mode: 'local' })`; a Credits screen generated from the licence registry, language files for the owner's language set, a no-synthesis test, a smoke e2e, and empty game documents (requirements, stack decision, licence registry).
-- **No assets in the template** (Sonniss and similar may never be published; fonts are fetched by the setup step), no Cat Challenge names, rounds, palettes, texts or balance numbers: anything game-specific appears only as an example marked `example: cat-challenge`.
+- **No assets in the template** (Sonniss and similar may never be published; fonts are fetched by the setup step), no names, rounds, palettes, texts or balance numbers of any existing game: anything game-specific appears only as a neutral example marked `example`.
 - Acceptance: a tiny 2D game and a tiny 3D game are generated from the template non-interactively, built, packaged with a dry run, and pass the smoke e2e and a quick release gate in a clean folder on Linux CI or WSL2. Then a human runs `/gamedev-studio:new-web-game` once in a clean folder.
 
 ## 5. The four packages without a README
@@ -47,4 +47,4 @@ A package version is certified only when all of these pass in CI and an independ
 
 ## Source
 
-Cat Challenge `docs/stack-plugin/PLUGIN_PLAN.md` §3, §10–13 (17.11.2026), the gamekit READMEs and `package.json` files (19.11.2026), `STACK_PLAYBOOK.md` §4, and the stack-plugin hand-over note (17.11.2026).
+The plugin plan and stack playbook of the studio's first shipped web game (17.11.2026) and the gamekit READMEs and `package.json` files (19.11.2026).

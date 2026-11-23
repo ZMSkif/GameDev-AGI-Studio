@@ -1,13 +1,13 @@
 ---
 name: gamekit
-description: How to use gamekit, the reusable TypeScript game packages built for Cat Challenge (platform facade over Playgama Bridge, save, audio, input, theme, fx, arcade-physics, hub, prompts, npc, quests, dialogue, three-batch) - the package map, the start-up order, the contract rules and their current status, plus the extraction spec for moving them to their own versioned repository. Use when a web-profile game needs a platform adapter, saves, audio, input, effects, physics, a hub, quests, dialogue or NPCs, or when planning the gamekit extraction.
+description: How to use gamekit, the studio's reusable TypeScript game packages (platform facade over Playgama Bridge, save, audio, input, theme, fx, arcade-physics, hub, prompts, npc, quests, dialogue, three-batch) - the package map, the start-up order, the contract rules and their current status, plus the extraction spec for moving them to their own versioned repository. Use when a web-profile game needs a platform adapter, saves, audio, input, effects, physics, a hub, quests, dialogue or NPCs, or when planning the gamekit extraction.
 ---
 
 # gamekit
 
 > **Decided by DEC-145 (#161):** the web profile for HTML5 portal games and the Godot 4.x profile for heavy and desktop games; the owner approves each game's profile with its architecture.
 
-**Where it is (19.11.2026):** `gamekit/packages/*` inside the Cat Challenge repository. Every package is `0.1.0`, `private: true`, scope `@gamekit`, and exports raw `src/*.ts` (no build step), so only a Vite consumer in the same workspace can use it. **Do not move or copy the code now:** the game is still changing these packages. The extraction is specified in `references/extraction-spec.md`.
+**Where it is (19.11.2026):** gamekit is not published yet. Its packages live in a private game repository of the studio as `gamekit/packages/*` (each `0.1.0`, `private: true`, scope `@gamekit`, raw `src/*.ts` without a build step, so only a Vite consumer in the same workspace can use them). **If you only have this plugin, you do not have the gamekit code:** use the package map, start-up order and rules below as the design reference for the game's own modules, and ask the owner whether gamekit can be shared. Do not move or copy the code without the owner. The extraction is specified in `references/extraction-spec.md`.
 
 ## Package map
 
@@ -42,9 +42,9 @@ Bridge script first in `<head>` → `await bridge.initialize()` → create the p
 
 There is no registry and no approved starter template yet, and DEC-132 (#134) allows new games only from verified templates without hidden project assumptions. So:
 1. Tell the owner that gamekit is not extracted; propose the extraction (`references/extraction-spec.md`) or a workspace copy as a stopgap. Vendoring is an emergency path only.
-2. Never copy Cat Challenge's game code (rounds, bots, host, data, layouts); only packages.
+2. Never copy another game's own code (rounds, bots, host, data, layouts); only packages.
 3. A package counts as reusable only after a **second game of another type** uses it without changes to its contract.
 
 ## Source
 
-Cat Challenge `gamekit/packages/*/README.md` and `package.json` files (read 19.11.2026), `docs/city/CITY_PLAN.md` §5 and §11, `docs/stack-plugin/PLUGIN_PLAN.md` §3 and §11, `STACK_PLAYBOOK.md` §4, the stack-plugin hand-over note (17.11.2026).
+The gamekit package READMEs and `package.json` files (read 19.11.2026) and the plans and stack playbook of the studio's first shipped web game (17–19.11.2026).

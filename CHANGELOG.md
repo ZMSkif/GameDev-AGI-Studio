@@ -2,6 +2,13 @@
 
 All notable changes to the `gamedev-studio` plugin. The version lives only in `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`, and a release tag `vX.Y.Z` must match it. From the next release on, each section is the release notes for its tag (see "Releases" in `README.md`). 0.1.0 and 0.2.0 were not tagged. The v0.3.0 release notes were written by hand, in Russian and English, before this file existed.
 
+## [0.10.1] - 2026-11-24
+
+### Changed
+
+- The plugin is universal: skills, commands, scripts and tests no longer name the owner's own games or other projects, quote the owner's chat messages, or point at files in a private game repository. Proven numbers and rules stay as defaults ("for example", "a proven default"), with the owner confirming them per game. The author (`ZMSkif`) and the studio's decision links stay.
+- `gamekit` says plainly that its code is not published and is not in the plugin: without it, use the package map and rules as the design reference for the game's own modules, and ask the owner whether it can be shared.
+
 ## [0.10.0] - 2026-11-23
 
 ### Added
@@ -146,7 +153,7 @@ All notable changes to the `gamedev-studio` plugin. The version lives only in `.
 
 ### Added
 - Two engine profiles ([DEC-145](https://github.com/ZMSkif/GameDev-AGI-Studio/issues/161), the owner's answer «Оба профиля»): **web** for HTML5 portal games (Three.js for 3D, 2.5D and light 2D; PixiJS v8 for rich 2D) and **Godot 4.x** for heavy or desktop games. DEC-012 is refined, not cancelled.
-- 12 skills built from what the "$1,000,000 Cat Challenge" web game proved: `engine-profiles`, `web-stack-choice`, `playgama-release`, `web-monetization`, `art-acceptance`, `asset-licensing`, `i18n-portal`, `fair-bots-balance`, `game-feel-controls`, `web-audio-lifecycle`, `orchestration-playbook`, `gamekit`.
+- 12 skills built from what the studio's first shipped web game proved: `engine-profiles`, `web-stack-choice`, `playgama-release`, `web-monetization`, `art-acceptance`, `asset-licensing`, `i18n-portal`, `fair-bots-balance`, `game-feel-controls`, `web-audio-lifecycle`, `orchestration-playbook`, `gamekit`.
 - 5 on-demand specialist roles: `release-qa-engineer`, `pre-publish-reviewer`, `art-reviewer`, `i18n-language-reviewer`, `crowd-soak-reviewer`.
 - 5 Claude Code commands: `new-web-game`, `release-gate`, `package-playgama`, `review-piece`, `archive-reviews`.
 - `scripts/archive_reviews.py`: saves reviewer verdicts verbatim from a session transcript.

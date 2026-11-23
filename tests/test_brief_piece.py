@@ -1,4 +1,4 @@
-"""Unit tests for scripts/brief_piece.py, including the four Cat Challenge failures it must prevent."""
+"""Unit tests for scripts/brief_piece.py, including the four real multi-agent failures it must prevent."""
 import contextlib
 import importlib.util
 import io

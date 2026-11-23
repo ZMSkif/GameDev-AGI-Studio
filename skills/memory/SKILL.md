@@ -24,7 +24,7 @@ The contract is `contracts/v1/knowledge-policy.json`.
 | Scope | Where | Example |
 |---|---|---|
 | studio | bank `gamedev-studio::studio` | "Every piece gets its own reviewer; mutants catch tests that cannot fail." |
-| project | bank `gamedev-studio::project::<repository>` | "In cat-challenge the round-3 lesson runs inside the first show." |
+| project | bank `gamedev-studio::project::<repository>` | "In this game the round-3 lesson runs inside the first show." |
 | task | the project bank, tag `task:<issue number>` | "Issue 42: the collar spike came from an unbisected border." |
 
 - **The bank is the scope.** Do not add `scope:` tags. Tag a task memory `task:<issue number>`.

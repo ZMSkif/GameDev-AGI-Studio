@@ -564,7 +564,7 @@ class ScopeGuard(HookTestCase):
         self.assertEqual((done.returncode, done.stdout, done.stderr), (0, b"", b""))
 
     def test_other_repository_is_untouched(self):
-        self.assertSilentEverywhere(make_repo(self.tmp, "cs2", origin="https://github.com/ZMSkif/cs2-video-toolkit.git"))
+        self.assertSilentEverywhere(make_repo(self.tmp, "other", origin="https://github.com/example/other-project.git"))
 
     def test_repository_without_remote_is_untouched(self):
         self.assertSilentEverywhere(make_repo(self.tmp, "local", origin=None))

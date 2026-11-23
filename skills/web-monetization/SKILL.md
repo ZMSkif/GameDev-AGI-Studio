@@ -69,4 +69,4 @@ Money, exclusives, traffic bonuses, prices, seasonal events and new ad formats a
 
 ## Source
 
-Cat Challenge `research/MONETIZATION_PLAYBOOK.md` and `docs/stack-plugin/MONETIZATION_SKILL_DRAFT.md` (sources opened 17.11.2026; labels and dates there), and the owner's monetization answers in its `OWNER_DECISIONS.md`.
+The monetization playbook and skill draft of the studio's first shipped web game (sources opened 17.11.2026) and the owner's monetization answers.

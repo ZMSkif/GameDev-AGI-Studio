@@ -54,7 +54,7 @@ Common return reasons: progress outside Bridge or written too often; no intersti
 
 ## Packaging and archive checks
 
-Build a production archive with a script that fails loudly, never "best effort" (Cat Challenge `tools/package-game.mjs`):
+Build a production archive with a script that fails loudly, never "best effort" (for example `tools/package-game.mjs`):
 - `index.html` at the root; `playgama-bridge-config.json` and the **unmodified** `playgama-bridge.js` next to it;
 - Latin file names (YouTube: only `A–Z a–z 0–9 . - _`, no spaces, ≤ 8,000 files); size ≤ 314,572,800 bytes;
 - no source maps; no dev-only code (mocks, debug globals, autoplay hooks); no external URLs; fonts, sounds and decoders inside;
@@ -65,7 +65,7 @@ Build a production archive with a script that fails loudly, never "best effort" 
 
 Production: Bridge steps and call order, network (no external hosts) and browser-storage traps, the console in a default Chrome, first boot, reload with saves, a page that boots hidden (starts silent and frozen), an unsupported language → English, unsupported payments and rewarded hide their UI, WebGL context loss and restore, one failing asset, a failing code chunk, all audio failing. Dev and mock: full matches with ads shown, skipped and failed; rewarded paths incl. decline and failure; purchases with success, cancel, error, pending restore and a slow double tap; input per scheme incl. no-Esc and long press; layout at 16:9, 9:16, 1:1, 360×640 and 640×360 in the longest languages with glyph checks; HUD overlap by painted boxes; tutorial; a soak with heap after a forced GC; save errors and corrupted saves; perf under phone emulation; a licence audit of the dist folder.
 
-Rules from the Cat Challenge reviews: a check that cannot fail is no check (stale e2e assertions "caught nothing"); play the production archive past the first round before any publish; compare memory, warnings and movement with the previous release; label emulation as emulation (DEC-073, #74). Run the gate with the `release-qa-engineer` role, then a separate `pre-publish-reviewer`.
+Rules from real release reviews: a check that cannot fail is no check (stale e2e assertions "caught nothing"); play the production archive past the first round before any publish; compare memory, warnings and movement with the previous release; label emulation as emulation (DEC-073, #74). Run the gate with the `release-qa-engineer` role, then a separate `pre-publish-reviewer`.
 
 ## The sandbox flow and the owner's gates
 
@@ -82,12 +82,12 @@ Rules from the Cat Challenge reviews: a check that cannot fail is no check (stal
 | catalog | `replace_in_app_products` deletes every product left out; `send_playgama_catalog_update` changes the live game for all players | **only on the owner's yes to the exact list** |
 | moderation | opens only after the sandbox reaches its targets (play time per category among them, counted daily); `get_submission_state`, `get_sandbox_state` | the owner reviews the game first; submitting, screenshots and rollback happen in the console (no MCP tool) |
 
-Relay a tool's refusal `message` word for word. A permission one game got (Cat Challenge: sandbox publishing, a pre-approved catalog) never carries over to another game or build.
+Relay a tool's refusal `message` word for word. A permission one game got (for example sandbox publishing or a pre-approved catalog) never carries over to another game or build.
 
 ## Store texts and credits
 
-- Credits at the legal minimum; Cat Challenge's owner also ruled: the developer credit first, others in small collapsible text, never list technologies or track titles on screens, store pages or update notes. Confirm this rule per game.
-- The one technology name that must stay on screen is "Playgama Bridge … LGPL-3.0-or-later" inside the Licenses view. Cat Challenge, following its owner's no-technologies rule, also left out "SDK" and the version there (review 17: LGPL needs the name, the copyright, the licence and a pointer to the texts, not the version).
+- Credits at the legal minimum; a proven default: the developer credit first, others in small collapsible text, never list technologies or track titles on screens, store pages or update notes. Confirm this rule per game.
+- The one technology name that must stay on screen is "Playgama Bridge … LGPL-3.0-or-later" inside the Licenses view. A game with a no-technologies rule may also leave out "SDK" and the version there (LGPL needs the name, the copyright, the licence and a pointer to the texts, not the version).
 
 ## Other platforms through Bridge
 
@@ -95,4 +95,4 @@ YouTube Playables (initial download < 30 MiB, recommended < 15 MiB; files < 30 M
 
 ## Source
 
-Cat Challenge `PLATFORM_REQUIREMENTS.md`, `release/PLAYGAMA_SUBMISSION.md` (read through the Playgama MCP on 16–17.11.2026), `tools/package-game.mjs`, `game/e2e/release/*.mjs`, the r17 release (sandbox, 19.11.2026), reviews 01, 17 and 60 of its archive, and the owner's rules in its `OWNER_DECISIONS.md`.
+Playgama's requirements and submission guide (read through the Playgama MCP on 16–17.11.2026) and the packaging script, release e2e checks, sandbox release (19.11.2026) and reviews of the studio's first shipped web game.

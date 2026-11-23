@@ -1,6 +1,6 @@
 ---
 name: i18n-portal
-description: Localisation of portal games in many languages (Cat Challenge shipped 8 - EN, RU, UK, ES, PT, DE, FR, TR) - language from the platform, the validator, length lints at 360 px and small landscapes, font glyph checks, and a language review of Russian and Ukrainian that is honest about not being a human native read. Use when adding or changing in-game text, adding a language, fixing clipped or untranslated text, or reviewing a translation.
+description: Localisation of portal games in many languages (proven with 8 - EN, RU, UK, ES, PT, DE, FR, TR) - language from the platform, the validator, length lints at 360 px and small landscapes, font glyph checks, and a language review of Russian and Ukrainian that is honest about not being a human native read. Use when adding or changing in-game text, adding a language, fixing clipped or untranslated text, or reviewing a translation.
 ---
 
 # Portal localisation
@@ -9,7 +9,7 @@ Binding: DEC-068 (#69) static checks; DEC-070 (#71) browser, touch and orientati
 
 ## 1. Language set and source
 
-- The owner chooses the languages per game. Cat Challenge: 8, English default, then RU, UK, ES, PT (Brazilian), DE, FR, TR.
+- The owner chooses the languages per game. A proven set: 8, English default, then RU, UK, ES, PT (Brazilian), DE, FR, TR.
 - On Playgama the language comes only from `bridge.platform.language`, read once; unknown languages fall back to English. The language selector shows self-names (or flags) behind a gear or globe icon.
 - Text inside the 3D scene: only numbers, `$` and the title, or it must be translated too.
 - The Playgama form codes differ from ISO: Ukrainian is `UA`, Brazilian Portuguese is `PT_BR`.
@@ -20,7 +20,7 @@ Binding: DEC-068 (#69) static checks; DEC-070 (#71) browser, touch and orientati
 - plurals, placeholders and allowed formats match the master;
 - keys that must be identical in all languages (the game title, Playgama 3.5.1) are identical;
 - a value equal to English is an error unless it is on an allow-list;
-- a length lint against the master (Cat Challenge used ×1.3);
+- a length lint against the master (×1.3 worked well);
 - scan keys built by helper functions as well as literal keys (a review found a sign key built by a `name('…')` helper that the literal scan missed);
 - code defaults must not carry stale wording: they show when a language file fails to load.
 
@@ -28,9 +28,9 @@ Keep one glossary of the game's terms per language and write every wording chang
 
 ## 3. Layout on small screens
 
-Capture every touched state in the longest languages (de, fr, ru, uk; tr for glyphs). Cat Challenge's sizes, a good default: 1280×720, 405×720, **360×640**, 640×360 and a 1:1 window; for anything shown in landscape, also 568×320, 667×375, 740×360 and 844×390. Measure where the letters themselves end, not the pill behind them. Fail on any clip, mid-word break, overlap, page scroll or control outside the viewport. Watch the smallest font size (a 360×640 card dropped to 8 px in r17, against 10.8 px before).
+Capture every touched state in the longest languages (de, fr, ru, uk; tr for glyphs). A good default set of sizes: 1280×720, 405×720, **360×640**, 640×360 and a 1:1 window; for anything shown in landscape, also 568×320, 667×375, 740×360 and 844×390. Measure where the letters themselves end, not the pill behind them. Fail on any clip, mid-word break, overlap, page scroll or control outside the viewport. Watch the smallest font size (a 360×640 card once dropped to 8 px, against 10.8 px before).
 
-Seen in Cat Challenge: countdown words (READY / SET / GO) ran off the right edge in landscape in six languages while portrait was fine; a German compound overflowed a 64 px tile by 4 px on each side.
+Seen in a shipped game: countdown words (READY / SET / GO) ran off the right edge in landscape in six languages while portrait was fine; a German compound overflowed a 64 px tile by 4 px on each side.
 
 ## 4. Fonts and glyphs
 
@@ -46,4 +46,4 @@ This is an **AI language review, not a human native-speaker read** (DEC-016). Sa
 
 ## Source
 
-Cat Challenge `game/i18n/_tools/validate-i18n.mjs` and `GLOSSARY.md`, `game/e2e/release/dev-layout.mjs` and `hud-boxes.mjs`, reviews 24, 35, 59, 61 and 62 of its `docs/reviews/`, `docs/status/RESUME_2026-11-23.md` (I18N-C follow-ups), and its `OWNER_DECISIONS.md` (8 languages, 16.11.2026).
+The i18n validator, glossary, layout e2e checks and independent reviews of the studio's first shipped web game (16–23.11.2026).

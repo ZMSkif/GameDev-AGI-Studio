@@ -9,7 +9,7 @@ Binding: DEC-040 (#40) nobody accepts own work; DEC-051 (#51) parallel agents in
 
 ## 1. Orchestrate, do not do the workers' jobs
 
-The coordinator writes briefs, splits the work, keeps file ownership disjoint, integrates and checks results. Building features, writing tests and running QA suites go to agents (studio roles in `agents/`). Small glue, such as one wiring line or an owner-authorised MCP call, may stay with the coordinator. Cat Challenge owner, 17.11.2026: «Ты должен оркестрировать а не делать за них и проверять результат».
+The coordinator writes briefs, splits the work, keeps file ownership disjoint, integrates and checks results. Building features, writing tests and running QA suites go to agents (studio roles in `agents/`). Small glue, such as one wiring line or an owner-authorised MCP call, may stay with the coordinator. The owner's rule: the coordinator orchestrates and checks results; it does not do the agents' work.
 
 ## 2. Piece cards
 
@@ -30,26 +30,26 @@ A brief has nine parts: context (3–5 lines), read first, owns only, do not tou
 - It checks: the diff touches only the card's files (`git diff --name-only`); the branch merges cleanly into the current main (`git merge-tree`) and re-runs on the new head if main moved; the full suite and typecheck; every acceptance line with its own probes and captures; numbers re-measured from the shipped files.
 - **Mutants:** it breaks the code on purpose (a guard removed, a margin ×10, a flag forced false) and expects tests to fail. A surviving mutant is a missing test. A known-bad input must fail the gate. A new regression test must fail on the old commit. A loop over an empty list proves nothing.
 - **Soaks** run longer than the tests' own windows; **determinism** hashes are computed twice.
-- The verdict is `VERDICT: CONFIRMED` or `VERDICT: BLOCKED`, with must-fix, should-fix and notes, evidence paths, and a "could not check" list. The same reviewer re-checks the fix round. Unrequested changes in a fix round are a regression risk; Cat Challenge's audio watchdog doubled the music.
+- The verdict is `VERDICT: CONFIRMED` or `VERDICT: BLOCKED`, with must-fix, should-fix and notes, evidence paths, and a "could not check" list. The same reviewer re-checks the fix round. Unrequested changes in a fix round are a regression risk; one unrequested audio watchdog doubled a game's music.
 - Bars that worked: the art tiers of the `art-acceptance` skill; the 10-point screen checklist (mockup match; no primitive; 0 layout issues; controls ≥ 44 px; contrast 4.5:1 text and 3:1 graphics; reduced motion and press sounds; no dark patterns; platform rules; full suite and no start-up regression over 5 %; only owned files).
 
 ## 4. Verbatim review archive
 
-Save every verdict as it arrived, numbered, in the game repository (Cat Challenge: 69 files in `docs/reviews/` by the evening of 19.11.2026). Use `/gamedev-studio:archive-reviews` or `python <plugin root>/scripts/archive_reviews.py --transcript <session.jsonl> --out docs/reviews`. It finds task notifications whose result holds a `VERDICT:` line, dedupes by content, numbers after the highest file and refuses secret-looking bodies. The archive is evidence; it is not a task tracker.
+Save every verdict as it arrived, numbered, in the game repository (for example `docs/reviews/`). Use `/gamedev-studio:archive-reviews` or `python <plugin root>/scripts/archive_reviews.py --transcript <session.jsonl> --out docs/reviews`. It finds task notifications whose result holds a `VERDICT:` line, dedupes by content, numbers after the highest file and refuses secret-looking bodies. The archive is evidence; it is not a task tracker.
 
 ## 5. A visual progress board
 
-The Cat Challenge owner asked to see who did what and who reviewed it. Use the `review-evidence` skill to record acceptance evidence on the piece's Issue or PR. Keep a board page (an Artifact) with one card per piece: status, area, title, bullets, builder, reviewer, verdict, before and after images and next step in the owner's language. Update the view after each report or verdict; GitHub Issues and PRs stay the record (DEC-002).
+The owner sees who did what and who reviewed it. Use the `review-evidence` skill to record acceptance evidence on the piece's Issue or PR. Keep a board page (an Artifact) with one card per piece: status, area, title, bullets, builder, reviewer, verdict, before and after images and next step in the owner's language. Update the view after each report or verdict; GitHub Issues and PRs stay the record (DEC-002).
 
 ## 6. Resume notes for usage limits and restarts
 
-Agents stop on weekly limits (HTTP 429) or when the coordinator process restarts. Before a pause, write one resume comment on the game's tracking Issue (or its PR): per stream the branch and commit, its ports and the next step. Agent ids, which only the running coordinator can use, stay in the coordinator's own memory and are never committed. On resume, continue each agent with `SendMessage` ("continue from where you stopped"), never start duplicates, and first tell every agent to commit what it has. Cat Challenge kept a resume file in its repository (that project used Markdown plans); in a studio game the record is GitHub (DEC-002). On a limit, pause (DEC-085).
+Agents stop on weekly limits (HTTP 429) or when the coordinator process restarts. Before a pause, write one resume comment on the game's tracking Issue (or its PR): per stream the branch and commit, its ports and the next step. Agent ids, which only the running coordinator can use, stay in the coordinator's own memory and are never committed. On resume, continue each agent with `SendMessage` ("continue from where you stopped"), never start duplicates, and first tell every agent to commit what it has. In a studio game the record is GitHub (DEC-002), never a resume file in the repository. On a limit, pause (DEC-085).
 
 When a piece needs a fresh session because its original agent cannot resume or ownership changes, use the `studio-handoff` skill. Record a single checkpoint for the piece and verify ownership and the current revision before editing.
 
 ## 7. Ports, commits and machine hygiene
 
-- Give each agent its own port range (Cat Challenge: 3 ports per agent, 5300–5310) and list reserved ports nobody may take.
+- Give each agent its own port range (for example 3 ports per agent, 5300–5310) and list reserved ports nobody may take.
 - **Commit as you go** in the agent's own worktree: a restart loses uncommitted work (four agents were cut off on 19.11.2026; one had no commits).
 - Note other heavy processes that add timing noise (a GPU-heavy process ran during reviews); report them, touch nothing.
 - Name flaky-under-load tests and run release suites with other agents idle.
@@ -63,7 +63,7 @@ Before any publish, a fresh agent (the `pre-publish-reviewer` role) checks the e
 For big choices (engine, stack, architecture, a contested gate): Claude, Codex (read-only) and the advisor.
 - Codex answers blind first; then cross-review; at most 3–4 rounds; the verbatim exchange goes to a log the owner can read before work starts.
 - Codex in Claude Code: the `codex` plugin's companion `task --background --fresh` (or `--resume-last`), with "read-only" in the prompt and long briefs passed as a file path; never pass unknown flags (they become a prompt); run `status` and `result` from the project root.
-- Record disagreements honestly. A three-way majority never overrides an owner decision; anything that touches a binding decision goes to the owner. (Cat Challenge used majority rule only because its owner decided so for that project.)
+- Record disagreements honestly. A three-way majority never overrides an owner decision; anything that touches a binding decision goes to the owner. (Majority rule applies only where the owner decided so for that project.)
 
 ## 10. Questions to the owner
 
@@ -71,4 +71,4 @@ Only with options, in the owner's language and plain words, the recommended opti
 
 ## Source
 
-Cat Challenge: `docs/city/CITY_PLAN.md` §11 (piece cards), `docs/design/MASTER_PLAN.md` §6.1 (reviewer protocol), `docs/status/RESUME_2026-11-23.md`, the 68 verdicts in `docs/reviews/`, `docs/stack-plugin/PLUGIN_PLAN.md` §7, and the coordinator's memory notes (orchestration, reviewers, board, limits, questions with options), 16–19.11.2026.
+The piece cards, reviewer protocol, resume notes, 68 review verdicts and coordinator notes of the studio's first shipped web game (16–19.11.2026).
