@@ -337,6 +337,7 @@ class PrerequisiteTests(unittest.TestCase):
             return (False, "missing") if pre["id"] == "msvc-build-tools" else (True, "ok")
 
         with mock.patch.object(st, "check_prerequisite", side_effect=check), \
+                mock.patch.object(st, "platform_key", return_value="windows"), \
                 mock.patch.object(st.subprocess, "Popen") as popen:
             with self.assertRaises(st.PrerequisiteError) as raised:
                 st.install(tool, self.game, True, python="/py", lang="ru")
@@ -366,6 +367,7 @@ class PrerequisiteTests(unittest.TestCase):
         process.stdout = iter([])
         process.wait.return_value = 0
         with mock.patch.object(st, "check_prerequisite", side_effect=check), \
+                mock.patch.object(st, "platform_key", return_value="windows"), \
                 mock.patch.object(st, "install_prerequisite", side_effect=fake_prereq) as prereq, \
                 mock.patch.object(st.shutil, "which", return_value="/usr/bin/git"), \
                 mock.patch.object(st.subprocess, "Popen", return_value=process):
@@ -472,9 +474,9 @@ class WindowsBuildEnvironmentTests(unittest.TestCase):
             installer.mkdir(parents=True)
             (installer / "vswhere.exe").write_bytes(b"")
             with mock.patch.object(st.sys, "platform", "win32"), \
-                    mock.patch.dict("os.environ", {"ProgramFiles(x86)": root, "PATH": "C:/bin"}):
+                    mock.patch.dict("os.environ", {"ProgramFiles(x86)": root, "PATH": "bin-dir"}):
                 env = st.step_environment()
-                self.assertEqual(env["PATH"].split(st.os.pathsep), ["C:/bin", str(installer)])
+                self.assertEqual(env["PATH"].split(st.os.pathsep), ["bin-dir", str(installer)])
                 process = mock.MagicMock()
                 process.stdout = iter([])
                 process.wait.return_value = 0
