@@ -2,6 +2,23 @@
 
 All notable changes to the `gamedev-studio` plugin. The version lives only in `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`, and a release tag `vX.Y.Z` must match it. From the next release on, each section is the release notes for its tag (see "Releases" in `README.md`). 0.1.0 and 0.2.0 were not tagged. The v0.3.0 release notes were written by hand, in Russian and English, before this file existed.
 
+## [0.9.0] - 2026-11-23
+
+### Added
+
+- `tools/catalog.json`: one list of every optional tool with what it gives, price, account, licence, commercial-use warning, requirements, who installs it and the exact install steps (argument lists, never a shell). Third-party tools are installed from their own sources.
+- `scripts/studio_tools.py`: status, install after an explicit yes, enable, settings and keys. Keys go to the game's `.env`, which is added to `.gitignore`; owner tools need the link of the owner's decision.
+- The studio panel, `scripts/studio_panel.py` and `/gamedev-studio:studio-panel`: a local page bound to 127.0.0.1 with a one-time token. Tool cards with filters, install with the command shown first, keys, settings and owner switches; browser QA runs from the game's `qa/` folder with chosen profiles, clips and step frames, a live log and a reports list.
+- `studio-setup` skill and `/gamedev-studio:setup-tools`: Claude asks about each tool with options and installs only what is chosen.
+- New catalog entries, reviewed at fixed revisions: Awesome GameDev Agent Skills, Three.js Game Skills, Blender Agent Skills, dream-loop, AssetFurnace, 3D Gen Studio, prompt2rig and Motion2MixamoRig (marked not for commercial release), Glitchless. See `reference/external-tools.md`.
+- Browser QA (#180): scenario profiles with size, pixel ratio, locale, time zone, touch or mouse and labels, `--profiles`; a frame after every step (`step_frames`, `--step-frames`); the game test bridge (`state`, `command`) and `tap_at`, `wait`, `frame` steps, documented in `reference/game-test-bridge.md`.
+- Reports: a step-by-step strip of baseline and candidate frames, *Step frame* links on every check, per-check notes kept in the browser and exported as JSON, profile chips on the summary.
+
+### Changed
+
+- `doctor.py` reads its optional program checks from the catalog; a test fails when they disagree.
+- Report pages also allow images and clips served by the panel.
+
 ## [0.8.0] - 2026-11-23
 
 ### Added

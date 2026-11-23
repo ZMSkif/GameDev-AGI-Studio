@@ -49,6 +49,7 @@ The skills cite the studio decisions they apply and link to their sources.
 | `fal-ai-generation` | fal.ai generation and job recovery; the helper refuses to spend without the owner's recorded yes |
 | `higgsfield-workflow` | Higgsfield CLI discovery, owner-approved jobs and resume without duplicates |
 | `video-watch` | a local clip as timestamped frames with a seekable offline report (FFmpeg only) |
+| `studio-setup` | ask about each optional tool with options, install only what is chosen, keys to `.env`, the studio panel |
 | `game-ui-workflow` | approved UI reference to working, responsive game screens |
 | `game-vfx-workflow` | readable game effects, timing on gameplay events and runtime checks |
 | `game-animation-integration` | clip integration, locomotion and action timing in the running game |
@@ -67,6 +68,16 @@ What each CLI was seen to load for 0.4.0:
 - **Codex 0.169.0:** with a throwaway `CODEX_HOME`, it installs 0.4.0 with all 17 skills. The Codex manifest declares only skills and hooks. Whether a Codex session offers the commands was not tested, so in Codex use the skills directly.
 
 `python scripts/archive_reviews.py` saves reviewer verdicts verbatim from a session transcript.
+
+### Optional tools and the studio panel
+
+Every optional tool the studio can use is listed once in [`tools/catalog.json`](tools/catalog.json): what it gives, the price, the account, the licence (with a warning when its results may not be sold), who installs it and the exact install steps. Third-party tools are installed from their own sources, never copied into the zip.
+
+- `/gamedev-studio:setup-tools` (skill `studio-setup`): Claude asks about each tool with options and installs only what you choose.
+- `/gamedev-studio:studio-panel` or `python scripts/studio_panel.py`: a local page (this computer only, one-time link) with tool cards, install after confirmation, keys saved to the game's ignored `.env`, owner-only switches, and browser QA runs with profiles, a live log and the reports.
+- `python scripts/studio_tools.py status` prints the same status in a terminal; `doctor.py` reads its optional checks from the catalog.
+
+What was reviewed for the catalog, and what was left out: [external tools](reference/external-tools.md).
 
 ### Visual review
 

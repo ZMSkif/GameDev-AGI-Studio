@@ -16,7 +16,30 @@ from report_ui import attr, frame, markers, page, url as file_url, write_new
 from review_evidence import ISSUE_URL, build, require_keys
 
 
-VIEWPORTS = {"portrait": (390, 844), "landscape": (844, 390), "square": (512, 512)}
+BUILTIN_PROFILES = {
+    "portrait": {"width": 390, "height": 844},
+    "landscape": {"width": 844, "height": 390},
+    "square": {"width": 512, "height": 512},
+}
+VIEWPORTS = {name: (value["width"], value["height"]) for name, value in BUILTIN_PROFILES.items()}
+PROFILE_FIELDS = {"width", "height", "dpr", "locale", "timezone", "input", "color_scheme", "label", "mobile"}
+PROFILE_NAME = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
+LOCALE = re.compile(r"[a-z]{2,3}(?:-[A-Z][A-Za-z]{1,3})?")
+TIMEZONE = re.compile(r"[A-Za-z_]+(?:/[A-Za-z0-9_+-]+){0,2}")
+COMPARISONS = {"equals", "not_equals", "at_least", "at_most", "includes", "exists"}
+STATE_JS = """path => {
+  const bridge = window.__gameTest;
+  if (!bridge || typeof bridge.state !== 'function') return {bridge: false};
+  let value = bridge.state();
+  for (const key of path.split('.').filter(Boolean)) { if (value === null || value === undefined) break; value = value[key]; }
+  return {bridge: true, defined: value !== undefined, value: value === undefined ? null : JSON.parse(JSON.stringify(value))};
+}"""
+COMMAND_JS = """async ([name, args]) => {
+  const bridge = window.__gameTest;
+  if (!bridge || typeof bridge.command !== 'function') throw new Error('window.__gameTest.command is missing');
+  const result = await bridge.command(name, args);
+  return result === undefined ? null : JSON.parse(JSON.stringify(result));
+}"""
 INDEX_COPY = {
     "en": {
         "title": "Web build QA", "data": "Results JSON", "actions": "Report links",
@@ -25,9 +48,10 @@ INDEX_COPY = {
         "problems": "Full diagnostics", "timing": "Ready in", "unit": "ms",
         "candidate": "Candidate capture", "baseline": "Baseline capture", "markers": "Markers",
         "eyebrow": "Browser QA · Issue", "baseline_label": "Baseline", "candidate_label": "Candidate",
-        "stat_viewports": "Layouts passed", "stat_checks": "Candidate checks passed",
+        "stat_viewports": "Profiles passed", "stat_checks": "Candidate checks passed",
         "stat_errors": "Browser errors", "stat_ready": "Slowest candidate ready",
         "checks": "checks", "no_capture": "No capture", "more": "more", "layouts": "Layouts",
+        "input_touch": "touch", "input_mouse": "mouse",
         "note": "Every number on this page was measured by the runner in Chromium. Device, GPU and platform behaviour need their own evidence.",
     },
     "ru": {
@@ -37,9 +61,10 @@ INDEX_COPY = {
         "problems": "Полная диагностика", "timing": "Готова за", "unit": "мс",
         "candidate": "Кадр новой сборки", "baseline": "Кадр исходной сборки", "markers": "Маркеры",
         "eyebrow": "Браузерный QA · задача", "baseline_label": "Исходная", "candidate_label": "Новая",
-        "stat_viewports": "Размеров пройдено", "stat_checks": "Проверок новой сборки",
+        "stat_viewports": "Профилей пройдено", "stat_checks": "Проверок новой сборки",
         "stat_errors": "Ошибок браузера", "stat_ready": "Самая долгая загрузка",
-        "checks": "проверок", "no_capture": "Кадра нет", "more": "ещё", "layouts": "Размеры экрана",
+        "checks": "проверок", "no_capture": "Кадра нет", "more": "ещё", "layouts": "Профили экрана",
+        "input_touch": "тач", "input_mouse": "мышь",
         "note": "Все числа на странице измерены раннером в Chromium. Поведение на устройствах, GPU и платформах требует отдельных доказательств.",
     },
 }
@@ -47,7 +72,9 @@ LOOPBACK = {"localhost", "127.0.0.1", "::1"}
 STEP_FIELDS = {
     "click": {"selector"}, "tap": {"selector"}, "visible": {"selector"},
     "press": {"selector", "key"}, "text": {"selector", "text"}, "reload": set(),
+    "tap_at": {"selector", "x", "y"}, "state": {"path"}, "command": {"name"}, "wait": {"ms"}, "frame": set(),
 }
+STEP_OPTIONAL = {"state": COMPARISONS, "command": {"args"}}
 
 
 def check_fields(value, required, optional, name):
@@ -83,17 +110,84 @@ def check_build(value, name):
 
 
 def check_steps(steps):
-    if not isinstance(steps, list) or len(steps) > 50:
-        raise ValueError("steps must be a list of at most 50 actions")
+    if not isinstance(steps, list) or len(steps) > 80:
+        raise ValueError("steps must be a list of at most 80 actions")
     for index, step in enumerate(steps, 1):
         name = f"step {index}"
         action = step.get("action") if isinstance(step, dict) else None
         if not isinstance(action, str) or action not in STEP_FIELDS:
             raise ValueError(f"{name} has an unsupported action")
         required = {"action"} | STEP_FIELDS[action]
-        check_fields(step, required, {"label"}, name)
-        for key in step.keys() - {"action"}:
-            check_string(step[key], f"{name}.{key}", empty=key == "text")
+        check_fields(step, required, {"label"} | STEP_OPTIONAL.get(action, set()), name)
+        for key in ("selector", "key", "label", "path", "name"):
+            if key in step:
+                check_string(step[key], f"{name}.{key}")
+        if "text" in step:
+            check_string(step["text"], f"{name}.text", empty=True)
+        if action == "tap_at":
+            for axis in ("x", "y"):
+                if type(step[axis]) not in (int, float) or not 0 <= step[axis] <= 1:
+                    raise ValueError(f"{name}.{axis} must be a fraction of the element between 0 and 1")
+        if action == "wait" and (type(step["ms"]) is not int or not 0 <= step["ms"] <= 10_000):
+            raise ValueError(f"{name}.ms must be an integer between 0 and 10000")
+        if action == "state":
+            used = COMPARISONS & step.keys()
+            if len(used) != 1:
+                raise ValueError(f"{name} needs exactly one of {sorted(COMPARISONS)}")
+            if "exists" in used and type(step["exists"]) is not bool:
+                raise ValueError(f"{name}.exists must be true or false")
+            if used & {"at_least", "at_most"} and type(step[next(iter(used))]) not in (int, float):
+                raise ValueError(f"{name}: at_least and at_most compare numbers")
+            if not re.fullmatch(r"[A-Za-z0-9_$]+(?:\.[A-Za-z0-9_$]+)*", step["path"]):
+                raise ValueError(f"{name}.path must be dotted keys such as player.score")
+        if action == "command":
+            if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_.-]{0,63}", step["name"]):
+                raise ValueError(f"{name}.name must be a short command name")
+            if "args" in step and len(json.dumps(step["args"])) > 2048:
+                raise ValueError(f"{name}.args must stay under 2 KB of JSON")
+
+
+def check_profile(name, value):
+    if not PROFILE_NAME.fullmatch(name) or len(name) > 40:
+        raise ValueError(f"profile name {name!r} must be short kebab-case")
+    check_fields(value, {"width", "height"}, PROFILE_FIELDS - {"width", "height"}, f"profile {name}")
+    for key, low, high in (("width", 200, 4096), ("height", 200, 4096)):
+        if type(value[key]) is not int or not low <= value[key] <= high:
+            raise ValueError(f"profile {name}.{key} must be an integer between {low} and {high}")
+    if "dpr" in value and (type(value["dpr"]) not in (int, float) or not 1 <= value["dpr"] <= 4):
+        raise ValueError(f"profile {name}.dpr must be between 1 and 4")
+    if "locale" in value and (not isinstance(value["locale"], str) or not LOCALE.fullmatch(value["locale"])):
+        raise ValueError(f"profile {name}.locale must look like en or pt-BR")
+    if "timezone" in value and (not isinstance(value["timezone"], str) or not TIMEZONE.fullmatch(value["timezone"])):
+        raise ValueError(f"profile {name}.timezone must be an IANA name such as Europe/Kyiv")
+    if value.get("input", "touch") not in {"touch", "mouse"}:
+        raise ValueError(f"profile {name}.input must be touch or mouse")
+    if value.get("color_scheme", "dark") not in {"light", "dark", "no-preference"}:
+        raise ValueError(f"profile {name}.color_scheme must be light, dark or no-preference")
+    if "mobile" in value and type(value["mobile"]) is not bool:
+        raise ValueError(f"profile {name}.mobile must be true or false")
+    if "label" in value:
+        check_string(value["label"], f"profile {name}.label", limit=60)
+
+
+def resolve_profiles(config, only=None):
+    """The ordered list of profiles to run: built-in names or the scenario's own profiles."""
+    custom = config.get("profiles", {})
+    if not isinstance(custom, dict) or len(custom) > 30:
+        raise ValueError("profiles must be an object with at most 30 entries")
+    for name, value in custom.items():
+        check_profile(name, value)
+    known = {**BUILTIN_PROFILES, **custom}
+    names = config.get("viewports", list(custom) or list(BUILTIN_PROFILES))
+    if (not isinstance(names, list) or not names or len(names) != len(set(names))
+            or any(not isinstance(name, str) or name not in known for name in names)):
+        raise ValueError(f"viewports must list distinct profile names from {sorted(known)}")
+    if only:
+        missing = [name for name in only if name not in names]
+        if missing:
+            raise ValueError(f"--profiles names not in this scenario: {missing}")
+        names = [name for name in names if name in only]
+    return [{"name": name, "dpr": 1, "input": "touch", **known[name]} for name in names]
 
 
 def check_layout(layout):
@@ -114,24 +208,26 @@ def check_layout(layout):
 def load_config(path):
     config = json.loads(path.read_text(encoding="utf-8-sig"))
     check_fields(config, {"issue", "before", "after", "ready_selector", "steps"},
-                 {"viewports", "layout", "timeout_ms"}, "config")
+                 {"viewports", "profiles", "layout", "timeout_ms", "step_frames", "title"}, "config")
     if not isinstance(config["issue"], str) or not ISSUE_URL.fullmatch(config["issue"]):
         raise ValueError("Expected the full GitHub Issue URL")
     for side in ("before", "after"):
         check_build(config[side], side)
     check_string(config["ready_selector"], "ready_selector")
     check_steps(config["steps"])
-    viewports = config.get("viewports", list(VIEWPORTS))
-    if (not isinstance(viewports, list) or not viewports
-            or any(not isinstance(name, str) or name not in VIEWPORTS for name in viewports)
-            or len(viewports) != len(set(viewports))):
-        raise ValueError("viewports must contain distinct names from portrait, landscape and square")
+    resolved = resolve_profiles(config)
+    viewports = [profile["name"] for profile in resolved]
+    if "step_frames" in config and type(config["step_frames"]) is not bool:
+        raise ValueError("step_frames must be true or false")
+    if "title" in config:
+        check_string(config["title"], "title", limit=120)
     layout = config.get("layout", {})
     check_layout(layout)
     timeout_ms = config.get("timeout_ms", 10_000)
     if type(timeout_ms) is not int or not 100 <= timeout_ms <= 60_000:
         raise ValueError("timeout_ms must be an integer between 100 and 60000")
-    return {**config, "viewports": viewports, "layout": layout, "timeout_ms": timeout_ms}
+    return {**config, "viewports": viewports, "resolved_profiles": resolved, "layout": layout,
+            "timeout_ms": timeout_ms}
 
 
 def write_json(path, document):
@@ -196,12 +292,68 @@ def open_build(page, url, selector, result):
     return f"{result['ready_ms']} ms to visible {selector}"
 
 
-def run_step(page, step, expect, config, url):
+def describe(value):
+    return json.dumps(value, ensure_ascii=False) if not isinstance(value, str) else value
+
+
+def state_matches(step, observed):
+    value, defined = observed.get("value"), observed.get("defined", False)
+    if "exists" in step:
+        return defined == step["exists"]
+    if not defined:
+        return False
+    if "equals" in step:
+        return value == step["equals"]
+    if "not_equals" in step:
+        return value != step["not_equals"]
+    if "includes" in step:
+        return isinstance(value, (list, str)) and step["includes"] in value
+    if type(value) not in (int, float) or isinstance(value, bool):
+        return False
+    return value >= step["at_least"] if "at_least" in step else value <= step["at_most"]
+
+
+def expectation(step):
+    for key in ("equals", "not_equals", "at_least", "at_most", "includes", "exists"):
+        if key in step:
+            return f"{step['path']} {key.replace('_', ' ')} {describe(step[key])}"
+    return step["path"]
+
+
+def wait_for_state(page, step, timeout_ms):
+    """Poll the game's test bridge until the state matches or the timeout passes."""
+    deadline = perf_counter() + timeout_ms / 1000
+    observed = {}
+    while True:
+        observed = page.evaluate(STATE_JS, step["path"])
+        if not observed.get("bridge"):
+            raise Finding("The game exposes no window.__gameTest.state() bridge",
+                          expected="window.__gameTest.state()", actual="missing")
+        if state_matches(step, observed):
+            return f"{expectation(step)} (observed {describe(observed.get('value'))})"
+        if perf_counter() >= deadline:
+            actual = describe(observed.get("value")) if observed.get("defined") else "undefined"
+            raise Finding(f"State {step['path']} did not match within {timeout_ms} ms",
+                          expected=expectation(step), actual=actual)
+        page.wait_for_timeout(100)
+
+
+def run_step(page, step, expect, config, url, profile):
     action = step["action"]
     if action == "reload":
         response = page.reload(wait_until="domcontentloaded")
         wait_until_ready(page, response, url, config["ready_selector"])
         return f"reload until visible {config['ready_selector']}"
+    if action == "wait":
+        page.wait_for_timeout(step["ms"])
+        return f"waited {step['ms']} ms"
+    if action == "frame":
+        return "checkpoint"
+    if action == "state":
+        return wait_for_state(page, step, config["timeout_ms"])
+    if action == "command":
+        result = page.evaluate(COMMAND_JS, [step["name"], step.get("args")])
+        return f"command {step['name']}" + (f" → {describe(result)}" if result is not None else "")
     locator = page.locator(step["selector"])
     if action == "visible":
         locator.wait_for(state="visible")
@@ -221,6 +373,14 @@ def run_step(page, step, expect, config, url):
                           **values) from None
     elif action == "press":
         locator.press(step["key"])
+    elif action == "tap_at":
+        box = visible_box(page, step["selector"])
+        position = {"x": box["width"] * step["x"], "y": box["height"] * step["y"]}
+        (locator.first.tap if profile["input"] == "touch" else locator.first.click)(position=position)
+        return f"{'tap' if profile['input'] == 'touch' else 'click'} {step['selector']} at {step['x']:.2f}, {step['y']:.2f}"
+    elif action == "tap" and profile["input"] != "touch":
+        locator.click()
+        return f"click {step['selector']} (mouse profile)"
     else:
         getattr(locator, action)()
     return f"{action} {step['selector']}"
@@ -279,7 +439,8 @@ def inspect_layout(page, layout, result, browser_error, clock):
               lambda: assert_no_overlap(page, left, right), browser_error, clock)
 
 
-def capture_side(browser, playwright, config, viewport, directory, side, recording):
+def capture_side(browser, playwright, config, profile, directory, side, recording, step_frames):
+    viewport = {"width": profile["width"], "height": profile["height"]}
     result = {"ready_ms": None, "scenario_passed": False, "errors": [], "checks": []}
     failure = playwright.Error
     captures = []
@@ -306,7 +467,11 @@ def capture_side(browser, playwright, config, viewport, directory, side, recordi
             left_origin = True
 
     with TemporaryDirectory(dir=directory, prefix=".browser-") as scratch:
-        options = {"viewport": viewport, "has_touch": True, "device_scale_factor": 1}
+        options = {"viewport": viewport, "has_touch": profile["input"] == "touch",
+                   "device_scale_factor": profile["dpr"], "is_mobile": profile.get("mobile", False)}
+        for key, option in (("locale", "locale"), ("timezone", "timezone_id"), ("color_scheme", "color_scheme")):
+            if key in profile:
+                options[option] = profile[key]
         if recording:
             options.update(record_video_dir=scratch, record_video_size=viewport)
         try:
@@ -319,14 +484,35 @@ def capture_side(browser, playwright, config, viewport, directory, side, recordi
             video = page.video
             page.on("pageerror", lambda error: result["errors"].append(f"Page error: {error}"))
             page.on("framenavigated", observe_navigation)
+            def frame(index):
+                """A capture of the page right after a check, linked from that check."""
+                if left_origin or origin(page.url) != initial_origin:
+                    return
+                name = f"steps/{side}-{index:02d}.png"
+                try:
+                    (directory / "steps").mkdir(exist_ok=True)
+                    (directory / name).write_bytes(page.screenshot(animations="disabled"))
+                except (failure, OSError) as error:
+                    result["errors"].append(f"Step frame {index}: {error}")
+                    return
+                result["checks"][-1]["frame"] = name
+                captures.append({"path": name, "role": "step"})
+
             ready = check(result, "Ready", "navigation",
                           lambda: open_build(page, url, config["ready_selector"], result), failure, clock)
+            if step_frames:
+                frame(0)
             if ready:
                 for index, step in enumerate(config["steps"], 1):
                     if left_origin:
                         break
-                    if not check(result, step.get("label", f"step {index}"), "step",
-                                 lambda: run_step(page, step, playwright.expect, config, url), failure, clock):
+                    passed = check(result, step.get("label", f"step {index}"), "step",
+                                   lambda: run_step(page, step, playwright.expect, config, url, profile),
+                                   failure, clock)
+                    result["checks"][-1]["action"] = step["action"]
+                    if step_frames or step["action"] == "frame" or not passed:
+                        frame(index)
+                    if not passed:
                         break
                 else:
                     if not left_origin:
@@ -360,19 +546,27 @@ def capture_side(browser, playwright, config, viewport, directory, side, recordi
     return result, captures
 
 
-def capture_viewport(browser, playwright, config, name, directory, recording, lang):
+def profile_title(viewport, copy):
+    return viewport.get("label") or copy.get(viewport["name"], viewport["name"])
+
+
+def capture_viewport(browser, playwright, config, profile, directory, recording, lang, step_frames):
+    name = profile["name"]
     directory.mkdir()
-    width, height = VIEWPORTS[name]
-    result = {"name": name, "width": width, "height": height, "report": None, "builds": {}}
+    width, height = profile["width"], profile["height"]
+    details = {key: profile[key] for key in ("dpr", "input", "locale", "timezone", "color_scheme", "mobile", "label")
+               if key in profile}
+    result = {"name": name, "width": width, "height": height, **details, "report": None, "builds": {}}
     captures = []
     for side in ("before", "after"):
-        side_result, assets = capture_side(browser, playwright, config,
-                                           {"width": width, "height": height}, directory, side, recording)
+        side_result, assets = capture_side(browser, playwright, config, profile, directory, side,
+                                           recording, step_frames)
         result["builds"][side] = side_result
         captures.extend(assets)
     scenario = {"issue": config["issue"], "revisions": {
         side: config[side]["commit"] for side in ("before", "after")
     }, **result}
+    scenario["steps"] = config["steps"]
     write_json(directory / "scenario.json", {key: value for key, value in scenario.items() if key != "report"})
     plan = {"issue": config["issue"], "commit": config["after"]["commit"],
             "files": [*captures, {"path": "scenario.json", "role": "test"}]}
@@ -381,7 +575,7 @@ def capture_viewport(browser, playwright, config, name, directory, recording, la
     try:
         build(directory, plan_path, directory / "manifest.json")
         render(directory, directory / "manifest.json", directory / "review.html",
-               f"{INDEX_COPY[lang][name]} · {width} × {height}",
+               f"{profile_title(result, INDEX_COPY[lang])} · {width} × {height}",
                "pending", lang, from_capture=True,
                qa={"viewport": result, "revisions": scenario["revisions"]})
         result["report"] = f"{name}/review.html"
@@ -410,8 +604,20 @@ def thumb(out, viewport, side, copy):
                       for check in result.get("checks", []) if not check["passed"])
     alt = copy["candidate"] if side == "after" else copy["baseline"]
     image = frame(file_url(path), alt, overlay=overlay, group="index", lazy=False,
-                  caption=f'{copy[viewport["name"]]} · {label}')
+                  caption=f'{profile_title(viewport, copy)} · {label}')
     return f'<figure data-role="{side}">{image}<figcaption>{label}</figcaption></figure>'
+
+
+def profile_chips(viewport, copy):
+    chips = []
+    if viewport.get("dpr", 1) != 1:
+        chips.append(f'@{viewport["dpr"]:g}x')
+    if viewport.get("input"):
+        chips.append(copy["input_" + viewport["input"]])
+    for key in ("locale", "timezone"):
+        if viewport.get(key):
+            chips.append(escape(viewport[key]))
+    return "".join(f'<span class="chip">{chip}</span>' for chip in chips)
 
 
 def viewport_card(out, viewport, lang):
@@ -468,8 +674,8 @@ def viewport_card(out, viewport, lang):
                   f'{copy["open"]}<span aria-hidden="true">→</span></a></div>')
     return (
         f'<section class="viewport-card panel" data-status="{status}">'
-        f'<div class="viewport-head"><div><h2>{copy[name]}</h2>'
-        f'<p>{viewport["width"]} × {viewport["height"]}</p></div>'
+        f'<div class="viewport-head"><div><h2>{escape(profile_title(viewport, copy))}</h2>'
+        f'<p>{viewport["width"]} × {viewport["height"]}{profile_chips(viewport, copy)}</p></div>'
         f'<span class="pill" data-status="{status}">{copy[status]}</span></div>'
         f'<div class="thumbs">{thumb(out, viewport, "before", copy)}{thumb(out, viewport, "after", copy)}</div>'
         f'<div class="viewport-content"><dl class="side-summary">{"".join(sides)}</dl>'
@@ -511,7 +717,7 @@ def write_index(out, summary, lang):
                 f'<a href="{attr(f"{repo}/commit/{after}")}"><code>{after[:12]}</code></a>')
     write_new(out / "index.html", page(
         "qa-index.html", lang,
-        title=copy["title"],
+        title=escape(summary.get("title") or copy["title"]),
         eyebrow=f'{copy["eyebrow"]} #{number}',
         subtitle=subtitle,
         data_label=copy["data"],
@@ -530,7 +736,11 @@ def write_index(out, summary, lang):
     ))
 
 
-def run_capture(config, out, executable_path, recording, lang):
+def run_capture(config, out, executable_path, recording, lang, step_frames=None, only=None, progress=None):
+    """Run every selected profile. ``progress`` gets a short line before each profile."""
+    profiles = resolve_profiles(config, only) if only else config["resolved_profiles"]
+    step_frames = config.get("step_frames", False) if step_frames is None else step_frames
+    progress = progress or (lambda line: None)
     try:
         import playwright.sync_api as playwright
     except ImportError as error:
@@ -540,14 +750,17 @@ def run_capture(config, out, executable_path, recording, lang):
             browser = driver.chromium.launch(executable_path=executable_path)
             try:
                 out.mkdir()
-                results = [capture_viewport(browser, playwright, config, name, out / name, recording, lang)
-                           for name in config["viewports"]]
+                results = []
+                for number, profile in enumerate(profiles, 1):
+                    progress(f"[{number}/{len(profiles)}] {profile['name']} {profile['width']}×{profile['height']}")
+                    results.append(capture_viewport(browser, playwright, config, profile, out / profile["name"],
+                                                    recording, lang, step_frames))
             finally:
                 browser.close()
     except playwright.Error as error:
         raise RuntimeError(f"Browser QA could not run: {error}") from error
     passed = all(viewport_passed(viewport) for viewport in results)
-    summary = {"version": 1, "issue": config["issue"], "builds": {
+    summary = {"version": 1, "issue": config["issue"], "title": config.get("title", ""), "builds": {
         side: config[side] for side in ("before", "after")
     }, "viewports": results, "passed": passed}
     write_json(out / "summary.json", summary)
@@ -562,13 +775,18 @@ def main(argv=None):
     parser.add_argument("--executable-path", help="Path to an installed Chromium executable")
     parser.add_argument("--record-video", action="store_true", help="Capture WebM with Playwright's recorder")
     parser.add_argument("--lang", choices=COPY, default="en")
+    parser.add_argument("--step-frames", action="store_true", help="Capture a frame after every scenario step")
+    parser.add_argument("--profiles", help="Comma-separated subset of the scenario's profiles to run")
     args = parser.parse_args(argv)
     try:
         config = load_config(args.config)
         out = args.out.absolute()
         if out.exists() or out.is_symlink():
             raise ValueError(f"Output directory already exists: {out}")
-        passed = run_capture(config, out, args.executable_path, args.record_video, args.lang)
+        only = [name.strip() for name in args.profiles.split(",") if name.strip()] if args.profiles else None
+        passed = run_capture(config, out, args.executable_path, args.record_video, args.lang,
+                             step_frames=True if args.step_frames else None, only=only,
+                             progress=lambda line: print(line, flush=True))
     except (OSError, ValueError, RuntimeError) as error:
         print(error, file=sys.stderr)
         return 2

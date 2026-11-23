@@ -17,12 +17,15 @@ SCRIPT = REPO_ROOT / "scripts" / "doctor.py"
 _spec = importlib.util.spec_from_file_location("doctor", SCRIPT)
 dr = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(dr)
+CATALOG = json.loads((REPO_ROOT / "tools" / "catalog.json").read_text(encoding="utf-8"))
+CATALOG_PROGRAMS = tuple(name for tool in CATALOG["tools"] if tool["detect"]["type"] == "which"
+                         for name in tool["detect"]["names"])
 
 
 class FakeTools:
     """Stands in for shutil.which and subprocess.run; records every argv and env it was given."""
 
-    def __init__(self, present=("claude", "git", "bash", "python", "gh", "codex", "ffmpeg", "ffprobe"), answers=None):
+    def __init__(self, present=("claude", "git", "bash", "python", "gh", *CATALOG_PROGRAMS), answers=None):
         self.present, self.answers, self.calls, self.envs = set(present), dict(answers or {}), [], []
 
     def which(self, name):
@@ -144,6 +147,15 @@ class ReadOnlyTest(DoctorCase):
         self.assertNotIn("codex", [c[0] for c in tools.calls])
         self.assertFalse({"ffmpeg", "ffprobe"} & {c[0] for c in tools.calls})
         self.assertNotIn(["claude", "plugin", "list"], [c[:3] for c in tools.calls])
+
+    def test_optional_rows_come_from_the_catalog(self):
+        tools = FakeTools()
+        _, rows = self.check(tools)
+        expected = {tool["id"] for tool in CATALOG["tools"] if tool["scope"] == "machine"
+                    and tool["detect"]["type"] == "which" and tool["id"] != "gh"}
+        optional = {key for key, row in rows.items() if not row["required"]}
+        self.assertEqual(optional, expected)
+        self.assertFalse(set(CATALOG_PROGRAMS) & {call[0] for call in tools.calls})
 
     def test_missing_ffmpeg_is_optional(self):
         code, rows = self.check(FakeTools(present=("claude", "git", "bash", "python", "codex")))

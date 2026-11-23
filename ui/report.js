@@ -192,6 +192,64 @@
     video.addEventListener("timeupdate", () => { readout.textContent = video.currentTime.toFixed(2) + " s"; });
   });
 
+  /* ---------- Step frames ---------- */
+  document.addEventListener("click", (event) => {
+    const opener = event.target.closest("[data-open-frame]");
+    if (!opener) return;
+    const target = document.getElementById(opener.dataset.openFrame);
+    if (target) target.click();
+  });
+
+  /* ---------- Notes (kept in this browser, exported as JSON) ---------- */
+  const noteKey = "gds-notes:" + location.pathname;
+  const readNotes = () => { try { return JSON.parse(localStorage.getItem(noteKey) || "{}"); } catch (error) { return {}; } };
+  const writeNotes = (notes) => { try { localStorage.setItem(noteKey, JSON.stringify(notes)); } catch (error) { /* storage may be off */ } };
+  const countNotes = () => {
+    const count = Object.values(readNotes()).filter((note) => note.text && note.text.trim()).length;
+    $$("[data-notes-count]").forEach((node) => { node.textContent = count; });
+    $$("[data-note]").forEach((button) => {
+      const note = readNotes()[button.dataset.note];
+      button.classList.toggle("primary", Boolean(note && note.text && note.text.trim()));
+    });
+  };
+  document.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-note]");
+    if (!button) return;
+    const id = button.dataset.note;
+    const host = button.closest(".check");
+    let box = host && host.querySelector("textarea.note-box");
+    if (box) { box.hidden = !box.hidden; if (!box.hidden) box.focus(); return; }
+    box = document.createElement("textarea");
+    box.className = "note-box";
+    box.rows = 3;
+    box.placeholder = document.documentElement.dataset.notePlaceholder || "";
+    box.value = (readNotes()[id] || {}).text || "";
+    box.addEventListener("input", () => {
+      const notes = readNotes();
+      let context = {};
+      try { context = JSON.parse(button.dataset.noteContext || "{}"); } catch (error) { context = {}; }
+      notes[id] = { ...context, text: box.value, updated: new Date().toISOString() };
+      writeNotes(notes);
+      countNotes();
+    });
+    host.append(box);
+    box.focus();
+  });
+  document.addEventListener("click", (event) => {
+    if (!event.target.closest("[data-notes-export]")) return;
+    const notes = Object.values(readNotes()).filter((note) => note.text && note.text.trim());
+    const payload = { report: document.title, page: location.pathname.split("/").slice(-2).join("/"),
+      revisions: $$(".metadata code").map((node) => node.parentElement.title || node.textContent),
+      exported: new Date().toISOString(), notes };
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }));
+    link.download = "review-notes.json";
+    document.body.append(link);
+    link.click();
+    link.remove();
+  });
+  countNotes();
+
   /* ---------- Before/after slider ---------- */
   const gallery = $("#gallery");
   if (gallery) {

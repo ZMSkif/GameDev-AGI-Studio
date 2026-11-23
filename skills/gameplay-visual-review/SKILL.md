@@ -38,7 +38,7 @@ To inspect a clip frame by frame with timestamps, use the `video-watch` skill on
 
 ## Browser QA
 
-For a web build with a reproducible scenario, use [browser visual QA](../../reference/browser-visual-qa.md). Run it at the two revisions and report the failures, captures and tested sizes from its report. Use real device evidence when the acceptance line calls for a physical device or platform integration.
+For a web build with a reproducible scenario, use [browser visual QA](../../reference/browser-visual-qa.md); canvas games expose a [test bridge](../../reference/game-test-bridge.md) so steps can check game state. The studio panel (`scripts/studio_panel.py`) runs scenarios with chosen profiles and opens the reports. Run it at the two revisions and report the failures, captures and tested sizes from its report. Use real device evidence when the acceptance line calls for a physical device or platform integration.
 
 Example: compare a shield impact OFF/ON on dark and pale ground with identical gameplay. Deliver the visible comparison plus the cancellation and cleanup results, and leave final aesthetic acceptance explicit.
 
