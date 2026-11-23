@@ -741,9 +741,28 @@ def manual_text(tool, lang):
     return manual[lang] if manual else ""
 
 
+def step_environment():
+    """The environment for install commands.
+
+    On Windows, Visual Studio's vcvarsall.bat calls vswhere.exe by name, and the Build Tools installer does not
+    add its folder to PATH (nor does a session started before the install see a new PATH). Then vcvarsall prints
+    an error into the output setuptools parses, and every C/C++ build fails with "Unable to find a compatible
+    Visual Studio installation" although the compiler is installed. The installer folder is added here."""
+    env = dict(os.environ)
+    if sys.platform == "win32":
+        # os.environ, not the copy: on Windows only os.environ looks names up without regard to case
+        root = os.environ.get("ProgramFiles(x86)") or os.environ.get("ProgramFiles") or r"C:\Program Files (x86)"
+        installer = Path(root) / "Microsoft Visual Studio" / "Installer"
+        paths = env.get("PATH", "").split(os.pathsep)
+        if (installer / "vswhere.exe").is_file() and str(installer).lower() not in {p.lower().rstrip("\\") for p in paths}:
+            env["PATH"] = os.pathsep.join([*paths, str(installer)])
+    return env
+
+
 def _run_steps(steps, game, on_line):
     """Run argument lists and copy_skills steps in order; stop at the first failure. Returns the exit code."""
     code = 0
+    env = step_environment()
     tools_home().mkdir(parents=True, exist_ok=True)
     for argv in steps:
         if isinstance(argv, dict):
@@ -758,7 +777,7 @@ def _run_steps(steps, game, on_line):
         on_line("$ " + " ".join(argv))
         program = argv[0] if Path(argv[0]).is_file() else (resolve_program(argv[0]) or argv[0])
         process = subprocess.Popen([program, *argv[1:]], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-                                   encoding="utf-8", errors="replace", cwd=str(game))
+                                   encoding="utf-8", errors="replace", cwd=str(game), env=env)
         for line in process.stdout:
             on_line(line.rstrip("\n"))
         code = process.wait()

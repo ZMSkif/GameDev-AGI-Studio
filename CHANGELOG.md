@@ -20,6 +20,7 @@ All notable changes to the `gamedev-studio` plugin. The version lives only in `.
 - An extensionless file on PATH (for example an empty `C:\Windows\System32\winget`) is no longer taken for the program; installs start the real `winget.exe`.
 - Retrying an install after a failed later step no longer fails on `git clone` into the existing folder.
 - Motion2MixamoRig on Windows needs Microsoft C++ Build Tools (`cython-bbox` is built from source); it is now declared and installed first after a yes.
+- Windows: C/C++ builds in install steps failed with "Unable to find a compatible Visual Studio installation" even with Build Tools installed: `vcvarsall.bat` calls `vswhere.exe` by name, its folder is not on PATH, and the error text it prints breaks setuptools' reading of the environment. Install steps now get the Visual Studio Installer folder on PATH.
 
 ## [0.9.0] - 2026-11-23
 

@@ -463,3 +463,22 @@ class RetryTests(unittest.TestCase):
             self.assertEqual(popen.call_count, 1)
             self.assertIn("checkout", popen.call_args.args[0])
             self.assertIn("already cloned", lines[0])
+
+
+class WindowsBuildEnvironmentTests(unittest.TestCase):
+    def test_visual_studio_installer_folder_is_on_path_for_install_steps(self):
+        with TemporaryDirectory() as root:
+            installer = Path(root) / "Microsoft Visual Studio" / "Installer"
+            installer.mkdir(parents=True)
+            (installer / "vswhere.exe").write_bytes(b"")
+            with mock.patch.object(st.sys, "platform", "win32"), \
+                    mock.patch.dict("os.environ", {"ProgramFiles(x86)": root, "PATH": "C:/bin"}):
+                env = st.step_environment()
+                self.assertEqual(env["PATH"].split(st.os.pathsep), ["C:/bin", str(installer)])
+                process = mock.MagicMock()
+                process.stdout = iter([])
+                process.wait.return_value = 0
+                with mock.patch.object(st.subprocess, "Popen", return_value=process) as popen, \
+                        mock.patch.object(st.shutil, "which", return_value="C:/bin/pip.exe"):
+                    st._run_steps([["pip", "install", "x"]], Path(root), lambda line: None)
+                self.assertIn(str(installer), popen.call_args.kwargs["env"]["PATH"])
