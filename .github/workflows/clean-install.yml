@@ -198,7 +198,7 @@ jobs:
           python --version
           python scripts/studio_tools.py --game "$env:RUNNER_TEMP" install hindsight --yes
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          "{0:N0} MB" -f ((Get-ChildItem "$env:USERPROFILE\.gamedev-studio	ools\hindsight" -Recurse -File | Measure-Object Length -Sum).Sum / 1MB)
+          "{0:N0} MB" -f ((Get-ChildItem "$env:USERPROFILE\.gamedev-studio\tools\hindsight" -Recurse -File | Measure-Object Length -Sum).Sum / 1MB)
 
       - name: Start it with memory_server.py and wait for /health (no Claude sign-in on the runner)
         shell: pwsh
