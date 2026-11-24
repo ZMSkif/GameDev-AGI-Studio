@@ -29,7 +29,7 @@ Be friendly and short; a new person should not be shown conditions of tools they
 python <plugin-root>/scripts/studio_tools.py first-setup --json [--profile godot|web]
 ```
 
-It lists only what everyone needs and Claude installs for free (browser QA, FFmpeg, GitHub CLI, memory, and Godot for a Godot game), not yet installed, for this system. Ask **one** question with the question tool, naming them in one line each (what it gives) and the total size:
+If it is empty, everything recommended is already there: say so in one line and do not ask. It lists only what everyone needs and Claude installs for free (browser QA, FFmpeg, GitHub CLI, memory, and Godot for a Godot game), not yet installed, for this system. Ask **one** question with the question tool, naming them in one line each (what it gives) and the total size:
 
 - **Install the recommended set** (first option, recommended);
 - **Let me choose** — then one multi-select question with the same tools;
@@ -79,7 +79,7 @@ Exit code 0: installed and no `use` prerequisite is missing. Exit code 3: not re
 
 Memory is the person's own Hindsight server on this computer (the `memory` skill). After the person said yes to installing `hindsight`:
 
-1. Install it as any tool: `python <plugin-root>/scripts/studio_tools.py install hindsight --yes` (about 2 GB; no administrator rights needed).
+1. Install it as any tool: `python <plugin-root>/scripts/studio_tools.py install hindsight --yes` (about 2.9 GB with its models, about 1.6 GB of RAM while running, no GPU; no administrator rights needed).
 2. Ask, as its own question, whether memory should start at sign-in, so it is ready whenever Claude starts (recommended). On yes: `python <plugin-root>/scripts/memory_server.py autostart --yes` (Windows: the per-user startup entry "GameDevStudioMemory", no administrator rights, visible in Task Manager > Startup apps; macOS: a LaunchAgent; `--off` removes it).
 3. Start it now: `python <plugin-root>/scripts/memory_server.py start --wait 600`. The first start downloads the search models and can take several minutes.
 4. Nothing else to wire: the plugin's `memory` MCP server is connected in every session and reaches the studio bank and the bank of the game the session runs in. New sessions see it; the current one already has it.

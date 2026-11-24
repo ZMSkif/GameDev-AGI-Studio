@@ -131,9 +131,14 @@ class Upstream:
 
 
 class Memory:
-    def __init__(self):
+    def __init__(self, game_finder=None):
         self.upstreams = {}
-        self.game = studio_game()
+        self.game_finder = game_finder or studio_game
+
+    @property
+    def game(self):
+        """Looked up on every call, so a marker added during the session counts at once."""
+        return self.game_finder()
 
     def text(self, message, error=True):
         return {"content": [{"type": "text", "text": message}], "isError": error}
@@ -177,6 +182,8 @@ class Memory:
 
 def warm_up():
     """Start the server when Claude starts, if it is installed and not running, so memory is ready soon."""
+    if os.environ.get("GAMEDEV_STUDIO_MEMORY_NO_START"):
+        return  # tests and CI never start a real server
     try:
         if ms.find_runtime() and ms.health() is None:
             ms.start(out=lambda line: None)

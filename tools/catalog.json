@@ -944,8 +944,8 @@
       ],
       "recommended": true,
       "requirements": {
-        "ru": "Около 2 ГБ на диске и 1–2 ГБ памяти, пока сервер работает. При первом запуске он скачивает модели поиска (несколько минут). Факты из записей извлекает ваша подписка Claude (claude-code): каждая запись немного расходует её лимит, платный API не нужен. После установки Claude предложит автозапуск при входе в систему и подключение игры — каждое после вашего «да».",
-        "en": "About 2 GB of disk and 1–2 GB of RAM while the server runs. The first start downloads the search models (a few minutes). Facts are extracted by your Claude subscription (claude-code): each memory uses a little of its limit; no paid API. After the install Claude offers start at sign-in and connecting the game, each after your yes."
+        "ru": "Около 2,9 ГБ на диске (программа 2,3 ГБ, модели поиска 0,4 ГБ, база) и около 1,6 ГБ оперативной памяти, пока сервер работает; видеокарту не использует (замерено 24.11.2026 на Windows 11). Первый запуск скачивает модели поиска (несколько минут). Факты из записей извлекает ваша подписка Claude (claude-code): каждая запись немного расходует её лимит, платный API не нужен. После установки Claude предложит автозапуск при входе в систему — после вашего «да».",
+        "en": "About 2.9 GB of disk (program 2.3 GB, search models 0.4 GB, database) and about 1.6 GB of RAM while the server runs; it does not use the GPU (measured 24.11.2026 on Windows 11). The first start downloads the search models (a few minutes). Facts are extracted by your Claude subscription (claude-code): each memory uses a little of its limit; no paid API. After the install Claude offers start at sign-in, after your yes."
       },
       "prerequisites": {
         "install": [

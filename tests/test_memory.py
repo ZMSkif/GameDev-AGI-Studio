@@ -224,3 +224,45 @@ class PluginWiringTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class StartLockTests(unittest.TestCase):
+    def setUp(self):
+        scratch = TemporaryDirectory()
+        self.addCleanup(scratch.cleanup)
+        patcher = mock.patch.dict("os.environ", {"GAMEDEV_STUDIO_HOME": scratch.name})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_a_second_start_waits_for_the_first(self):
+        self.assertTrue(ms.take_lock())
+        with mock.patch.object(ms.subprocess, "Popen") as popen:
+            self.assertEqual(ms.start(out=lambda line: None), 0)  # the lock is held: no second spawn
+        popen.assert_not_called()
+        ms.lock_file().unlink()
+
+    def test_a_stale_lock_is_replaced_and_released(self):
+        self.assertTrue(ms.take_lock())
+        old = __import__("time").time() - 600
+        __import__("os").utime(ms.lock_file(), (old, old))
+        with mock.patch.object(ms, "health", return_value="hindsight"):
+            self.assertEqual(ms.start(out=lambda line: None), 0)
+        self.assertFalse(ms.lock_file().exists())
+
+
+class LauncherTests(unittest.TestCase):
+    def test_the_plugins_launcher_serves_the_memory_mcp(self):
+        """The exact command plugin.json starts: run-hook.cmd memory_mcp (cmd.exe on Windows, sh elsewhere)."""
+        import os
+        import subprocess
+        launcher = ROOT / "hooks" / "run-hook.cmd"
+        argv = [str(launcher), "memory_mcp"] if os.name == "nt" else ["sh", str(launcher), "memory_mcp"]
+        lines = [{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
+                 {"jsonrpc": "2.0", "id": 2, "method": "tools/list"}]
+        with TemporaryDirectory() as home:
+            env = {**os.environ, "GAMEDEV_STUDIO_HOME": home, "GAMEDEV_STUDIO_MEMORY_NO_START": "1"}
+            done = subprocess.run(argv, input=("\n".join(json.dumps(x) for x in lines) + "\n").encode(),
+                                  capture_output=True, timeout=120, env=env, cwd=home)
+        replies = [json.loads(line) for line in done.stdout.decode("utf-8").splitlines() if line.strip()]
+        self.assertEqual([reply["id"] for reply in replies], [1, 2], done.stderr.decode("utf-8", "replace"))
+        self.assertEqual(len(replies[1]["result"]["tools"]), 10)

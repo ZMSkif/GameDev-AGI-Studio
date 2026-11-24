@@ -205,13 +205,13 @@ Checked on a clean GitHub machine: after the folder was replaced, `claude plugin
 
 Everyone who installs the plugin has **their own** memory: the Hindsight server runs only on this computer (127.0.0.1) and keeps only your memory. There is no shared server: Hindsight has no password, so a shared one would expose everyone's memory. The plugin also works without memory, but with it agents keep the studio's and your game's lessons between sessions.
 
-1. **[Claude → you]** In the game folder: `/gamedev-studio:setup-tools` and choose "Memory". After your yes Claude installs Hindsight 1.2.3, about 2 GB, into `~\.gamedev-studio	ools\hindsight`. It needs Python 3.11 or newer (step 4) and no administrator rights.
+1. **[Claude → you]** In the game folder: `/gamedev-studio:setup-tools` and choose "Memory". After your yes Claude installs Hindsight 1.2.3, about 2.9 GB with its models, into `~\.gamedev-studio	ools\hindsight`. It needs Python 3.11 or newer (step 4) and no administrator rights.
 2. **[Claude → you]** Claude asks whether memory should **start automatically at Windows sign-in** (recommended). On yes it adds the startup entry "GameDevStudioMemory" for your user (no administrator rights; you see it in Task Manager > Startup apps); to remove it: `python scripts/memory_server.py autostart --off`.
 3. **[Claude]** First start: `python scripts/memory_server.py start --wait 600`. The first start downloads the search models from Hugging Face (`BAAI/bge-small-en-v1.5`, `hindsight-ai/hs-rerank-1`), which can take several minutes.
 4. **Nothing else to connect.** The plugin connects memory to Claude in every session (the `memory` MCP server): the studio bank everywhere and the bank of the game Claude runs in. If the server is not running yet, the first memory call starts it.
 5. **[Claude]** Check: `python scripts/memory_server.py status` and `python scripts/doctor.py --hindsight`.
 
-Facts are extracted by your Claude subscription (the `claude-code` provider, for Pro and Max): no paid API, but each memory uses a little of the subscription's limit, and Claude Code must be installed and signed in. While the server runs it uses 1–2 GB of RAM.
+Facts are extracted by your Claude subscription (the `claude-code` provider, for Pro and Max): no paid API, but each memory uses a little of the subscription's limit, and Claude Code must be installed and signed in. While the server runs it uses about 1.6 GB of RAM and no GPU; it takes about 2.9 GB of disk in all (measured 24.11.2026).
 
 > **Checked on a clean GitHub Actions machine** (Windows Server 2025, Python 3.12 and 3.13): the install took about 5 minutes and 2.2 GB; the server set up its database, downloaded the models and answered `healthy` after 35–52 seconds. Fact extraction was not checked there, because nobody is signed in to Claude on that machine.
 

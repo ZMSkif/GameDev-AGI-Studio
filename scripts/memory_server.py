@@ -161,22 +161,68 @@ def status():
 
 # ------------------------------------------------------------------ start and stop
 
+def lock_file():
+    return state_dir() / "start.lock"
+
+
+def take_lock(stale=180.0):
+    """An exclusive lock around check-and-spawn, so two sessions starting at once start one server.
+
+    A lock older than ``stale`` seconds is left over from a crashed start and is replaced."""
+    state_dir().mkdir(parents=True, exist_ok=True)
+    for _ in range(2):
+        try:
+            os.close(os.open(lock_file(), os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+            return True
+        except FileExistsError:
+            try:
+                if time.time() - lock_file().stat().st_mtime < stale:
+                    return False
+                lock_file().unlink()
+            except OSError:
+                return False
+    return False
+
+
 def start(wait=0.0, out=print):
+    if not take_lock():
+        out("another start of the memory server is in progress")
+        return 0
+    try:
+        code, process = _start(out)
+    finally:
+        lock_file().unlink(missing_ok=True)
+    if not wait or code != 0:
+        return code
+    deadline = time.monotonic() + wait  # also waits for a server another session is booting
+    while time.monotonic() < deadline:
+        if health() == "hindsight":
+            out(f"memory server answers at {URL}")
+            return 0
+        if process is not None and process.poll() is not None:
+            out(f"memory server exited with code {process.returncode}; see {log_file()}")
+            return 1
+        time.sleep(2)
+    return 4
+
+
+def _start(out):
+    """Start the server unless it answers or is booting; (exit code, the new process or None)."""
     state = health()
     if state == "hindsight":
         out(f"memory server already answers at {URL}")
-        return 0
+        return 0, None
     if state == "other":
         out(f"port {PORT} on {HOST} is used by another program; the memory server was not started")
-        return 3
+        return 3, None
     starting = recorded_server()
     if starting:
         out(f"memory server is still starting (pid {starting}); the first start can take several minutes")
-        return 0
+        return 0, None
     runtime = find_runtime()
     if not runtime:
         out("Hindsight is not installed: python scripts/studio_tools.py install hindsight --yes")
-        return 2
+        return 2, None
     state_dir().mkdir(parents=True, exist_ok=True)
     log = open(log_file(), "ab")
     kwargs = {"stdin": subprocess.DEVNULL, "stdout": log, "stderr": subprocess.STDOUT, "env": server_environment(),
@@ -190,16 +236,7 @@ def start(wait=0.0, out=print):
     log.close()
     pid_file().write_text(str(process.pid), encoding="ascii")
     out(f"memory server starting (pid {process.pid}); log: {log_file()}")
-    deadline = time.monotonic() + wait
-    while wait and time.monotonic() < deadline:
-        if health() == "hindsight":
-            out(f"memory server answers at {URL}")
-            return 0
-        if process.poll() is not None:
-            out(f"memory server exited with code {process.returncode}; see {log_file()}")
-            return 1
-        time.sleep(2)
-    return 0 if not wait else 4
+    return 0, process
 
 
 def recorded_server():
