@@ -19,6 +19,8 @@ Binding: DEC-094 (#95) every asset, sound, model and reference has a checkable o
 
 itch.io pages returned 403 to agents (16.11.2026). Which licence families a game may use is the owner's choice per game (for example CC0 and CC BY with a credit).
 
+The full list with links, licences and exact packs is in the `asset-catalog` skill.
+
 ## 2. Downloading
 
 - Ask the owner before downloading: name the files, source and size (for example: list A approved now, lists B and C only on a new yes).

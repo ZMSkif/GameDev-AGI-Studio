@@ -1,0 +1,2029 @@
+{
+ "version": 1,
+ "checked": "2026-11-24",
+ "about": "Where free game assets come from and exact packs with links. Licences were read on the pages or inside the packs where \"checked\" says so; read them again before shipping a game.",
+ "sources": [
+  {
+   "id": "blender-extensions",
+   "name": "Blender Extensions",
+   "kinds": [
+    "tools"
+   ],
+   "dims": [
+    "2D",
+    "2.5D",
+    "3D"
+   ],
+   "gives": "Около 1480 дополнений, тем и 8 онлайн-библиотек",
+   "url": "https://extensions.blender.org/",
+   "get": "blender",
+   "licence": "GPL и совместимые; библиотеки CC0",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "page",
+   "note": "Ставить из Blender: Preferences, Get Extensions"
+  },
+  {
+   "id": "blender-lib-polyhaven",
+   "name": "Poly Haven Lite (онлайн-библиотека Blender)",
+   "kinds": [
+    "materials",
+    "models",
+    "hdri"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Poly Haven прямо в браузере ресурсов",
+   "url": "https://extensions.blender.org/add-ons/poly-haven/",
+   "get": "blender",
+   "licence": "CC0 1.0",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "page",
+   "note": "Найти poly_haven в Get Extensions"
+  },
+  {
+   "id": "blender-lib-ambientcg",
+   "name": "ambientCG Lite (онлайн-библиотека Blender)",
+   "kinds": [
+    "materials"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "ambientCG прямо в браузере ресурсов",
+   "url": "https://extensions.blender.org/add-ons/ambientcg/",
+   "get": "blender",
+   "licence": "CC0 1.0",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "page",
+   "note": "Найти ambientCG в Get Extensions"
+  },
+  {
+   "id": "blender-lib-charge",
+   "name": "Charge Open Movie Library",
+   "kinds": [
+    "models",
+    "materials",
+    "vfx"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Предметы, материалы и эффекты из фильма Blender Studio",
+   "url": "https://extensions.blender.org/add-ons/charge/",
+   "get": "blender",
+   "licence": "CC0 1.0",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "page",
+   "note": "Найти charge в Get Extensions"
+  },
+  {
+   "id": "human-base-meshes",
+   "name": "Human Base Meshes 1.4.1",
+   "kinds": [
+    "characters"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Реалистичные и стилизованные тела, головы, кисти, стопы, череп, скелет",
+   "url": "https://download.blender.org/demo/asset-bundles/human-base-meshes/",
+   "get": "direct",
+   "licence": "README: CC0",
+   "credit": "credit-advised",
+   "commercial": "yes",
+   "checked": "pack",
+   "note": "Внутри файла есть чужой текст лицензии (Rain Rig, CC BY 4.0): указывать Blender Foundation"
+  },
+  {
+   "id": "blender-studio",
+   "name": "Blender Studio characters",
+   "kinds": [
+    "characters",
+    "animation"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Готовые персонажи с ригом из фильмов",
+   "url": "https://studio.blender.org/characters/",
+   "get": "account",
+   "licence": "Обычно CC BY 4.0, смотреть у каждого",
+   "credit": "yes",
+   "commercial": "check",
+   "checked": "not-opened",
+   "note": "Узнаваемые персонажи фильмов: в игру не брать"
+  },
+  {
+   "id": "mpfb",
+   "name": "MPFB 2 и паки MakeHuman",
+   "kinds": [
+    "characters",
+    "clothes",
+    "hair"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Генератор людей: тело, лицо, кожа, волосы, одежда, скелет Mixamo",
+   "url": "https://static.makehumancommunity.org/assets/assetpacks.html",
+   "get": "direct",
+   "licence": "Ядро CC0; паки CC0 или CC BY",
+   "credit": "if-cc-by",
+   "commercial": "yes",
+   "checked": "pack",
+   "note": "См. список avoid: AGPL в заголовках и чужие персонажи"
+  },
+  {
+   "id": "charmorph",
+   "name": "CharMorph",
+   "kinds": [
+    "characters"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Генератор персонажей для Blender",
+   "url": "https://github.com/Upliner/CharMorph",
+   "get": "direct",
+   "licence": "Код GPL-3.0, часть данных AGPL-3.0",
+   "credit": "check",
+   "commercial": "check",
+   "checked": "page",
+   "note": "Проверять лицензию каждой базы тела"
+  },
+  {
+   "id": "anny",
+   "name": "Anny (NAVER)",
+   "kinds": [
+    "characters"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Параметрическое тело на данных MPFB",
+   "url": "https://github.com/naver/anny",
+   "get": "direct",
+   "licence": "Код Apache-2.0, данные CC0; топология SMPL-X некоммерческая",
+   "credit": "no",
+   "commercial": "check",
+   "checked": "page",
+   "note": "Не включать smplx и догружаемые некоммерческие данные"
+  },
+  {
+   "id": "metahuman",
+   "name": "MetaHuman",
+   "kinds": [
+    "characters"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Реалистичные люди Epic",
+   "url": "https://www.metahuman.com/",
+   "get": "account",
+   "licence": "Лицензия Epic",
+   "credit": "no",
+   "commercial": "check",
+   "checked": "not-opened",
+   "note": "Читать действующую лицензию"
+  },
+  {
+   "id": "vroid",
+   "name": "VRoid Studio",
+   "kinds": [
+    "characters"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Аниме-персонажи",
+   "url": "https://vroid.com/en/studio",
+   "get": "account",
+   "licence": "Условия VRoid",
+   "credit": "check",
+   "commercial": "check",
+   "checked": "not-opened",
+   "note": "Аниме-стиль"
+  },
+  {
+   "id": "daz",
+   "name": "Daz Studio",
+   "kinds": [
+    "characters",
+    "clothes"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Много одежды и поз",
+   "url": "https://www.daz3d.com/interactive-license-info",
+   "get": "account",
+   "licence": "Для игр нужна отдельная Interactive License",
+   "credit": "no",
+   "commercial": "paid",
+   "checked": "page",
+   "note": "Без Interactive License в игру нельзя"
+  },
+  {
+   "id": "polyhaven",
+   "name": "Poly Haven",
+   "kinds": [
+    "materials",
+    "models",
+    "hdri"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "871 текстура, 522 модели, 999 HDRI в каталоге",
+   "url": "https://polyhaven.com/",
+   "get": "direct",
+   "licence": "CC0 1.0",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "page",
+   "note": "Не выкачивать всё подряд; для Blender удобнее их библиотека"
+  },
+  {
+   "id": "ambientcg",
+   "name": "ambientCG",
+   "kinds": [
+    "materials"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "2046 материалов до 8K и выше",
+   "url": "https://ambientcg.com/",
+   "get": "direct",
+   "licence": "CC0 1.0",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "page",
+   "note": "API v2: https://ambientcg.com/api/v2/full_json"
+  },
+  {
+   "id": "cgbookcase",
+   "name": "cgbookcase",
+   "kinds": [
+    "materials"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "PBR-текстуры",
+   "url": "https://www.cgbookcase.com/",
+   "get": "direct",
+   "licence": "Заявлена CC0, на открытой странице не подтверждено",
+   "credit": "no",
+   "commercial": "check",
+   "checked": "not-confirmed",
+   "note": ""
+  },
+  {
+   "id": "sharetextures",
+   "name": "ShareTextures",
+   "kinds": [
+    "materials",
+    "models"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "PBR-текстуры",
+   "url": "https://www.sharetextures.com/",
+   "get": "direct",
+   "licence": "Своя версия CC0 с ограничениями",
+   "credit": "no",
+   "commercial": "check",
+   "checked": "page",
+   "note": "Читать ограничения на https://www.sharetextures.com/p/license"
+  },
+  {
+   "id": "texturecan",
+   "name": "TextureCan",
+   "kinds": [
+    "materials"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "650+ PBR-текстур",
+   "url": "https://www.texturecan.com/",
+   "get": "direct",
+   "licence": "CC0 1.0",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "page",
+   "note": ""
+  },
+  {
+   "id": "3dtextures",
+   "name": "3D Textures",
+   "kinds": [
+    "materials"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "PBR-текстуры, в том числе стилизованные",
+   "url": "https://3dtextures.me/",
+   "get": "direct",
+   "licence": "CC0",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "page",
+   "note": ""
+  },
+  {
+   "id": "freepbr",
+   "name": "FreePBR",
+   "kinds": [
+    "materials"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "PBR-материалы",
+   "url": "https://freepbr.com/",
+   "get": "manual",
+   "licence": "Своя лицензия",
+   "credit": "check",
+   "commercial": "check",
+   "checked": "not-confirmed",
+   "note": "Для продажи бывает нужна платная лицензия"
+  },
+  {
+   "id": "textureninja",
+   "name": "Texture Ninja",
+   "kinds": [
+    "materials"
+   ],
+   "dims": [
+    "2D",
+    "3D"
+   ],
+   "gives": "Фототекстуры",
+   "url": "https://texture.ninja/",
+   "get": "direct",
+   "licence": "Заявлена свободной, не подтверждено",
+   "credit": "no",
+   "commercial": "check",
+   "checked": "not-confirmed",
+   "note": ""
+  },
+  {
+   "id": "lotpixel",
+   "name": "LotPixel",
+   "kinds": [
+    "materials",
+    "models"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Бесплатный раздел PBR",
+   "url": "https://www.lotpixel.com/",
+   "get": "account",
+   "licence": "Своя лицензия, бесплатное можно коммерчески",
+   "credit": "check",
+   "commercial": "yes",
+   "checked": "page",
+   "note": ""
+  },
+  {
+   "id": "poliigon",
+   "name": "Poliigon",
+   "kinds": [
+    "materials"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Часть материалов бесплатна",
+   "url": "https://www.poliigon.com/",
+   "get": "account",
+   "licence": "Своя лицензия",
+   "credit": "check",
+   "commercial": "check",
+   "checked": "not-confirmed",
+   "note": ""
+  },
+  {
+   "id": "pixar128",
+   "name": "Pixar One Twenty Eight",
+   "kinds": [
+    "materials"
+   ],
+   "dims": [
+    "2D",
+    "3D"
+   ],
+   "gives": "128 повторяющихся текстур",
+   "url": "https://renderman.pixar.com/pixar-one-twenty-eight",
+   "get": "direct",
+   "licence": "CC BY 4.0",
+   "credit": "yes",
+   "commercial": "yes",
+   "checked": "page",
+   "note": ""
+  },
+  {
+   "id": "hdrmaps",
+   "name": "HDRMAPS Freebies",
+   "kinds": [
+    "hdri"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Бесплатные HDRI",
+   "url": "https://hdrmaps.com/freebies/",
+   "get": "account",
+   "licence": "Своя лицензия",
+   "credit": "check",
+   "commercial": "check",
+   "checked": "not-confirmed",
+   "note": ""
+  },
+  {
+   "id": "noemotion",
+   "name": "NoEmotionHDRs",
+   "kinds": [
+    "hdri"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "HDRI",
+   "url": "http://noemotionhdrs.net/",
+   "get": "direct",
+   "licence": "CC BY-ND 4.0",
+   "credit": "yes",
+   "commercial": "avoid",
+   "checked": "page",
+   "note": "Запрещены изменённые версии"
+  },
+  {
+   "id": "sketchfab",
+   "name": "Sketchfab (фильтр Downloadable и лицензия)",
+   "kinds": [
+    "models",
+    "characters",
+    "clothes"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Самый большой каталог, есть латы и шлемы музеев",
+   "url": "https://sketchfab.com/features/free-3d-models",
+   "get": "account",
+   "licence": "У каждой модели своя: CC0, CC BY, CC BY-SA, NC, Editorial",
+   "credit": "varies",
+   "commercial": "check",
+   "checked": "page",
+   "note": "Брать CC0 и CC BY; не брать NC, ND, Editorial, чужих персонажей"
+  },
+  {
+   "id": "fab",
+   "name": "Fab (Epic)",
+   "kinds": [
+    "models",
+    "materials",
+    "vfx",
+    "animation"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Магазин, раздаёт бесплатное",
+   "url": "https://www.fab.com/",
+   "get": "account",
+   "licence": "Fab Standard License или CC BY",
+   "credit": "if-cc-by",
+   "commercial": "check",
+   "checked": "page",
+   "note": "Читать лицензию вещи"
+  },
+  {
+   "id": "blenderkit",
+   "name": "BlenderKit",
+   "kinds": [
+    "models",
+    "materials",
+    "hdri"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Библиотека внутри Blender",
+   "url": "https://www.blenderkit.com/",
+   "get": "account",
+   "licence": "CC0 или Royalty Free",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "page",
+   "note": "RF: сами модели не перепродавать"
+  },
+  {
+   "id": "blendswap",
+   "name": "Blend Swap",
+   "kinds": [
+    "models",
+    "materials"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "26 тысяч файлов .blend",
+   "url": "https://blendswap.com/",
+   "get": "account",
+   "licence": "CC0, CC BY, CC BY-SA и другие",
+   "credit": "varies",
+   "commercial": "check",
+   "checked": "page",
+   "note": ""
+  },
+  {
+   "id": "polypizza",
+   "name": "Poly Pizza",
+   "kinds": [
+    "models"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Низкополигональные модели, архив Google Poly",
+   "url": "https://poly.pizza/",
+   "get": "direct",
+   "licence": "CC0 и CC BY у каждой",
+   "credit": "if-cc-by",
+   "commercial": "yes",
+   "checked": "not-confirmed",
+   "note": "Мультяшный стиль"
+  },
+  {
+   "id": "threedscans",
+   "name": "Three D Scans",
+   "kinds": [
+    "models"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Сканы скульптур музеев",
+   "url": "https://threedscans.com/",
+   "get": "direct",
+   "licence": "Заявлено без авторских прав, на странице не подтверждено",
+   "credit": "no",
+   "commercial": "check",
+   "checked": "not-confirmed",
+   "note": ""
+  },
+  {
+   "id": "smithsonian",
+   "name": "Smithsonian Open Access 3D",
+   "kinds": [
+    "models"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Сканы музейных вещей",
+   "url": "https://3d.si.edu/cc0",
+   "get": "manual",
+   "licence": "CC0 у отмеченных",
+   "credit": "no",
+   "commercial": "check",
+   "checked": "not-opened",
+   "note": "Сайт не пускает программы"
+  },
+  {
+   "id": "nasa3d",
+   "name": "NASA 3D Resources",
+   "kinds": [
+    "models"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Космос",
+   "url": "https://science.nasa.gov/3d-resources/",
+   "get": "direct",
+   "licence": "Материалы NASA",
+   "credit": "check",
+   "commercial": "check",
+   "checked": "not-confirmed",
+   "note": "Логотип NASA не использовать"
+  },
+  {
+   "id": "khronos",
+   "name": "Khronos glTF Sample Assets",
+   "kinds": [
+    "models"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Проверочные модели glTF",
+   "url": "https://github.com/KhronosGroup/glTF-Sample-Assets",
+   "get": "direct",
+   "licence": "У каждой своя",
+   "credit": "varies",
+   "commercial": "check",
+   "checked": "page",
+   "note": "Для тестов движка"
+  },
+  {
+   "id": "turbosquid",
+   "name": "TurboSquid Free",
+   "kinds": [
+    "models"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Бесплатный раздел магазина",
+   "url": "https://www.turbosquid.com/Search/3D-Models/free",
+   "get": "account",
+   "licence": "TurboSquid Royalty Free, есть Editorial",
+   "credit": "no",
+   "commercial": "check",
+   "checked": "page",
+   "note": "Editorial не брать"
+  },
+  {
+   "id": "cgtrader",
+   "name": "CGTrader Free",
+   "kinds": [
+    "models",
+    "clothes"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Бесплатный раздел магазина",
+   "url": "https://www.cgtrader.com/free-3d-models",
+   "get": "account",
+   "licence": "Своя Royalty Free, есть Editorial",
+   "credit": "check",
+   "commercial": "check",
+   "checked": "page",
+   "note": ""
+  },
+  {
+   "id": "objaverse",
+   "name": "Objaverse",
+   "kinds": [
+    "models"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Огромный набор с Sketchfab",
+   "url": "https://objaverse.allenai.org/",
+   "get": "direct",
+   "licence": "У каждой модели своя",
+   "credit": "varies",
+   "commercial": "check",
+   "checked": "page",
+   "note": "Только с проверкой каждой модели"
+  },
+  {
+   "id": "quaternius",
+   "name": "Quaternius",
+   "kinds": [
+    "models",
+    "characters",
+    "animation"
+   ],
+   "dims": [
+    "3D",
+    "2.5D"
+   ],
+   "gives": "Модульные наряды, базовые тела, 2 библиотеки анимаций, окружение",
+   "url": "https://quaternius.com/",
+   "get": "manual",
+   "licence": "CC0 или QAL (без прямой перепродажи)",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "page",
+   "note": "Стилизованный низкополигональный; с itch.io скачивает человек"
+  },
+  {
+   "id": "kaykit",
+   "name": "KayKit",
+   "kinds": [
+    "models",
+    "characters",
+    "animation"
+   ],
+   "dims": [
+    "3D",
+    "2.5D"
+   ],
+   "gives": "Персонажи, скелеты, подземелье, гексы",
+   "url": "https://github.com/KayKit-Game-Assets",
+   "get": "direct",
+   "licence": "CC0 1.0",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "pack",
+   "note": "Мультяшный"
+  },
+  {
+   "id": "kenney",
+   "name": "Kenney",
+   "kinds": [
+    "models",
+    "2d",
+    "vfx",
+    "sound"
+   ],
+   "dims": [
+    "2D",
+    "2.5D",
+    "3D"
+   ],
+   "gives": "Больше 100 наборов",
+   "url": "https://kenney.nl/assets",
+   "get": "manual",
+   "licence": "CC0 1.0",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "page",
+   "note": "Кнопка скачивания в браузере; часть есть на OpenGameArt"
+  },
+  {
+   "id": "opengameart",
+   "name": "OpenGameArt",
+   "kinds": [
+    "2d",
+    "models",
+    "sound",
+    "music",
+    "vfx"
+   ],
+   "dims": [
+    "2D",
+    "2.5D",
+    "3D"
+   ],
+   "gives": "Свалка всего, фильтр по лицензии",
+   "url": "https://opengameart.org/art-search-advanced",
+   "get": "direct",
+   "licence": "У каждой вещи своя; брать CC0, CC BY",
+   "credit": "varies",
+   "commercial": "check",
+   "checked": "page",
+   "note": "GPL и SA не мешать с закрытым кодом"
+  },
+  {
+   "id": "itch-cc0",
+   "name": "itch.io, фильтр CC0",
+   "kinds": [
+    "2d",
+    "models",
+    "sound",
+    "music",
+    "vfx"
+   ],
+   "dims": [
+    "2D",
+    "2.5D",
+    "3D"
+   ],
+   "gives": "2945 наборов с пометкой CC0",
+   "url": "https://itch.io/game-assets/assets-cc0",
+   "get": "manual",
+   "licence": "CC0 у отмеченных",
+   "credit": "no",
+   "commercial": "check",
+   "checked": "page",
+   "note": "Страницы наборов открывает человек; смотреть пометку AI"
+  },
+  {
+   "id": "0x72",
+   "name": "0x72 Dungeon Tileset II",
+   "kinds": [
+    "2d"
+   ],
+   "dims": [
+    "2D"
+   ],
+   "gives": "Подземелье и герои",
+   "url": "https://0x72.itch.io/dungeontileset-ii",
+   "get": "manual",
+   "licence": "CC0 1.0",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "page",
+   "note": "Пиксельный"
+  },
+  {
+   "id": "ansimuz",
+   "name": "Ansimuz",
+   "kinds": [
+    "2d"
+   ],
+   "dims": [
+    "2D"
+   ],
+   "gives": "Фоны, персонажи, платформеры",
+   "url": "https://ansimuz.itch.io/",
+   "get": "manual",
+   "licence": "У каждого набора своя",
+   "credit": "check",
+   "commercial": "check",
+   "checked": "not-confirmed",
+   "note": "Пиксельный"
+  },
+  {
+   "id": "craftpix",
+   "name": "CraftPix Freebies",
+   "kinds": [
+    "2d"
+   ],
+   "dims": [
+    "2D",
+    "2.5D"
+   ],
+   "gives": "Персонажи, тайлы, интерфейсы",
+   "url": "https://craftpix.net/freebies/",
+   "get": "account",
+   "licence": "Своя: в играх можно, исходники не перепродавать",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "page",
+   "note": "https://craftpix.net/file-licenses/"
+  },
+  {
+   "id": "lpc",
+   "name": "Universal LPC Spritesheet Generator",
+   "kinds": [
+    "2d",
+    "characters",
+    "clothes"
+   ],
+   "dims": [
+    "2D"
+   ],
+   "gives": "Сборка 2D-героя по слоям одежды",
+   "url": "https://liberatedpixelcup.github.io/Universal-LPC-Spritesheet-Character-Generator/",
+   "get": "direct",
+   "licence": "CC BY-SA 3.0, GPL 3.0, OGA-BY по слоям",
+   "credit": "yes",
+   "commercial": "check",
+   "checked": "page",
+   "note": "SA и GPL: сверять со своей лицензией; пиксельный"
+  },
+  {
+   "id": "game-icons",
+   "name": "game-icons.net",
+   "kinds": [
+    "2d"
+   ],
+   "dims": [
+    "2D"
+   ],
+   "gives": "Больше 4000 иконок SVG",
+   "url": "https://game-icons.net/",
+   "get": "direct",
+   "licence": "CC BY 3.0, часть CC0",
+   "credit": "yes",
+   "commercial": "yes",
+   "checked": "pack",
+   "note": "Подпись авторов обязательна"
+  },
+  {
+   "id": "tabler",
+   "name": "Tabler Icons",
+   "kinds": [
+    "2d"
+   ],
+   "dims": [
+    "2D"
+   ],
+   "gives": "Иконки интерфейса",
+   "url": "https://tabler.io/icons",
+   "get": "direct",
+   "licence": "MIT",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "pack",
+   "note": ""
+  },
+  {
+   "id": "lucide",
+   "name": "Lucide",
+   "kinds": [
+    "2d"
+   ],
+   "dims": [
+    "2D"
+   ],
+   "gives": "Иконки интерфейса",
+   "url": "https://lucide.dev/",
+   "get": "direct",
+   "licence": "ISC и MIT",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "page",
+   "note": ""
+  },
+  {
+   "id": "phosphor",
+   "name": "Phosphor Icons",
+   "kinds": [
+    "2d"
+   ],
+   "dims": [
+    "2D"
+   ],
+   "gives": "Иконки интерфейса",
+   "url": "https://phosphoricons.com/",
+   "get": "direct",
+   "licence": "Заявлена MIT, на странице не подтверждено",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "not-confirmed",
+   "note": ""
+  },
+  {
+   "id": "iconify",
+   "name": "Iconify",
+   "kinds": [
+    "2d"
+   ],
+   "dims": [
+    "2D"
+   ],
+   "gives": "Поиск по сотням наборов иконок",
+   "url": "https://icon-sets.iconify.design/",
+   "get": "direct",
+   "licence": "У каждого набора своя",
+   "credit": "varies",
+   "commercial": "check",
+   "checked": "page",
+   "note": ""
+  },
+  {
+   "id": "rijks",
+   "name": "Rijksmuseum data",
+   "kinds": [
+    "2d"
+   ],
+   "dims": [
+    "2D"
+   ],
+   "gives": "Картины и гравюры, доспехи и оружие для образцов",
+   "url": "https://data.rijksmuseum.nl/",
+   "get": "direct",
+   "licence": "Большая часть общественное достояние",
+   "credit": "no",
+   "commercial": "check",
+   "checked": "page",
+   "note": ""
+  },
+  {
+   "id": "met",
+   "name": "Met Museum Open Access",
+   "kinds": [
+    "2d"
+   ],
+   "dims": [
+    "2D"
+   ],
+   "gives": "Музейные фото, оружие и доспехи",
+   "url": "https://www.metmuseum.org/art/collection",
+   "get": "direct",
+   "licence": "CC0 у отмеченных Open Access",
+   "credit": "no",
+   "commercial": "check",
+   "checked": "not-opened",
+   "note": ""
+  },
+  {
+   "id": "artic",
+   "name": "Art Institute of Chicago",
+   "kinds": [
+    "2d"
+   ],
+   "dims": [
+    "2D"
+   ],
+   "gives": "Музейные фото",
+   "url": "https://www.artic.edu/open-access/open-access-images",
+   "get": "direct",
+   "licence": "CC0 у отмеченных",
+   "credit": "no",
+   "commercial": "check",
+   "checked": "not-opened",
+   "note": ""
+  },
+  {
+   "id": "openverse",
+   "name": "Openverse",
+   "kinds": [
+    "2d",
+    "sound"
+   ],
+   "dims": [
+    "2D"
+   ],
+   "gives": "Поиск картинок и звука со свободной лицензией",
+   "url": "https://openverse.org/",
+   "get": "direct",
+   "licence": "У каждой вещи своя",
+   "credit": "varies",
+   "commercial": "check",
+   "checked": "not-opened",
+   "note": ""
+  },
+  {
+   "id": "unsplash",
+   "name": "Unsplash",
+   "kinds": [
+    "2d",
+    "materials"
+   ],
+   "dims": [
+    "2D"
+   ],
+   "gives": "Фото",
+   "url": "https://unsplash.com/license",
+   "get": "account",
+   "licence": "Unsplash License",
+   "credit": "no",
+   "commercial": "check",
+   "checked": "not-opened",
+   "note": "Узнаваемые люди и марки: нужны отдельные права"
+  },
+  {
+   "id": "pexels",
+   "name": "Pexels",
+   "kinds": [
+    "2d",
+    "materials"
+   ],
+   "dims": [
+    "2D"
+   ],
+   "gives": "Фото и видео",
+   "url": "https://www.pexels.com/license/",
+   "get": "account",
+   "licence": "Pexels License",
+   "credit": "no",
+   "commercial": "check",
+   "checked": "not-opened",
+   "note": "Узнаваемые люди и марки: нужны отдельные права"
+  },
+  {
+   "id": "mixamo",
+   "name": "Mixamo",
+   "kinds": [
+    "animation",
+    "characters"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Больше 2400 клипов и авториг",
+   "url": "https://www.mixamo.com/",
+   "get": "account",
+   "licence": "Условия Adobe",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "not-opened",
+   "note": "Сырые клипы не раздавать"
+  },
+  {
+   "id": "ual",
+   "name": "Universal Animation Library 1 и 2",
+   "kinds": [
+    "animation"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Больше 250 клипов",
+   "url": "https://opengameart.org/content/universal-animation-library",
+   "get": "direct",
+   "licence": "CC0 1.0",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "page",
+   "note": "Имена костей в 1 и 2 разные"
+  },
+  {
+   "id": "cmu",
+   "name": "CMU Motion Capture",
+   "kinds": [
+    "animation"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Больше 2500 записей движения",
+   "url": "http://mocap.cs.cmu.edu/",
+   "get": "direct",
+   "licence": "Свободное использование, условия на сайте",
+   "credit": "credit-advised",
+   "commercial": "check",
+   "checked": "not-confirmed",
+   "note": "Нужна чистка"
+  },
+  {
+   "id": "100style",
+   "name": "100STYLE",
+   "kinds": [
+    "animation"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "100 стилей ходьбы и бега, BVH",
+   "url": "https://www.ianxmason.com/100style/",
+   "get": "direct",
+   "licence": "CC BY 4.0",
+   "credit": "yes",
+   "commercial": "yes",
+   "checked": "page",
+   "note": ""
+  },
+  {
+   "id": "lafan",
+   "name": "LAFAN1 (Ubisoft)",
+   "kinds": [
+    "animation"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Захват движения",
+   "url": "https://github.com/ubisoft/ubisoft-laforge-animation-dataset",
+   "get": "direct",
+   "licence": "CC BY-NC-ND 4.0",
+   "credit": "yes",
+   "commercial": "avoid",
+   "checked": "page",
+   "note": "Некоммерческая"
+  },
+  {
+   "id": "bandai",
+   "name": "Bandai Namco Motion Dataset",
+   "kinds": [
+    "animation"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Захват движения",
+   "url": "https://github.com/BandaiNamcoResearchInc/Bandai-Namco-Research-Motiondataset",
+   "get": "direct",
+   "licence": "Исследовательская, читать LICENSE",
+   "credit": "yes",
+   "commercial": "avoid",
+   "checked": "not-confirmed",
+   "note": "Обычно некоммерческая"
+  },
+  {
+   "id": "actorcore",
+   "name": "ActorCore Free",
+   "kinds": [
+    "animation"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Бесплатные клипы Reallusion",
+   "url": "https://actorcore.reallusion.com/free",
+   "get": "account",
+   "licence": "Лицензия Reallusion",
+   "credit": "check",
+   "commercial": "check",
+   "checked": "not-confirmed",
+   "note": ""
+  },
+  {
+   "id": "mocaponline",
+   "name": "MoCap Online Free",
+   "kinds": [
+    "animation"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Пробные клипы",
+   "url": "https://mocaponline.com/collections/free-animations",
+   "get": "account",
+   "licence": "Своя",
+   "credit": "check",
+   "commercial": "check",
+   "checked": "not-opened",
+   "note": ""
+  },
+  {
+   "id": "rokoko",
+   "name": "Rokoko Free Mocap",
+   "kinds": [
+    "animation"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Бесплатные клипы",
+   "url": "https://www.rokoko.com/",
+   "get": "account",
+   "licence": "Своя",
+   "credit": "check",
+   "commercial": "check",
+   "checked": "not-opened",
+   "note": ""
+  },
+  {
+   "id": "cascadeur",
+   "name": "Cascadeur",
+   "kinds": [
+    "animation",
+    "tools"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Анимация с физикой",
+   "url": "https://cascadeur.com/plans",
+   "get": "account",
+   "licence": "Бесплатный тариф некоммерческий",
+   "credit": "no",
+   "commercial": "paid",
+   "checked": "page",
+   "note": "Для продажи нужен платный тариф"
+  },
+  {
+   "id": "unity-vfx",
+   "name": "Unity Labs flipbooks",
+   "kinds": [
+    "vfx"
+   ],
+   "dims": [
+    "2D",
+    "2.5D",
+    "3D"
+   ],
+   "gives": "28 листов: огонь, дым, взрывы",
+   "url": "https://unity.com/blog/engine-platform/free-vfx-image-sequences-flipbooks",
+   "get": "direct",
+   "licence": "CC0 1.0",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "page",
+   "note": ""
+  },
+  {
+   "id": "jangafx",
+   "name": "JangaFX Free VDB",
+   "kinds": [
+    "vfx"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Объёмные дым, огонь, взрывы",
+   "url": "https://jangafx.com/software/embergen/download/free-vdb-animations",
+   "get": "manual",
+   "licence": "CC0",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "page",
+   "note": ""
+  },
+  {
+   "id": "pvfx",
+   "name": "PVFX Foundry",
+   "kinds": [
+    "vfx"
+   ],
+   "dims": [
+    "2D",
+    "2.5D"
+   ],
+   "gives": "253 пиксельных эффекта",
+   "url": "https://nerijs.itch.io/pvfx-foundry",
+   "get": "manual",
+   "licence": "CC0 1.0",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "page",
+   "note": "Сделано с помощью ИИ: сверить с правилами площадки"
+  },
+  {
+   "id": "codemanu",
+   "name": "CodeManu VFX Free Pack",
+   "kinds": [
+    "vfx"
+   ],
+   "dims": [
+    "2D",
+    "2.5D"
+   ],
+   "gives": "Взрывы, удары",
+   "url": "https://codemanu.itch.io/vfx-free-pack",
+   "get": "manual",
+   "licence": "Противоречие: текст public domain, поле CC BY 4.0, на OpenGameArt CC0",
+   "credit": "yes",
+   "commercial": "check",
+   "checked": "page",
+   "note": "Безопаснее указать автора"
+  },
+  {
+   "id": "effekseer",
+   "name": "Effekseer",
+   "kinds": [
+    "vfx",
+    "tools"
+   ],
+   "dims": [
+    "2D",
+    "3D"
+   ],
+   "gives": "Редактор эффектов с примерами",
+   "url": "https://effekseer.github.io/en/",
+   "get": "direct",
+   "licence": "MIT (редактор); примеры смотреть отдельно",
+   "credit": "no",
+   "commercial": "check",
+   "checked": "not-confirmed",
+   "note": ""
+  },
+  {
+   "id": "openvdb",
+   "name": "OpenVDB samples",
+   "kinds": [
+    "vfx"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Образцы облаков и дыма",
+   "url": "https://www.openvdb.org/download/",
+   "get": "direct",
+   "licence": "Смотреть у файла",
+   "credit": "check",
+   "commercial": "check",
+   "checked": "not-confirmed",
+   "note": ""
+  },
+  {
+   "id": "godotshaders",
+   "name": "Godot Shaders",
+   "kinds": [
+    "vfx",
+    "tools"
+   ],
+   "dims": [
+    "2D",
+    "3D"
+   ],
+   "gives": "Шейдеры",
+   "url": "https://godotshaders.com/",
+   "get": "direct",
+   "licence": "У каждого: CC0, MIT, GPL 3, Shadertoy",
+   "credit": "varies",
+   "commercial": "check",
+   "checked": "page",
+   "note": "GPL и Shadertoy не брать без проверки"
+  },
+  {
+   "id": "google-fonts",
+   "name": "Google Fonts",
+   "kinds": [
+    "fonts"
+   ],
+   "dims": [
+    "2D"
+   ],
+   "gives": "Шрифты, фильтр Cyrillic",
+   "url": "https://fonts.google.com/?subset=cyrillic",
+   "get": "direct",
+   "licence": "Чаще OFL 1.1",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "pack",
+   "note": "Файлы: https://github.com/google/fonts"
+  },
+  {
+   "id": "fontsource",
+   "name": "Fontsource",
+   "kinds": [
+    "fonts"
+   ],
+   "dims": [
+    "2D"
+   ],
+   "gives": "Шрифты пакетами npm",
+   "url": "https://fontsource.org/",
+   "get": "direct",
+   "licence": "У каждого своя, чаще OFL",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "not-confirmed",
+   "note": ""
+  },
+  {
+   "id": "freesound",
+   "name": "Freesound",
+   "kinds": [
+    "sound"
+   ],
+   "dims": [
+    "2D",
+    "3D"
+   ],
+   "gives": "Сотни тысяч звуков",
+   "url": "https://freesound.org/",
+   "get": "account",
+   "licence": "CC0, CC BY, CC BY-NC у каждого",
+   "credit": "varies",
+   "commercial": "check",
+   "checked": "page",
+   "note": "NC не брать"
+  },
+  {
+   "id": "sonniss",
+   "name": "Sonniss GameAudioGDC",
+   "kinds": [
+    "sound"
+   ],
+   "dims": [
+    "2D",
+    "3D"
+   ],
+   "gives": "Десятки ГБ студийных звуков",
+   "url": "https://sonniss.com/gameaudiogdc",
+   "get": "manual",
+   "licence": "Своя: игры можно; раздавать звуки и обучать ИИ нельзя",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "page",
+   "note": "Скачивание означает принятие договора, качает человек"
+  },
+  {
+   "id": "zapsplat",
+   "name": "ZapSplat",
+   "kinds": [
+    "sound",
+    "music"
+   ],
+   "dims": [
+    "2D",
+    "3D"
+   ],
+   "gives": "Звуки и музыка",
+   "url": "https://www.zapsplat.com/",
+   "get": "account",
+   "licence": "Своя: бесплатно с подписью",
+   "credit": "yes",
+   "commercial": "yes",
+   "checked": "page",
+   "note": ""
+  },
+  {
+   "id": "pixabay",
+   "name": "Pixabay",
+   "kinds": [
+    "sound",
+    "music",
+    "2d"
+   ],
+   "dims": [
+    "2D"
+   ],
+   "gives": "Звуки, музыка, фото",
+   "url": "https://pixabay.com/service/license-summary/",
+   "get": "manual",
+   "licence": "Pixabay License",
+   "credit": "no",
+   "commercial": "check",
+   "checked": "not-opened",
+   "note": "Много сделанного ИИ"
+  },
+  {
+   "id": "nps",
+   "name": "National Park Service sounds",
+   "kinds": [
+    "sound"
+   ],
+   "dims": [
+    "2D",
+    "3D"
+   ],
+   "gives": "Природа, животные",
+   "url": "https://www.nps.gov/subjects/sound/gallery.htm",
+   "get": "direct",
+   "licence": "Общественное достояние",
+   "credit": "credit-advised",
+   "commercial": "yes",
+   "checked": "page",
+   "note": ""
+  },
+  {
+   "id": "bbc",
+   "name": "BBC Sound Effects",
+   "kinds": [
+    "sound"
+   ],
+   "dims": [
+    "2D",
+    "3D"
+   ],
+   "gives": "33 тысячи звуков",
+   "url": "https://sound-effects.bbcrewind.co.uk/licensing",
+   "get": "manual",
+   "licence": "Бесплатно обычно только некоммерчески",
+   "credit": "check",
+   "commercial": "avoid",
+   "checked": "not-confirmed",
+   "note": ""
+  },
+  {
+   "id": "incompetech",
+   "name": "Incompetech",
+   "kinds": [
+    "music"
+   ],
+   "dims": [
+    "2D",
+    "3D"
+   ],
+   "gives": "Музыка Kevin MacLeod",
+   "url": "https://incompetech.com/music/royalty-free/",
+   "get": "direct",
+   "licence": "CC BY или платная без подписи",
+   "credit": "yes",
+   "commercial": "yes",
+   "checked": "page",
+   "note": ""
+  },
+  {
+   "id": "ccmixter",
+   "name": "ccMixter dig",
+   "kinds": [
+    "music"
+   ],
+   "dims": [
+    "2D",
+    "3D"
+   ],
+   "gives": "Фильтр music for games и commercial use",
+   "url": "https://dig.ccmixter.org/games",
+   "get": "direct",
+   "licence": "CC BY и CC BY-NC",
+   "credit": "yes",
+   "commercial": "check",
+   "checked": "page",
+   "note": "NC не брать"
+  },
+  {
+   "id": "musopen",
+   "name": "Musopen",
+   "kinds": [
+    "music"
+   ],
+   "dims": [
+    "2D",
+    "3D"
+   ],
+   "gives": "Классика",
+   "url": "https://musopen.org/",
+   "get": "account",
+   "licence": "Общественное достояние и CC у записей",
+   "credit": "varies",
+   "commercial": "check",
+   "checked": "not-opened",
+   "note": ""
+  },
+  {
+   "id": "freepd",
+   "name": "FreePD",
+   "kinds": [
+    "music"
+   ],
+   "dims": [
+    "2D"
+   ],
+   "gives": "Сайт закрыт",
+   "url": "https://freepd.com/",
+   "get": "closed",
+   "licence": "–",
+   "credit": "–",
+   "commercial": "avoid",
+   "checked": "page",
+   "note": "На 2026-11-24 сайт пишет, что отключён"
+  },
+  {
+   "id": "material-maker",
+   "name": "Material Maker",
+   "kinds": [
+    "tools",
+    "materials"
+   ],
+   "dims": [
+    "2D",
+    "3D"
+   ],
+   "gives": "Процедурные материалы",
+   "url": "https://www.materialmaker.org/",
+   "get": "direct",
+   "licence": "MIT",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "page",
+   "note": "winget: RodZill4.MaterialMaker"
+  },
+  {
+   "id": "krita",
+   "name": "Krita",
+   "kinds": [
+    "tools"
+   ],
+   "dims": [
+    "2D"
+   ],
+   "gives": "Рисование и 2D-анимация",
+   "url": "https://krita.org/",
+   "get": "direct",
+   "licence": "GPL-3.0",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "winget",
+   "note": "winget: KDE.Krita"
+  },
+  {
+   "id": "gimp",
+   "name": "GIMP",
+   "kinds": [
+    "tools"
+   ],
+   "dims": [
+    "2D"
+   ],
+   "gives": "Редактор картинок",
+   "url": "https://www.gimp.org/",
+   "get": "direct",
+   "licence": "GPL-3.0",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "winget",
+   "note": "winget: GIMP.GIMP.3"
+  },
+  {
+   "id": "inkscape",
+   "name": "Inkscape",
+   "kinds": [
+    "tools"
+   ],
+   "dims": [
+    "2D"
+   ],
+   "gives": "Векторная графика",
+   "url": "https://inkscape.org/",
+   "get": "direct",
+   "licence": "GPL-2.0",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "winget",
+   "note": "winget: Inkscape.Inkscape"
+  },
+  {
+   "id": "blockbench",
+   "name": "Blockbench",
+   "kinds": [
+    "tools"
+   ],
+   "dims": [
+    "2D",
+    "2.5D",
+    "3D"
+   ],
+   "gives": "Низкополигональные модели",
+   "url": "https://www.blockbench.net/",
+   "get": "direct",
+   "licence": "GPL-3.0",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "winget",
+   "note": "winget: JannisX11.Blockbench"
+  },
+  {
+   "id": "pixelorama",
+   "name": "Pixelorama",
+   "kinds": [
+    "tools"
+   ],
+   "dims": [
+    "2D"
+   ],
+   "gives": "Пиксель-арт и анимация",
+   "url": "https://orama-interactive.itch.io/pixelorama",
+   "get": "direct",
+   "licence": "MIT",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "winget",
+   "note": "winget: OramaInteractive.Pixelorama"
+  },
+  {
+   "id": "ldtk",
+   "name": "LDtk",
+   "kinds": [
+    "tools"
+   ],
+   "dims": [
+    "2D"
+   ],
+   "gives": "Редактор уровней",
+   "url": "https://ldtk.io/",
+   "get": "direct",
+   "licence": "MIT",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "winget",
+   "note": "winget: deepnight.LDtk"
+  },
+  {
+   "id": "tiled",
+   "name": "Tiled",
+   "kinds": [
+    "tools"
+   ],
+   "dims": [
+    "2D",
+    "2.5D"
+   ],
+   "gives": "Редактор карт, в том числе изометрия",
+   "url": "https://www.mapeditor.org/",
+   "get": "direct",
+   "licence": "GPL-2.0+",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "winget",
+   "note": "winget: Tiled.Tiled"
+  },
+  {
+   "id": "laigter",
+   "name": "Laigter",
+   "kinds": [
+    "tools"
+   ],
+   "dims": [
+    "2D",
+    "2.5D"
+   ],
+   "gives": "Карты нормалей для спрайтов",
+   "url": "https://azagaya.itch.io/laigter",
+   "get": "manual",
+   "licence": "Не проверено",
+   "credit": "check",
+   "commercial": "check",
+   "checked": "not-opened",
+   "note": "В winget нет"
+  },
+  {
+   "id": "meshlab",
+   "name": "MeshLab",
+   "kinds": [
+    "tools"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Чистка и упрощение сеток",
+   "url": "https://www.meshlab.net/",
+   "get": "direct",
+   "licence": "GPL-3.0",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "winget",
+   "note": "winget: CNRISTI.MeshLab"
+  },
+  {
+   "id": "upscayl",
+   "name": "Upscayl",
+   "kinds": [
+    "tools"
+   ],
+   "dims": [
+    "2D"
+   ],
+   "gives": "Увеличение картинок",
+   "url": "https://upscayl.org/",
+   "get": "direct",
+   "licence": "AGPL-3.0",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "winget",
+   "note": "winget: Upscayl.Upscayl"
+  },
+  {
+   "id": "chainner",
+   "name": "chaiNNer",
+   "kinds": [
+    "tools"
+   ],
+   "dims": [
+    "2D"
+   ],
+   "gives": "Цепочки обработки картинок",
+   "url": "https://chainner.app/",
+   "get": "direct",
+   "licence": "GPL-3.0",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "winget",
+   "note": "winget: chaiNNer-org.chaiNNer"
+  },
+  {
+   "id": "imagemagick",
+   "name": "ImageMagick",
+   "kinds": [
+    "tools"
+   ],
+   "dims": [
+    "2D"
+   ],
+   "gives": "Пакетная обработка картинок",
+   "url": "https://imagemagick.org/",
+   "get": "direct",
+   "licence": "ImageMagick License",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "winget",
+   "note": "winget: ImageMagick.ImageMagick"
+  },
+  {
+   "id": "audacity",
+   "name": "Audacity",
+   "kinds": [
+    "tools",
+    "sound"
+   ],
+   "dims": [
+    "2D",
+    "3D"
+   ],
+   "gives": "Редактор звука",
+   "url": "https://www.audacityteam.org/",
+   "get": "direct",
+   "licence": "GPL-3.0+",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "winget",
+   "note": "winget: Audacity.Audacity"
+  },
+  {
+   "id": "lmms",
+   "name": "LMMS",
+   "kinds": [
+    "tools",
+    "music"
+   ],
+   "dims": [
+    "2D",
+    "3D"
+   ],
+   "gives": "Создание музыки",
+   "url": "https://lmms.io/",
+   "get": "direct",
+   "licence": "GPL-2.0+",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "winget",
+   "note": "winget: LMMS.LMMS"
+  },
+  {
+   "id": "gltf-transform",
+   "name": "glTF Transform",
+   "kinds": [
+    "tools"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Подготовка моделей для веба",
+   "url": "https://gltf-transform.dev/",
+   "get": "direct",
+   "licence": "MIT",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "pack",
+   "note": "npm: @gltf-transform/cli"
+  },
+  {
+   "id": "gltfpack",
+   "name": "gltfpack",
+   "kinds": [
+    "tools"
+   ],
+   "dims": [
+    "3D"
+   ],
+   "gives": "Сжатие и упрощение моделей",
+   "url": "https://meshoptimizer.org/gltf/",
+   "get": "direct",
+   "licence": "MIT",
+   "credit": "no",
+   "commercial": "yes",
+   "checked": "pack",
+   "note": "npm: gltfpack"
+  }
+ ],
+ "avoid": {
+  "third_party_characters": [
+   "green_tomato_rei_ayanami",
+   "green_tomato_yoko_tsuno",
+   "slayer227_spider-gwen",
+   "punkduck_p-ivy_weapon",
+   "jaldmic_houndoom_horns",
+   "jaldmic_toriel_horns",
+   "freezychan_lucoa_quetzalcoatl_horns",
+   "sonntag78_junglebook_hair",
+   "culturalibre_dr_manhattan",
+   "culturalibre_tigra_skin",
+   "culturalibre_tigra_white_skin",
+   "reizibarrientos_white_walker_skin"
+  ],
+  "makehuman_agpl_in_header": [
+   "blindsaypatten_uniform_skin_texture",
+   "callharvey3d_midtoned_female",
+   "culturalibre_hair_01",
+   "culturalibre_hair_02",
+   "culturalibre_hero-heroine_gloves_1",
+   "elvs_double_mh_braid",
+   "elvs_french_braid_variation",
+   "elvs_unkempt_french_braid",
+   "elvs_witchy_hallows_hat1",
+   "elvs_witchy_lil_bob",
+   "ews_striped_shirt",
+   "frankyaye_mini_skirt_01",
+   "frankyaye_mini_skirt_02",
+   "freezychan_lucoa_quetzalcoatl_horns",
+   "grinsegold_beard_sigmund_wip",
+   "grinsegold_corinthian_helmet",
+   "grinsegold_female_pirate_boots",
+   "grinsegold_full_beard",
+   "grinsegold_mars_suit",
+   "grinsegold_moustache",
+   "grinsegold_uncle_joshis_hat",
+   "grinsegold_wig_bow_tie",
+   "grinsegold_wig_bun_blonde_braids",
+   "jaldmic_akm_base",
+   "jaldmic_demon_horns",
+   "jaldmic_houndoom_horns",
+   "jaldmic_l1a1",
+   "jaldmic_m1911a1",
+   "jaldmic_m1951_72",
+   "jaldmic_toriel_horns",
+   "javherre_casco_caballero_templario_templar_knight_helmet",
+   "jujube_bag_on_head",
+   "jujube_newsboy_cap",
+   "learning_anime_hair",
+   "learning_mma_fighting_gloves",
+   "littleright_bobcut_hair",
+   "maciekg_hammer",
+   "maciekg_horned_helmet",
+   "maciekg_leather_boots",
+   "maciekg_leather_helmet",
+   "maciekg_short_bow",
+   "maciekg_wizard_hat",
+   "maciekg_wizard_robe",
+   "male_casualsuit01",
+   "male_elegantsuit01",
+   "o4saken_dagger",
+   "ponytail01",
+   "punkduck_alpha7_curly",
+   "punkduck_alpha7_curly2",
+   "punkduck_alpha7_long",
+   "punkduck_alpha7_long2",
+   "punkduck_p-ivy_weapon",
+   "rehmanpolanski_hair_bun_brown",
+   "rehmanpolanski_skin_viking_tattoos",
+   "scailman_gogo_platform_boots",
+   "scailman_low-heeled_boots",
+   "scailman_semitransparent_water_boots",
+   "short02",
+   "short04",
+   "skalldyrssuppe_tube_top_funky_colors",
+   "sonntag78_blond_with_headband",
+   "sonntag78_junglebook_hair",
+   "tiomegamanx_skintight_body_suit_female",
+   "titleknown_trans_flag",
+   "wdg_scruffy_beard"
+  ]
+ }
+}

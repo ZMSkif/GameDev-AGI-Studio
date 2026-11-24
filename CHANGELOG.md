@@ -2,6 +2,12 @@
 
 All notable changes to the `gamedev-studio` plugin. The version lives only in `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`, and a release tag `vX.Y.Z` must match it. From the next release on, each section is the release notes for its tag (see "Releases" in `README.md`). 0.1.0 and 0.2.0 were not tagged. The v0.3.0 release notes were written by hand, in Russian and English, before this file existed.
 
+## [Unreleased]
+
+### Added
+
+- `asset-catalog` skill, `reference/asset-catalog.json`, `reference/asset-packs.json` and the table `reference/asset-catalog.md`: where free assets for 2D, 2.5D and 3D come from (103 sources, 623 exact packs) with links, licences, how to get them, how each licence was checked, and what not to take. `scripts/asset_catalog.py` filters, checks and rebuilds the table; it never downloads.
+
 ## [0.10.1] - 2026-11-24
 
 ### Changed
