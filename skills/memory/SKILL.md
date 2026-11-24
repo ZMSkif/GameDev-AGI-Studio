@@ -17,7 +17,7 @@ Binding:
 
 The contract is `contracts/v1/knowledge-policy.json`.
 
-**Status (19.11.2026):** Hindsight 1.2.2 passed a local smoke test on the owner's PC (`scripts/hindsight_smoke.py`). Where the server finally runs, this PC or a server, is the owner's choice (task #150). Until the owner decides, only the local smoke server runs. Connect a game only with the owner's yes, and never change another machine. The evidence is posted on #150, and the contract marks the backend `verified` with that link.
+**Where it runs (owner, 24.11.2026):** every person who installs the plugin has **their own** Hindsight server on their own computer, bound to 127.0.0.1, holding only their memory; it starts at sign-in, and the plugin connects it to Claude in every session. There is no shared server: Hindsight has no authentication, so a shared one would expose everyone's memory. Memory is installed like any catalog tool, after the person's yes (`studio-setup`); installing the plugin alone does not install it.
 
 ## 1. Banks and scopes
 
@@ -28,20 +28,19 @@ The contract is `contracts/v1/knowledge-policy.json`.
 | task | the project bank, tag `task:<issue number>` | "Issue 42: the collar spike came from an unbisected border." |
 
 - **The bank is the scope.** Do not add `scope:` tags. Tag a task memory `task:<issue number>`.
-- **One MCP endpoint per bank.** The multi-bank endpoint `/mcp/` accepts any `bank_id`, so a session there can read other games. The smoke test showed it. Wire only per-bank endpoints into a game.
+- **One MCP endpoint per bank.** The multi-bank endpoint `/mcp/` accepts any `bank_id`, so a session there can read other games. The smoke test showed it. Only per-bank endpoints are used.
 
-## 2. Connect a game repository (each step needs the owner's yes)
+## 2. How Claude is connected (nothing to wire by hand)
 
-The owner gives the base URL (`<base>`; the local smoke server is `http://127.0.0.1:8888`).
+The plugin starts its own `memory` MCP server with every Claude Code session (`.claude-plugin/plugin.json` → `scripts/memory_mcp.py`). It is always connected, also when Hindsight is not installed or not running yet, and it forwards to the local server's per-bank endpoints:
 
-- **Claude Code**, in the game repository:
-  - `claude mcp add --transport http --scope project hindsight-project <base>/mcp/gamedev-studio::project::<repository>/`
-  - `claude mcp add --transport http --scope project hindsight-studio <base>/mcp/gamedev-studio::studio/`
-- **Codex**, in the trusted project's `.codex/config.toml`:
-  - `[mcp_servers.hindsight-project]` with `url = "<base>/mcp/gamedev-studio::project::<repository>/"`
-  - the same for `hindsight-studio`.
-- **Do not use** the `@vectorize-io/hindsight-coding-agents` installer. Its default stores whole session transcripts, which breaks the never-store list below.
-- If the server is down, Claude Code marks the server "failed" and the session goes on. Say so in the result; do not work around it.
+- `studio_retain`, `studio_recall`, `studio_list_memories`, `studio_get_memory`, `studio_get_bank`: the studio bank, in every session;
+- `project_*` (the same five): the bank of the studio game this session runs in (the nearest folder with `.gamedev-studio`; the bank name comes from the repository name). Outside a studio game they answer that there is no project bank. A `bank_id` argument is dropped, so no call reaches another game's bank.
+
+If the server is not running, the first call starts it and answers "starting": go on with the task and call again in about a minute. If Hindsight is not installed, the call says so: offer it through `studio-setup` and work in **Manual** mode until then. Say so in the result; do not work around it.
+
+- **Codex** (optional): add the same server to the trusted project's `.codex/config.toml`: `[mcp_servers.gamedev-studio-memory]` with `command = "python"` and `args = ["<plugin-root>/scripts/memory_mcp.py"]`.
+- **Do not use** the `@vectorize-io/hindsight-coding-agents` installer. Its default stores whole session transcripts, which breaks the never-store list below. Do not add Hindsight's HTTP endpoints to a game's `.mcp.json` either: the plugin's server already covers both banks.
 
 ## 3. Store (retain)
 
@@ -89,15 +88,21 @@ Retain over MCP is asynchronous, so a recall right after it can come back empty.
 
 ## 5. Running the server (local)
 
-```
-HINDSIGHT_API_LLM_PROVIDER=claude-code HINDSIGHT_API_HOST=127.0.0.1 HINDSIGHT_API_PORT=8888 \
-HINDSIGHT_API_MODEL_INIT_TIMEOUT=900 \
-HINDSIGHT_API_MCP_ENABLED_TOOLS=retain,recall,list_memories,get_memory,get_bank \
-~/.hindsight-runtime/Scripts/hindsight-api --host 127.0.0.1 --port 8888
-```
+`scripts/memory_server.py` runs it; nothing else should start Hindsight:
 
-- Bind to 127.0.0.1. The default is 0.0.0.0 with an unauthenticated MCP endpoint.
-- The `claude-code` provider uses the owner's Claude subscription (no API key). The `openai-codex` provider and a local Ollama model are the other no-paid-API options; neither was tested.
+| Command | What it does |
+|---|---|
+| `status [--json]` | installed, running, autostart, the studio bank's endpoint |
+| `start [--wait 600]` | starts it in the background unless it already answers; never a second copy, never over another program on port 8888 |
+| `stop` | stops only the process it started and recorded; the data stays |
+| `autostart --yes` / `--off` | start at sign-in: the Windows per-user startup entry `GameDevStudioMemory` (no administrator rights; Task Manager > Startup apps) or a macOS LaunchAgent, running a copy of the script kept in `~/.gamedev-studio/memory` so plugin updates do not break it |
+
+Install (`studio_tools.py install hindsight --yes`) puts Hindsight in `~/.gamedev-studio/tools/hindsight`; an older `~/.hindsight-runtime` is still used. Data lives in the default embedded PostgreSQL instance (`~/.pg0`): never point a server at another instance, or memory looks empty. Before an upgrade, stop the server and copy `~/.pg0` aside.
+
+The server is always started with:
+- `HINDSIGHT_API_HOST=127.0.0.1`: the default is 0.0.0.0 with an unauthenticated MCP endpoint.
+- `HINDSIGHT_API_MCP_ENABLED_TOOLS=retain,recall,list_memories,get_memory,get_bank`.
+- `HINDSIGHT_API_LLM_PROVIDER=claude-code`: the person's own Claude subscription (no API key; each retain uses a little of its limit). The `openai-codex` provider and a local Ollama model are the other no-paid-API options; neither was tested.
 - The first start downloads the search models from Hugging Face. It can take longer than the default 300 s init timeout.
 - After any change, run `python scripts/hindsight_smoke.py --run <new id>`. With `--json` it prints rows for `contracts/v1/integration-evidence.schema.json`.
 - To check persistence, restart the server, then run `--recall-only --run <the same id> --after-restart`. Without `--after-restart`, S8 is MANUAL.

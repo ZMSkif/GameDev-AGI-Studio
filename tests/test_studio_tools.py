@@ -96,10 +96,20 @@ class ActionTests(unittest.TestCase):
         self.assertEqual(result["gitignore_added"], [".tools/"])
         self.assertIn(".tools/", (self.game / ".gitignore").read_text(encoding="utf-8"))
 
+    def owner_catalog(self):
+        """The catalog plus an owner tool with a URL setting (memory used to be one; now no shipped tool is)."""
+        catalog = copy.deepcopy(self.catalog)
+        catalog["tools"].append({"id": "owner-server", "name": "Owner server", "group": "memory", "who": "owner",
+                                 "scope": "game", "detect": {"type": "http_health", "setting": "owner_url"},
+                                 "config": [{"key": "owner_url", "kind": "url", "target": "settings",
+                                             "label": {"ru": "Адрес", "en": "URL"}}]})
+        return catalog
+
     def test_owner_tool_needs_a_decision_link(self):
+        catalog = self.owner_catalog()
         with self.assertRaisesRegex(st.ToolError, "owner's decision"):
-            st.set_enabled(self.catalog, self.game, "hindsight", True)
-        entry = st.set_enabled(self.catalog, self.game, "hindsight", True, DECISION)
+            st.set_enabled(catalog, self.game, "owner-server", True)
+        entry = st.set_enabled(catalog, self.game, "owner-server", True, DECISION)
         self.assertEqual(entry, {"enabled": True, "decision": DECISION})
         with self.assertRaises(st.ToolError):
             st.set_enabled(self.catalog, self.game, "godot-mcp", True)
@@ -123,10 +133,11 @@ class ActionTests(unittest.TestCase):
             st.set_setting(self.catalog, self.game, "fal", "FAL_KEY", "x")
 
     def test_settings_validate_urls_and_paths(self):
+        catalog = self.owner_catalog()
         with self.assertRaises(st.ToolError):
-            st.set_setting(self.catalog, self.game, "hindsight", "hindsight_url", "ftp://x")
-        st.set_setting(self.catalog, self.game, "hindsight", "hindsight_url", "http://127.0.0.1:8888")
-        self.assertEqual(st.load_settings(self.game)["settings"]["hindsight_url"], "http://127.0.0.1:8888")
+            st.set_setting(catalog, self.game, "owner-server", "owner_url", "ftp://x")
+        st.set_setting(catalog, self.game, "owner-server", "owner_url", "http://127.0.0.1:8888")
+        self.assertEqual(st.load_settings(self.game)["settings"]["owner_url"], "http://127.0.0.1:8888")
         with self.assertRaises(st.ToolError):
             st.set_setting(self.catalog, self.game, "chromium", "chromium_path", str(self.game / "nope"))
 
@@ -439,13 +450,13 @@ class ConsoleTests(unittest.TestCase):
         import subprocess
         env = {key: value for key, value in os.environ.items() if key not in {"PYTHONIOENCODING", "PYTHONUTF8"}}
         with TemporaryDirectory() as game:
-            for extra in ([], ["--json"]):
+            for extra in (["--all"], ["--json"]):
                 result = subprocess.run([sys.executable, str(ROOT / "scripts" / "studio_tools.py"), "--game", game,
                                          "--lang", "ru", "status", *extra], capture_output=True, env=env, timeout=120)
                 with self.subTest(args=extra):
                     self.assertEqual(result.returncode, 0, result.stderr.decode("utf-8", errors="replace"))
                     text = result.stdout.decode("utf-8")
-                    self.assertIn("prerequisites" if extra else "не установлено", text)
+                    self.assertIn("prerequisites" if extra == ["--json"] else "не установлено", text)
 
 
 class RetryTests(unittest.TestCase):
@@ -484,3 +495,57 @@ class WindowsBuildEnvironmentTests(unittest.TestCase):
                         mock.patch.object(st.shutil, "which", return_value="C:/bin/pip.exe"):
                     st._run_steps([["pip", "install", "x"]], Path(root), lambda line: None)
                 self.assertIn(str(installer), popen.call_args.kwargs["env"]["PATH"])
+
+
+class FirstSetupTests(unittest.TestCase):
+    """A new person gets one short, free, recommended offer; nothing for other systems or about unpicked tools."""
+
+    def setUp(self):
+        scratch = TemporaryDirectory()
+        self.addCleanup(scratch.cleanup)
+        self.game = Path(scratch.name)
+        self.catalog = st.load_catalog()
+
+    def rows(self, platform="windows", installed=()):
+        def fake_detect(tool, *args, **kwargs):
+            return (tool["id"] in installed, "x")
+        with mock.patch.object(st, "platform_key", return_value=platform), \
+                mock.patch.object(st, "detect", side_effect=fake_detect), \
+                mock.patch.object(st, "check_prerequisite", return_value=(True, "ok")):
+            return st.status(self.catalog, self.game, "en")
+
+    def test_offer_is_short_free_and_for_this_system(self):
+        offer = [row["id"] for row in st.first_setup(self.rows())]
+        self.assertEqual(sorted(offer), ["chromium", "ffmpeg", "gh", "hindsight", "playwright"])
+        self.assertIn("godot", [row["id"] for row in st.first_setup(self.rows(), "godot")])
+        self.assertNotIn("godot", [row["id"] for row in st.first_setup(self.rows(), "web")])
+        self.assertNotIn("ffmpeg", [row["id"] for row in st.first_setup(self.rows(installed={"ffmpeg"}))])
+        for row in st.first_setup(self.rows(), "godot"):
+            self.assertEqual((row["cost"], row["who"]), ("free", "claude_yes"))
+
+    def test_tools_for_other_systems_are_not_available_here(self):
+        rows = {row["id"]: row for row in self.rows("windows")}
+        self.assertFalse(rows["kimodo"]["available_here"])
+        self.assertTrue({row["id"]: row for row in self.rows("linux")}["kimodo"]["available_here"])
+
+    def test_plain_status_is_short(self):
+        import contextlib
+        import io
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            st.print_status(self.rows(), "en")
+        lines = buffer.getvalue().splitlines()
+        self.assertNotIn("kimodo", buffer.getvalue())
+        self.assertNotIn("fal ", buffer.getvalue())
+        self.assertTrue(lines[-1].endswith("status --all"))
+        self.assertFalse(any(line.startswith("    ") for line in lines))  # no prerequisite lines without --details
+
+    def test_recommended_values_are_checked(self):
+        broken = copy.deepcopy(self.catalog)
+        broken["tools"][0]["recommended"] = ["unreal"]
+        with self.assertRaisesRegex(ValueError, "engine profiles"):
+            st.validate_catalog(broken)
+        broken = copy.deepcopy(self.catalog)
+        broken["tools"][0]["platforms"] = ["amiga"]
+        with self.assertRaisesRegex(ValueError, "platforms"):
+            st.validate_catalog(broken)

@@ -91,9 +91,9 @@ The [optional Mr. Mak setup](reference/mr-mak-workspace.md) covers desktop and m
 
 ### Memory (Hindsight)
 
-Long-term memory runs on [Hindsight](https://hindsight.vectorize.io) 1.2.2 (MIT) over MCP, as [DEC-024](../../issues/24) and [DEC-101](../../issues/102)–[DEC-104](../../issues/106) ask. It is not part of the plugin itself. Each game repository wires one MCP endpoint per bank (`memory` skill). Whether the server runs on the owner's PC or on a server is the owner's choice ([#150](../../issues/150)).
+Long-term memory runs on [Hindsight](https://hindsight.vectorize.io) 1.2.3 (MIT) over MCP, as [DEC-024](../../issues/24) and [DEC-101](../../issues/102)–[DEC-104](../../issues/106) ask. Every person runs their own server on their own computer (127.0.0.1 only), installed after their yes by `/gamedev-studio:setup-tools` and started at sign-in (`scripts/memory_server.py`). The plugin connects it to Claude in every session through its `memory` MCP server (`scripts/memory_mcp.py`), which stays connected when the server is down, starts it, and keeps one upstream endpoint per bank: the studio bank and the bank of the game the session runs in (`memory` skill).
 
-- `python scripts/hindsight_smoke.py` checks a running server and never deletes anything. It covers health, retain, project and MCP isolation, task scope, provenance, the MCP tools against the contract, persistence after a restart, and the MCP read tools. On the owner's PC on 19.11.2026 (run `s9a`), S1–S7 and S9 passed. S8 passed after both the API server and its embedded PostgreSQL were restarted.
+- `python scripts/hindsight_smoke.py` checks a running server and never deletes anything. It covers health, retain, project and MCP isolation, task scope, provenance, the MCP tools against the contract, persistence after a restart, and the MCP read tools. On the owner's PC, 1.2.2 passed on 19.11.2026 (run `s9a`) and 1.2.3 on 24.11.2026 (run `v123a`): S1–S9, S8 after a full restart.
 - `scripts/brief_piece.py` (`/gamedev-studio:brief-piece`) is the light Context Intelligence layer.
 - `scripts/mine_lessons.py` (`/gamedev-studio:mine-lessons`) is the light Learning and Improvement layer.
 

@@ -22,7 +22,8 @@ GH_AUTH_TIMEOUT = 8
 
 REMINDER = (
     "GameDev Studio project. Before any planning or implementation load the `gamedev-studio:studio-rules` skill "
-    "(binding owner decisions live in GitHub Issues; fetch them with gh). Report only commands you actually ran "
+    "(the plugin carries the studio's rules; with access to the studio repository it also reads the owner's decisions "
+    "with gh, and without access it works from the plugin alone, DEC-147). Report only commands you actually ran "
     "and their real results; never present invented tests or stubs as done (#16, #34). Work is not accepted "
     "without an independent review (#40). Hooks block direct commits/pushes to main (#1) and committing "
     "credential files (#9)."
@@ -67,9 +68,11 @@ def main() -> None:
     problems = preflight()
     if problems:
         warning = (
-            "GameDev Studio tool preflight FAILED: %s. Mandatory tool unavailable (#62, #129): any task that needs it "
-            "must stop and request recovery from the owner; do not silently substitute another tool or fake the "
-            "result. Only the affected task stops, other work may continue." % "; ".join(problems)
+            "GameDev Studio tool preflight FAILED: %s. Only a task that needs it waits (#62, #129); everything else goes on. "
+            "git and gh serve the game's own repository: its branches, Issues and pull requests, under the person's "
+            "own GitHub account. The studio's rules are in the plugin, so never ask for access to the studio "
+            "repository (DEC-147). Do not silently substitute another tool or fake a result; say what waits and why, "
+            "and ask the person once." % "; ".join(problems)
         )
         context = warning + "\n" + context
         out["systemMessage"] = warning

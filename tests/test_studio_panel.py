@@ -70,7 +70,7 @@ class PanelTests(unittest.TestCase):
         self.assertEqual(state["runs"], [])
 
     def test_actions_need_the_header_and_a_local_origin(self):
-        body = {"id": "hindsight", "key": "hindsight_url", "value": "http://127.0.0.1:8888"}
+        body = {"id": "chromium", "key": "chromium_path", "value": sys.executable}
         self.assertEqual(self.request("POST", "/api/tools/config", body)[0], 403)
         headers = {"X-Studio-Token": self.panel.token, "Origin": "https://evil.example"}
         self.assertEqual(self.request("POST", "/api/tools/config", body, headers)[0], 403)

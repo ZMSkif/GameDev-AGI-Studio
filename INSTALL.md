@@ -201,36 +201,21 @@ If the GitHub CLI is missing or not signed in, Claude Code warns `GameDev Studio
 
 Checked on a clean GitHub machine: after the folder was replaced, `claude plugin list` showed the new folder's version with no reinstall, and `python scripts/doctor.py` said "installed from this folder and enabled". No real session ran there after the update, and updating Codex was not checked. An update does not touch the games in `C:\Games`.
 
-## Hindsight memory (optional, only when the owner decides)
+## Hindsight memory (recommended)
 
-The plugin works without memory. The owner decides where and how the studio's memory runs, so follow these steps only when the owner says so.
+Everyone who installs the plugin has **their own** memory: the Hindsight server runs only on this computer (127.0.0.1) and keeps only your memory. There is no shared server: Hindsight has no password, so a shared one would expose everyone's memory. The plugin also works without memory, but with it agents keep the studio's and your game's lessons between sessions.
 
-> **Checked on a clean GitHub Actions machine** (Windows Server 2025), first on Python 3.12.10 and then on Python 3.13.17, the version step 4 installs. The commands of steps 1–3 passed:
-> - the install took about 5 minutes and 2.2 GB;
-> - the server started its own database, downloaded the models and answered `healthy`, with the database connected, after 35–52 seconds;
-> - `doctor.py --hindsight` showed ✅.
->
-> Fact extraction was not checked there, because nobody is signed in to Claude on that machine. On the owner's PC the server runs on Python 3.11.9 with `hindsight-api` 1.2.2.
+1. **[Claude → you]** In the game folder: `/gamedev-studio:setup-tools` and choose "Memory". After your yes Claude installs Hindsight 1.2.3, about 2.9 GB with its models, into `~\.gamedev-studio\tools\hindsight`. It needs Python 3.11 or newer (step 4) and no administrator rights.
+2. **[Claude → you]** Claude asks whether memory should **start automatically at Windows sign-in** (recommended). On yes it adds the startup entry "GameDevStudioMemory" for your user (no administrator rights; you see it in Task Manager > Startup apps); to remove it: `python scripts/memory_server.py autostart --off`.
+3. **[Claude]** First start: `python scripts/memory_server.py start --wait 600`. The first start downloads the search models from Hugging Face (`BAAI/bge-small-en-v1.5`, `hindsight-ai/hs-rerank-1`), which can take several minutes.
+4. **Nothing else to connect.** The plugin connects memory to Claude in every session (the `memory` MCP server): the studio bank everywhere and the bank of the game Claude runs in. If the server is not running yet, the first memory call starts it.
+5. **[Claude]** Check: `python scripts/memory_server.py status` and `python scripts/doctor.py --hindsight`.
 
-1. **[Claude → you]** Install, about 2 GB, after your yes. It needs Python 3.11 or newer:
-   ```powershell
-   python -m venv "$HOME\.hindsight-runtime"
-   & "$HOME\.hindsight-runtime\Scripts\python.exe" -m pip install hindsight-api==1.2.2
-   ```
-2. **[you] Start it in a separate PowerShell window.** The server runs while the window is open, and only on this PC (127.0.0.1). It extracts facts through your Claude subscription; the `claude-code` provider is documented for Pro and Max. No paid API is needed, but Claude Code must be installed and signed in.
-   ```powershell
-   $env:HINDSIGHT_API_LLM_PROVIDER = "claude-code"
-   $env:HINDSIGHT_API_HOST = "127.0.0.1"
-   $env:HINDSIGHT_API_PORT = "8888"
-   $env:HINDSIGHT_API_MODEL_INIT_TIMEOUT = "900"
-   $env:HINDSIGHT_API_MCP_ENABLED_TOOLS = "retain,recall,list_memories,get_memory,get_bank"
-   & "$HOME\.hindsight-runtime\Scripts\hindsight-api.exe" --host 127.0.0.1 --port 8888
-   ```
-   The first start downloads the search models from Hugging Face, `BAAI/bge-small-en-v1.5` and `hindsight-ai/hs-rerank-1`. That can take several minutes.
-3. **[Claude]** Check: `python scripts/doctor.py --hindsight`.
-4. **Connecting it to a game** is in section 2 of the `memory` skill.
+Facts are extracted by your Claude subscription (the `claude-code` provider, for Pro and Max): no paid API, but each memory uses a little of the subscription's limit, and Claude Code must be installed and signed in. While the server runs it uses about 1.6 GB of RAM and no GPU; it takes about 2.9 GB of disk in all (measured 24.11.2026).
 
-Only the studio owner deletes memory. Warning: the Hindsight server's REST DELETE routes are open without authorization, and only the rule in the `memory` skill keeps agents away from them.
+> **Checked on a clean GitHub Actions machine** (Windows Server 2025, Python 3.12 and 3.13): the install took about 5 minutes and 2.2 GB; the server set up its database, downloaded the models and answered `healthy` after 35–52 seconds. Fact extraction was not checked there, because nobody is signed in to Claude on that machine.
+
+Only the memory's owner deletes memory, by their own means. Warning: the Hindsight server's REST DELETE routes are open without authorization, and only the rule in the `memory` skill keeps agents off them.
 
 ## Troubleshooting
 

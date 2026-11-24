@@ -49,6 +49,7 @@ PLATFORM_KEYS = {"windows", "darwin", "linux"}
 PREREQ_CHECKS = {"which", "program_version", "python_version", "msvc", "platform", "nvidia_gpu", "tool", "manual"}
 PREREQ_WHO = {"claude_yes", "person"}
 PREREQ_FOR = ("install", "use")
+ENGINE_PROFILES = {"web", "godot"}
 TOKENS = {"{python}", "{game}", "{pip_user}", "{tools}"}
 REFERENCE_LEDGER = ".gamedev-studio-reference-only.json"
 LICENCE_URL = re.compile(r"^https://[^\s]+$")
@@ -86,7 +87,8 @@ TEXT = {
            "msvc_found": "C++ build tools in {p}", "met": "ready",
            "needs_install": "to install", "needs_use": "to use",
            "prereq_by_claude": "Claude after your yes: {c}", "prereq_by_person": "you: {m}",
-           "prereqs_missing": "{t} needs these first ({f}):"},
+           "prereqs_missing": "{t} needs these first ({f}):",
+           "more_tools": "{n} more optional tools: status --all"},
     "ru": {"installed": "установлено", "missing": "не установлено", "pending": "ждёт решения",
            "configured": "ключ сохранён", "no_key": "ключ не задан", "owner_only": "решение владельца",
            "found": "найдено: {p}", "commit_mismatch": "в папке другой коммит ({c})",
@@ -101,7 +103,8 @@ TEXT = {
            "msvc_found": "C++ Build Tools в {p}", "met": "есть",
            "needs_install": "для установки", "needs_use": "для работы",
            "prereq_by_claude": "Claude после вашего «да»: {c}", "prereq_by_person": "вы: {m}",
-           "prereqs_missing": "{t}: сначала нужно ({f}):"},
+           "prereqs_missing": "{t}: сначала нужно ({f}):",
+           "more_tools": "ещё {n} дополнительных инструментов: status --all"},
 }
 
 
@@ -210,6 +213,12 @@ def validate_catalog(data):
         for need in tool.get("requires", []):
             if need not in {other.get("id") for other in data["tools"]}:
                 raise ValueError(f"{tid}: requires unknown tool {need}")
+        recommended = tool.get("recommended", False)
+        if not (isinstance(recommended, bool) or (isinstance(recommended, list) and recommended
+                                                  and set(recommended) <= ENGINE_PROFILES)):
+            raise ValueError(f"{tid}: recommended is true, false or a list of engine profiles {sorted(ENGINE_PROFILES)}")
+        if not set(tool.get("platforms", [])) <= PLATFORM_KEYS:
+            raise ValueError(f"{tid}: platforms lists the systems the tool works on")
         if "requires_programs" in tool:
             raise ValueError(f"{tid}: requires_programs is replaced by prerequisites.install")
         needs = tool.get("prerequisites", {})
@@ -342,16 +351,17 @@ def known_program(patterns):
     """The newest existing file among the platform's known install paths (globs; %VAR% and ~ expanded).
 
     Installers such as winget's Blender MSI do not add the program to PATH, so PATH alone misses it."""
-    hits = []
-    for pattern in patterns:
+    for pattern in patterns:  # earlier patterns win; within one pattern the newest (last sorted) match
         expanded = os.path.expanduser(os.path.expandvars(pattern))
         if "%" in expanded:
             continue  # an environment variable this system does not have
         anchor = Path(expanded).anchor
         relative = expanded[len(anchor):] if anchor else expanded
         base = Path(anchor) if anchor else Path(".")
-        hits += [path for path in base.glob(relative.replace("\\", "/")) if path.is_file()]
-    return str(sorted(hits, key=lambda path: str(path))[-1]) if hits else None
+        hits = sorted((path for path in base.glob(relative.replace("\\", "/")) if path.is_file()), key=str)
+        if hits:
+            return str(hits[-1])
+    return None
 
 
 def find_program(names, known_paths=None):
@@ -1020,7 +1030,9 @@ def status(catalog, game, lang="en"):
             "gives": tool["gives"][lang], "cost": tool["cost"]["kind"],
             "cost_note": tool["cost"].get("note", {}).get(lang, ""), "account": bool(tool.get("account")),
             "licence": tool["licence"], "source": tool["source"], "who": tool["who"], "scope": tool["scope"],
-            "pending": tool.get("status") == "pending_decision", "recommended": bool(tool.get("recommended")),
+            "pending": tool.get("status") == "pending_decision", "recommended": tool.get("recommended") is True, "recommended_profiles": recommended_profiles(tool),
+            "available_here": not tool.get("platforms") or platform_key() in tool["platforms"],
+            "platforms": tool.get("platforms", []),
             "installed": installed, "detail": detail, "enabled": state.get("enabled", installed),
             "decision": state.get("decision", ""), "install_steps": command, "manual": manual_text(tool, lang),
             "commercial": tool.get("commercial", "ok"), "licence_note": tool.get("licence_note", {}).get(lang, ""),
@@ -1040,12 +1052,30 @@ def status(catalog, game, lang="en"):
     return rows
 
 
-def print_status(rows, lang):
+def recommended_profiles(tool):
+    """The engine profiles the tool is recommended for: every profile when recommended is true."""
+    value = tool.get("recommended", False)
+    return sorted(ENGINE_PROFILES) if value is True else list(value) if isinstance(value, list) else []
+
+
+def first_setup(rows, profile=None):
+    """The short first-setup offer: recommended for this game's profile, available here, free, not installed yet."""
+    return [row for row in rows if row["available_here"] and not row["installed"] and not row["pending"]
+            and row["cost"] == "free" and row["who"] == "claude_yes"
+            and (row["recommended"] or (profile and profile in row["recommended_profiles"]))]
+
+
+def print_status(rows, lang, show_all=False, details=False):
+    """Short by default: what is installed and what is recommended. --all lists the whole catalog; --details also
+    prints each shown tool's unmet prerequisites. A new person is never shown conditions of tools they did not pick."""
     text = TEXT[lang]
-    for row in rows:
+    shown = rows if show_all else [row for row in rows if row["installed"] or
+                                   (row["recommended"] and row["available_here"])]
+    for row in shown:
         mark = "✓" if row["installed"] else ("…" if row["pending"] else "·")
-        print(f"{mark} {row['id']:<28} {row['cost']:<7} {row['commercial_effective']:<14} {row['detail']}")
-        for pre in row["prerequisites"]:
+        detail = row["detail"] if row["available_here"] else text["platform_only"].format(p=", ".join(row["platforms"]))
+        print(f"{mark} {row['id']:<28} {row['cost']:<7} {row['commercial_effective']:<14} {detail}")
+        for pre in row["prerequisites"] if details else []:
             if pre["met"] is True:
                 continue
             sign = "?" if pre["met"] is None else "!"
@@ -1053,6 +1083,9 @@ def print_status(rows, lang):
             how = (text["prereq_by_claude"].format(c=pre["command"]) if pre["command"]
                    else text["prereq_by_person"].format(m=pre["manual"] or pre["why"]))
             print(f"    {sign} {label}: {pre['name']} — {pre['detail']}. {how}")
+    hidden = len(rows) - len(shown)
+    if hidden:
+        print(text["more_tools"].format(n=hidden))
 
 
 def readiness(catalog, game, tid, lang="en"):
@@ -1072,6 +1105,11 @@ def main(argv=None):
     commands = parser.add_subparsers(dest="command", required=True)
     show = commands.add_parser("status")
     show.add_argument("--json", action="store_true")
+    show.add_argument("--all", action="store_true", help="list the whole catalog, not only installed and recommended")
+    show.add_argument("--details", action="store_true", help="also list unmet prerequisites of the listed tools")
+    first = commands.add_parser("first-setup", help="the short recommended set to offer a new person")
+    first.add_argument("--profile", choices=sorted(ENGINE_PROFILES))
+    first.add_argument("--json", action="store_true")
     put = commands.add_parser("install")
     put.add_argument("id")
     put.add_argument("--yes", action="store_true", help="The person said yes to this exact command")
@@ -1112,7 +1150,16 @@ def main(argv=None):
             if args.json:
                 print(json.dumps({"game": str(game), "platform": platform_key(), "tools": rows}, ensure_ascii=False, indent=2))
             else:
-                print_status(rows, args.lang)
+                print_status(rows, args.lang, args.all, args.details)
+            return 0
+        if args.command == "first-setup":
+            offer = first_setup(status(catalog, game, args.lang), args.profile)
+            if args.json:
+                print(json.dumps([{key: row[key] for key in ("id", "name", "gives", "install_steps", "requirements")}
+                                  for row in offer], ensure_ascii=False, indent=2))
+            else:
+                for row in offer:
+                    print(f"· {row['name']}: {row['gives']}")
             return 0
         if args.command == "prereq":
             result = install_prerequisite(catalog, args.id, game, args.yes, on_line=print, lang=args.lang)
