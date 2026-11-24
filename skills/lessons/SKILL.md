@@ -43,11 +43,11 @@ A failure class is a candidate lesson only with **at least 2 independent occurre
 5. **Classify each change:**
    - **Safe, verified, non-creative** (DEC-106): a checklist line, a clearer instruction or a new validator test. Commit it on the branch without asking only after the validators and the tests pass, and name it in the report (DEC-100).
    - **Creative or design-changing:** a new rule, a changed gate, balance or style. Write it as a question to the owner, with options.
-6. **Ask.** Pushing the branch or opening a PR always needs the owner's yes, even for safe changes. This is the owner's rule for the memory round (19.11.2026, relayed by the coordinator), and it is stricter than DEC-106. It is recorded as `learning.push_or_pr_requires_owner_yes`. Creating an engineering task follows DEC-008 (#8).
+6. **Ask.** Pushing the branch or opening a PR always needs the owner's yes, even for safe changes. This studio rule (19.11.2026) is stricter than DEC-106. It is recorded as `learning.push_or_pr_requires_owner_yes`. Creating an engineering task follows DEC-008 (#8).
 
 ## Classes the miner knows
 
-They come from the Cat Challenge reviews. Add a class only when a review shows it twice:
+They come from the review archive of a shipped game. Add a class only when a review shows it twice:
 - primitive or mangled assets at the close-up;
 - colliders that do not match the mesh;
 - gate rules that step;
@@ -63,4 +63,4 @@ They come from the Cat Challenge reviews. Add a class only when a review shows i
 
 ## Source
 
-The Cat Challenge review archive (76 verdicts by 19.11.2026). A run of the miner on it kept 10 classes and dropped 2 below the guard. The stored copy is in the coordinator's notes, not in this repository.
+A real review archive of 76 verdicts (19.11.2026). A run of the miner on it kept 10 classes and dropped 2 below the guard.

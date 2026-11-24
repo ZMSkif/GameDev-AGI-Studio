@@ -17,11 +17,11 @@ Binding: DEC-094 (#95) every asset, sound, model and reference has a checkable o
 | Music | OpenGameArt CC0 loops; CC BY authors with a credit | Pixabay audio (many AI tracks), ElevenLabs, Suno, Udio |
 | 3D generators | — | Tripo, Meshy and similar: account and credits; output must be reworked (Playgama 4.3) |
 
-itch.io pages returned 403 to agents (16.11.2026). Which licence families a game may use is the owner's choice per game (Cat Challenge: CC0 and CC BY with a credit).
+itch.io pages returned 403 to agents (16.11.2026). Which licence families a game may use is the owner's choice per game (for example CC0 and CC BY with a credit).
 
 ## 2. Downloading
 
-- Ask the owner before downloading: name the files, source and size (Cat Challenge: list A approved, lists B and C only on a new yes).
+- Ask the owner before downloading: name the files, source and size (for example: list A approved now, lists B and C only on a new yes).
 - Put each download in its own new folder; treat archives and models as untrusted input (open models with automation off; never run scripts from inside them).
 - Write the registry row in the same change that brings the file in.
 
@@ -36,7 +36,7 @@ itch.io pages returned 403 to agents (16.11.2026). Which licence families a game
 ## 4. Credits and notices
 
 - Generate the Credits screen from the registry. CC BY needs author, licence and a "modified" mark; titles and source URLs may live in the shipped licence file (CC BY 4.0 §3(a)(2)). MIT texts go into one third-party notices file built from the installed packages and checked byte-equal at packaging.
-- Cat Challenge owner rule (18.11.2026): the developer credit first, others in small collapsible text; never list technologies or track titles. Keep titles and source URLs out of the code bundle too, and do not let shipped file names reveal track titles. Confirm this rule per game.
+- A proven default for credits: the developer credit first, others in small collapsible text; never list technologies or track titles. Keep titles and source URLs out of the code bundle too, and do not let shipped file names reveal track titles. Confirm this rule per game.
 - **Playgama Bridge (LGPL-3.0-or-later):** a separate unmodified SDK file, the LGPL-3.0 and GPL-3.0 texts, the exact version with a link to its sources, nothing that forbids replacing the library. Read the version from one place (`@playgama/bridge/package.json`).
 - Fonts: OFL fonts shipped inside the build with their licence; check glyph coverage for every language (`i18n-portal` skill).
 
@@ -50,7 +50,7 @@ itch.io pages returned 403 to agents (16.11.2026). Which licence families a game
 
 ## Source
 
-Cat Challenge `research/ASSET_SOURCES.md` (checked 16.11.2026), `STACK_PLAYBOOK.md` §6–7, `tools/merge-licenses.mjs`, `tools/make-third-party-notices.mjs`, `tools/bridge-version.mjs`, `game/e2e/release/licenses.mjs`, reviews 14, 17 and 37 of its `docs/reviews/`, and the owner's rules in its `OWNER_DECISIONS.md`.
+The asset-source research, licence-merging and third-party-notice scripts and the release reviews of the studio's first shipped web game (checked 16–18.11.2026).
 
 ## Reference-only outputs
 

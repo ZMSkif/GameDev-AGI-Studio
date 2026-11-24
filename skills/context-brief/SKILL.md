@@ -13,7 +13,7 @@ Binding: DEC-102 (#103) give an agent only relevant sources, with revision and p
 
 | Section | From | Prevents |
 |---|---|---|
-| Goal, Definition of done | the card; every acceptance line, each with `Test:` or `Shot:` evidence | Cat Challenge marked a board card done when only the mockup existed. Done now means the built game, and a line that points at a mockup is flagged |
+| Goal, Definition of done | the card; every acceptance line, each with `Test:` or `Shot:` evidence | A board card was once marked done when only the mockup existed. Done now means the built game, and a line that points at a mockup is flagged |
 | Owns / Reads | the card's Owns (a path marked "new" may not exist yet), expanded in the repository, plus the files they import | edits outside the piece; missing context |
 | Decisions | decision issues ranked by the card's words, always with DEC-001, DEC-016, DEC-040 | re-deciding what the owner decided |
 | Skills | plugin skills ranked by the card's words, always `studio-rules` | reinventing a solved procedure |
@@ -42,16 +42,10 @@ Binding: DEC-102 (#103) give an agent only relevant sources, with revision and p
 
 ## Source
 
-Cat Challenge:
-- `docs/city/CITY_PLAN.md` §11 (piece cards);
-- `docs/status/RESUME_2026-11-23.md` (CN1 notes, ports, the `runTraining` warning);
-- the owner's board rule (a card shows who built and who reviewed).
+The piece cards, resume notes and board rule (a card shows who built and who reviewed) of the studio's first shipped web game.
 
 `tests/test_brief_piece.py` tests these four failures, with the real card's shape and the real archive's note shapes.
 
-A run on the real CN1 card and the 76-file archive (19.11.2026, read only) found:
-- the three "For CN1:" notes in the CS1 review;
-- the four prose notes in the CS1 and CK2 reviews (plaza visit spots, `holding`, emotes, debounce);
-- other lines in the CK2 and CS1 reviews that name CN1.
+A run on a real card and a 76-file review archive (19.11.2026, read only) found every "For <ID>:" note, the prose notes in other pieces' reviews, and the other lines that name the piece.
 
 It flagged `stepId` and not `runTraining`, in 11 s.

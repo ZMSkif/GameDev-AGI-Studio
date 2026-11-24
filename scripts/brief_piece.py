@@ -18,7 +18,7 @@ Inputs:
   --out FILE          where to write the brief; it must be outside --repo-root (DEC-002: no
                       tracked brief or status files)
 
-It warns, in the brief, about what Cat Challenge learned the hard way:
+It warns, in the brief, about failures seen in real multi-agent game work:
   * a port range that overlaps one in use, even by one port (the brief is refused, exit 3);
   * a backticked name in the card that nothing in the repository defines or imports any more
     (a stale recipe); a mention in a comment or a string does not count, and every name it did find

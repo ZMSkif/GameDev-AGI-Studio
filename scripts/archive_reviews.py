@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Archive independent reviewer verdicts verbatim from Claude Code session transcripts.
 
-Generalised from the coordinator script of the Cat Challenge project, which kept its
-reviewers' verdicts in docs/reviews/ (orchestration-playbook skill). Stdlib only.
+Generalised from a coordinator script that kept a game's reviewer verdicts in
+docs/reviews/ (orchestration-playbook skill). Stdlib only.
 
 What it does:
   * reads one or more session transcripts (JSONL; a directory means every *.jsonl in it,
@@ -119,7 +119,7 @@ def texts_of(record: dict) -> list[str]:
 
     Tool results are not read: background agents report in message text, and a tool result
     can quote a notification-shaped block (a `cat` of a test fixture) that is no report.
-    On the Cat Challenge coordinator transcript every verdict was in message text.
+    On the coordinator transcripts this was built from, every verdict was in message text.
     """
     message = record.get("message") or {}
     content = message.get("content") if isinstance(message, dict) else None

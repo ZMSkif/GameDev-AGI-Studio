@@ -20,11 +20,11 @@ When an approved change involves effects, movement clips or sound, pair this ski
 
 ## 2. The feel gate
 
-The agent records game situations (platforms and jumps from them, hits, sliding contact, crowds, frame drops). **A human watches the recordings and decides**; a recording alone is no proof. The Cat Challenge owner's playtests found what tests did not: "the hit does not feel", "everything is plasticine", "cardboard stands", "the run carry is too long" after tiny steering touches.
+The agent records game situations (platforms and jumps from them, hits, sliding contact, crowds, frame drops). **A human watches the recordings and decides**; a recording alone is no proof. Real playtests found what tests did not: "the hit does not feel", "everything is plasticine", "cardboard stands", "the run carry is too long" after tiny steering touches.
 
 ## 3. One-hand touch control
 
-What the Cat Challenge owner settled after three playtests (18.11.2026); treat it as the proven default, and confirm per game:
+What three playtests of a shipped game settled (18.11.2026); treat it as the proven default, and confirm per game:
 - A floating joystick appears where the thumb lands and **stays there**; only the knob moves.
 - A quick tap jumps; a jump keeps the run direction (release the stick and tap at once → jump forward); a second finger also jumps.
 - The push is automatic on contact; no double-tap dash.
@@ -36,18 +36,18 @@ Check one-hand passability of every level with the `fair-bots-balance` procedure
 
 ## 4. Keyboard and pause
 
-- **Esc does nothing** (Playgama 1.5.2). Cat Challenge's keys, a sound default: WASD and arrows move, Space jumps, P pauses. Read `KeyboardEvent.code` so AZERTY works.
+- **Esc does nothing** (Playgama 1.5.2). A sound default for keys: WASD and arrows move, Space jumps, P pauses. Read `KeyboardEvent.code` so AZERTY works.
 - Any pause (platform, after an ad, a hidden tab, lost focus) shows a clear "Paused, tap to continue" screen; the game never just stands still. During the ad itself the ad covers the screen. Focus the card so Space or Enter resumes.
 - Popups have a ✕; every press has a sound; controls are at least 44 px (primary 48).
 
 ## 5. The first minute and teaching
 
-- **Play leads straight into the game:** no choices, no sign-in. Cat Challenge: a fresh player is in the first show right after `game_ready`; a returning player sees the menu (or the hub).
+- **Play leads straight into the game:** no choices, no sign-in. For example, a fresh player is in the first round right after `game_ready`; a returning player sees the menu (or the hub).
 - Teach inside the first match: a pictogram card with 2–4 words and a short demo with the game's real effects (the tile turns red and falls; the hammer hits), skippable, not affecting the match.
 - Teach **where and how**: hints before the places that need a jump, and a short lesson with practice right before the round that first needs it.
 - Hints advance on the real action; separate desktop (keys) and touch hints; the "seen" flag is saved.
-- Cat Challenge put a separate training mode behind a settings button.
+- A separate training mode can sit behind a settings button.
 
 ## Source
 
-Cat Challenge `OWNER_DECISIONS.md` (playtests 16.11, 17.11 and 18.11.2026), `gamekit/packages/fx/README.md`, `gamekit/packages/input/README.md`, `game/e2e/release/dev-input.mjs`, `docs/design/MASTER_PLAN.md` §6.1, and reviews 07, 08, 10, 26 and 56 of its `docs/reviews/`.
+Playtests (16–18.11.2026), the `fx` and `input` packages, the input e2e checks and independent reviews of the studio's first shipped web game.

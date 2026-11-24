@@ -39,10 +39,10 @@ The binding contract is `contracts/v1/game-production-policy.json` (`engine_prof
 
 ## Evidence words
 
-- **shipped**: present in the code of a build that players can open (Cat Challenge r17, published to the Playgama sandbox on 19.11.2026; not yet through moderation).
+- **shipped**: present in the code of a build that players can open (the studio's first web game, published to the Playgama sandbox on 19.11.2026; not yet through moderation).
 - **decided, not shipped**: agreed in a playbook but never imported by a shipped build. Say so when you recommend it.
 - **emulation**: a bench or a browser device profile. It is never a physical-device result (DEC-073, #74).
 
 ## Source
 
-Cat Challenge project, `STACK_PLAYBOOK.md` and `ENGINE_DECISION.md` (agreed by Claude, Codex and an advisor, 16.11.2026); the owner's answer «Оба профиля» (19.11.2026), recorded in that project's `OWNER_DECISIONS.md`; shipped imports checked in the game's code on 19.11.2026.
+The stack playbook and engine decision of the studio's first shipped web game (agreed by Claude, Codex and an advisor, 16.11.2026); the owner's decision to keep both profiles (19.11.2026, DEC-145); shipped imports checked in that game's code on 19.11.2026.
