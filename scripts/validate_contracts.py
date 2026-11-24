@@ -268,6 +268,10 @@ def validate_knowledge_policy(policy, tool_schema):
     check(backend.get("placement") in PLACEMENT_VALUES, f"{where}: placement must be one of {sorted(PLACEMENT_VALUES)}")
     if backend.get("placement") == "owner_decision_pending":
         check(backend.get("placement_task") == PLACEMENT_TASK, f"{where}: a pending placement must link {PLACEMENT_TASK}")
+    else:
+        check(isinstance(backend.get("placement_decision"), str)
+              and bool(re.fullmatch(re.escape(REPO_ISSUES) + r"[1-9][0-9]*", backend["placement_decision"])),
+              f"{where}: a chosen placement must link the owner's decision issue (placement_decision)")
     check("endpoint" not in backend and "url" not in backend,
           f"{where}: the endpoint is the owner's choice (task #150) and lives in each game's MCP config, not here")
     tools = set(backend.get("mcp_enabled_tools", []))

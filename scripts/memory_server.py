@@ -10,8 +10,8 @@ Usage:
   python scripts/memory_server.py status [--json]
   python scripts/memory_server.py start [--wait SECONDS]   start in the background unless it already answers
   python scripts/memory_server.py stop                     stop the server this script started (by its pid file)
-  python scripts/memory_server.py autostart --yes [--off]  start it at sign-in (Windows Task Scheduler,
-                                                            macOS LaunchAgent); --off removes it
+  python scripts/memory_server.py autostart --yes [--off]  start it at sign-in (Windows: the per-user Run
+                                                            key, no admin; macOS LaunchAgent); --off removes it
   python scripts/memory_server.py connect-game --yes [--game DIR]
                                                             add the game's project bank to its .mcp.json
 
@@ -40,7 +40,10 @@ STUDIO_BANK = "gamedev-studio::studio"
 PROJECT_BANK = "gamedev-studio::project::{repository}"
 # contracts/v1/knowledge-policy.json memory_backend.mcp_enabled_tools; a test keeps the two equal
 MCP_TOOLS = ["retain", "recall", "list_memories", "get_memory", "get_bank"]
-TASK_NAME = "GameDev Studio memory"
+# Windows: the per-user Run key starts it at sign-in without administrator rights (a Task Scheduler
+# ONLOGON task needs them); it shows in Task Manager > Startup apps, where the person can turn it off.
+RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
+RUN_VALUE = "GameDevStudioMemory"
 LAUNCH_AGENT = "com.gamedev-studio.memory"
 
 
@@ -131,10 +134,19 @@ def process_image(pid):
         return result.stdout.decode().strip() or None
 
 
+def run_key_value():
+    """The command in the per-user Run key, or None."""
+    import winreg
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY) as key:
+            return winreg.QueryValueEx(key, RUN_VALUE)[0]
+    except OSError:
+        return None
+
+
 def autostart_state():
     if sys.platform == "win32":
-        result = subprocess.run(["schtasks", "/Query", "/TN", TASK_NAME], capture_output=True, timeout=20, check=False)
-        return result.returncode == 0
+        return bool(run_key_value())
     if sys.platform == "darwin":
         return (Path.home() / "Library" / "LaunchAgents" / f"{LAUNCH_AGENT}.plist").is_file()
     return False
@@ -240,18 +252,19 @@ def autostart_command(launcher):
 
 def autostart(enable, out=print):
     if sys.platform == "win32":
-        if not enable:
-            result = subprocess.run(["schtasks", "/Delete", "/TN", TASK_NAME, "/F"], capture_output=True, timeout=30,
-                                    check=False)
-            out("autostart removed" if result.returncode == 0 else "no autostart task to remove")
-            return 0
-        launcher = launcher_copy()
-        argv = ["schtasks", "/Create", "/TN", TASK_NAME, "/SC", "ONLOGON", "/RL", "LIMITED", "/F",
-                "/TR", autostart_command(launcher)]
-        result = subprocess.run(argv, capture_output=True, timeout=30, check=False)
-        text = (result.stdout + result.stderr).decode("utf-8", errors="replace").strip()
-        out(text or ("autostart task created" if result.returncode == 0 else "schtasks failed"))
-        return 0 if result.returncode == 0 else 1
+        import winreg
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, RUN_KEY) as key:
+            if not enable:
+                try:
+                    winreg.DeleteValue(key, RUN_VALUE)
+                    out("autostart removed")
+                except OSError:
+                    out("no autostart entry to remove")
+                return 0
+            command = autostart_command(launcher_copy())
+            winreg.SetValueEx(key, RUN_VALUE, 0, winreg.REG_SZ, command)
+        out(f"autostart added (Windows sign-in, Task Manager > Startup apps): {command}")
+        return 0
     if sys.platform == "darwin":
         plist = Path.home() / "Library" / "LaunchAgents" / f"{LAUNCH_AGENT}.plist"
         if not enable:
@@ -353,6 +366,9 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
-    from console_io import prepare_console
-    prepare_console()
+    try:  # the autostart copy in ~/.gamedev-studio/memory runs without the plugin's console_io
+        from console_io import prepare_console
+        prepare_console()
+    except ImportError:
+        pass
     raise SystemExit(main())

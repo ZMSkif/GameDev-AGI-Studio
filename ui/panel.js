@@ -6,7 +6,7 @@
     const $ = (s, r = document) => r.querySelector(s);
     const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
     const fmt = (s, o) => s.replace(/\{(\w+)\}/g, (_, k) => o[k]);
-    let state = null, tab = "tools", filter = "all", selected = null, job = null;
+    let state = null, tab = "tools", filter = "recommended", selected = null, job = null;
 
     async function api(path, body) {
       const response = await fetch(path, body === undefined ? { cache: "no-store" } : {
@@ -28,6 +28,7 @@
     }
     function statusPill(tool) {
       if (tool.pending) return `<span class="pill" data-status="unverified">${esc(T.pending)}</span>`;
+      if (!tool.available_here && !tool.installed) return `<span class="pill" data-status="not_run">${esc(fmt(T.other_system, { p: tool.platforms.join(", ") }))}</span>`;
       return tool.installed ? `<span class="pill" data-status="passed">${esc(T.installed)}</span>` : `<span class="pill" data-status="not_run">${esc(T.missing)}</span>`;
     }
     function toolCard(tool) {
@@ -84,8 +85,9 @@
     }
     function toolsView() {
       const tools = state.tools;
-      const shown = tools.filter((t) => filter === "all" || (filter === "recommended" && t.recommended) ||
-        (filter === "missing" && !t.installed && !t.pending) || (filter === "paid" && t.cost !== "free"));
+      const recommendedHere = (t) => t.available_here && (t.recommended || t.installed);
+      const shown = tools.filter((t) => filter === "all" || (filter === "recommended" && recommendedHere(t)) ||
+        (filter === "missing" && !t.installed && !t.pending && t.available_here) || (filter === "paid" && t.cost !== "free"));
       const summary = fmt(T.summary, { installed: tools.filter((t) => t.installed).length, total: tools.length,
         paid: tools.filter((t) => t.cost === "paid").length, pending: tools.filter((t) => t.pending).length });
       const groups = state.groups.map((group) => {

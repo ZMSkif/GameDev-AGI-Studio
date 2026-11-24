@@ -95,7 +95,7 @@ Retain over MCP is asynchronous, so a recall right after it can come back empty.
 | `status [--json]` | installed, running, autostart, the studio bank's endpoint |
 | `start [--wait 600]` | starts it in the background unless it already answers; never a second copy, never over another program on port 8888 |
 | `stop` | stops only the process it started and recorded; the data stays |
-| `autostart --yes` / `--off` | start at sign-in: a Windows Task Scheduler task (no administrator rights) or a macOS LaunchAgent, running a copy of the script kept in `~/.gamedev-studio/memory` so plugin updates do not break it |
+| `autostart --yes` / `--off` | start at sign-in: the Windows per-user startup entry `GameDevStudioMemory` (no administrator rights; Task Manager > Startup apps) or a macOS LaunchAgent, running a copy of the script kept in `~/.gamedev-studio/memory` so plugin updates do not break it |
 
 Install (`studio_tools.py install hindsight --yes`) puts Hindsight in `~/.gamedev-studio/tools/hindsight`; an older `~/.hindsight-runtime` is still used. Data lives in the default embedded PostgreSQL instance (`~/.pg0`): never point a server at another instance, or memory looks empty. Before an upgrade, stop the server and copy `~/.pg0` aside.
 

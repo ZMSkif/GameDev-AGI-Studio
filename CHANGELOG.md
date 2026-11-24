@@ -2,6 +2,33 @@
 
 All notable changes to the `gamedev-studio` plugin. The version lives only in `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`, and a release tag `vX.Y.Z` must match it. From the next release on, each section is the release notes for its tag (see "Releases" in `README.md`). 0.1.0 and 0.2.0 were not tagged. The v0.3.0 release notes were written by hand, in Russian and English, before this file existed.
 
+## [0.11.0] - 2026-11-24
+
+### Added
+
+- **Memory is always on, and each person has their own** (DEC-148, #185). Hindsight 1.2.3 is now a recommended catalog tool that Claude installs after a yes, with no administrator rights. It runs only on the person's computer (127.0.0.1) and keeps only their memory.
+- `scripts/memory_server.py`:
+  - `status`;
+  - `start`: in the background, never a second copy, never over another program on port 8888;
+  - `stop`: only its own process;
+  - `autostart --yes` / `--off`: at sign-in, through the Windows per-user startup entry or a macOS LaunchAgent, from a copy kept outside the plugin folder.
+- `scripts/memory_mcp.py`, the plugin's `memory` MCP server, started with every Claude Code session (`.claude-plugin/plugin.json`):
+  - It is always connected, also when Hindsight is not installed or not running, and it starts the server.
+  - It keeps one upstream endpoint per bank: `studio_*` for the studio bank, `project_*` for the bank of the game the session runs in.
+  - It drops `bank_id`, `document_id` and `update_mode` from every call, so no call reaches another game's bank and none replaces earlier memories.
+- A short first setup: `studio_tools.py first-setup` offers only what everyone needs and Claude installs for free (browser QA, FFmpeg, GitHub CLI, memory; Godot for a Godot game). Plain `status` lists installed and recommended tools (`--all` for the rest, `--details` for prerequisites). Tools for another system (Kimodo: Linux) are not offered. The panel opens on "Recommended and installed".
+
+### Changed
+
+- `studio-setup` asks one question on a first setup. Conditions such as keys, registrations, other systems and build tools are named only for a tool the person picks, never as a list up front.
+- The game is the folder Claude was started in, with or without the `.gamedev-studio` marker; agents never switch to a temporary folder. The marker is added once on a yes.
+- The session hook no longer tells agents that `gh` is mandatory for the studio's decisions. The rules are in the plugin (DEC-147), and `gh` serves the game's own repository.
+- Memory contract: Hindsight 1.2.3, `placement: local` with its decision (DEC-148). The smoke test S1–S9 passed on 1.2.3; the evidence is on #150.
+
+### Fixed
+
+- Programs found in known folders: an earlier path in the catalog now wins over a later one, so the new memory runtime is preferred over `~/.hindsight-runtime`.
+
 ## [0.10.1] - 2026-11-24
 
 ### Changed

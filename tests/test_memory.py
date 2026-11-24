@@ -84,17 +84,33 @@ class ServerTests(unittest.TestCase):
         kill.assert_not_called()
 
     def test_autostart_runs_a_copy_outside_the_plugin(self):
-        with mock.patch.object(ms.sys, "platform", "win32"), \
-                mock.patch.object(ms.subprocess, "run", return_value=mock.MagicMock(returncode=0, stdout=b"ok", stderr=b"")) as run:
+        """Windows: the per-user Run key (no administrator rights); the copy runs without the plugin folder."""
+        fake = mock.MagicMock()
+        fake.HKEY_CURRENT_USER, fake.REG_SZ = "HKCU", 1
+        fake.CreateKey.return_value.__enter__.return_value = "key"
+        with mock.patch.object(ms.sys, "platform", "win32"), mock.patch.dict("sys.modules", {"winreg": fake}):
             self.assertEqual(ms.autostart(True, out=lambda line: None), 0)
-        argv = run.call_args.args[0]
-        self.assertEqual(argv[:4], ["schtasks", "/Create", "/TN", ms.TASK_NAME])
-        self.assertIn("ONLOGON", argv)
-        self.assertIn("LIMITED", argv)  # no administrator rights
+        fake.CreateKey.assert_called_once_with("HKCU", ms.RUN_KEY)
+        key, name, _, kind, command = fake.SetValueEx.call_args.args
+        self.assertEqual((key, name, kind), ("key", ms.RUN_VALUE, 1))
+        self.assertTrue(ms.RUN_KEY.startswith("Software\Microsoft\Windows\CurrentVersion\Run"))
         launcher = ms.state_dir() / "memory_server.py"
         self.assertTrue(launcher.is_file())
-        self.assertIn(str(launcher), argv[-1])
-        self.assertTrue(argv[-1].endswith(" start"))
+        self.assertIn(str(launcher), command)
+        self.assertTrue(command.endswith(" start"))
+        with mock.patch.object(ms.sys, "platform", "win32"), mock.patch.dict("sys.modules", {"winreg": fake}):
+            self.assertEqual(ms.autostart(False, out=lambda line: None), 0)
+        fake.DeleteValue.assert_called_once_with("key", ms.RUN_VALUE)
+
+    def test_autostart_copy_runs_alone(self):
+        import subprocess
+        launcher = self.home / "alone" / "memory_server.py"
+        launcher.parent.mkdir()
+        launcher.write_bytes((ROOT / "scripts" / "memory_server.py").read_bytes())
+        result = subprocess.run([sys.executable, str(launcher), "status", "--json"], capture_output=True, timeout=120,
+                                env={**__import__("os").environ, "GAMEDEV_STUDIO_HOME": str(self.home)})
+        self.assertEqual(result.returncode, 0, result.stderr.decode("utf-8", "replace"))
+        self.assertIn('"studio_bank"', result.stdout.decode("utf-8"))
 
     def test_repository_names(self):
         cases = {"https://github.com/acme/space-game.git": "space-game", "git@github.com:acme/space-game.git": "space-game",

@@ -588,7 +588,10 @@ class KnowledgePolicyRules(FixtureCase):
         self.assertEditFails(backend(known_limits=[""]), "known_limits must list")
         self.assertEditFails(backend(placement="anywhere"), "placement must be one of")
         self.assertEditFails(lambda p: self.backend(p).pop("placement"), "placement must be one of")
-        self.assertEditFails(backend(placement_task=vc.REPO_ISSUES + "1"), "a pending placement must link")
+        self.assertEditFails(backend(placement="owner_decision_pending", placement_task=vc.REPO_ISSUES + "1"),
+                             "a pending placement must link")
+        self.assertEditFails(lambda p: self.backend(p).pop("placement_decision"), "must link the owner's decision issue")
+        self.assertEditFails(backend(placement_decision="https://example.com/issues/1"), "must link the owner's decision issue")
         self.assertEditFails(backend(url="http://127.0.0.1:8888/mcp/"), "the endpoint is the owner's choice")
 
     def test_schema_types_and_extra_keys(self):

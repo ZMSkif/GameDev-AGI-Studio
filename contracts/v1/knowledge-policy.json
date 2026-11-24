@@ -28,7 +28,7 @@
       "capability_id": "hindsight-memory",
       "tool_kind": "mcp",
       "provider": "hindsight",
-      "version": "1.2.2",
+      "version": "1.2.3",
       "supported_actions": [
         "retain",
         "recall",
@@ -46,15 +46,14 @@
       ],
       "paid": false,
       "availability": "verified",
-      "last_verified_at": "2026-11-19T18:10:14Z",
-      "evidence_url": "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/150#issuecomment-7023344318",
+      "last_verified_at": "2026-11-24T00:00:00Z",
+      "evidence_url": "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/150#issuecomment-7118882390",
       "license": "MIT",
       "recovery_policy": "manual_recovery"
     },
-    "verified_environment": "local smoke test on the owner's Windows PC, embedded PostgreSQL, LLM via the owner's Claude subscription",
-    "verification_note": "local smoke test S1-S9 on the owner's PC, 2026-11-19 (S8 after a full restart), and a live lessons store; evidence posted on task #150",
-    "placement": "owner_decision_pending",
-    "placement_task": "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/150",
+    "verified_environment": "local server on the owner's Windows PC (127.0.0.1), embedded PostgreSQL, LLM via the owner's Claude subscription; one server per person (DEC-148)",
+    "verification_note": "local smoke test S1-S9 on the owner's PC with Hindsight 1.2.3, 2026-11-24 (S8 after a restart), plus end-to-end retain and recall through the plugin's memory MCP from separate sessions; evidence posted on task #150",
+    "placement": "local",
     "bank_naming": {
       "studio": "gamedev-studio::studio",
       "project": "gamedev-studio::project::{repository}",
@@ -81,7 +80,8 @@
       "the REST API's DELETE routes are open on the server without auth",
       "the server binds 0.0.0.0 unless HINDSIGHT_API_HOST is set",
       "a retain with an existing document_id replaces that document by default, so agents never pass document_id or update_mode"
-    ]
+    ],
+    "placement_decision": "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/185"
   },
   "storage_rules": {
     "store": [

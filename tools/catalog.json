@@ -653,6 +653,9 @@
       },
       "used_by": [
         "engine-profiles"
+      ],
+      "recommended": [
+        "godot"
       ]
     },
     {
@@ -812,7 +815,8 @@
       },
       "used_by": [
         "studio-rules"
-      ]
+      ],
+      "recommended": true
     },
     {
       "id": "codex",
@@ -1577,7 +1581,10 @@
           "linux",
           "nvidia-gpu-17gb"
         ]
-      }
+      },
+      "platforms": [
+        "linux"
+      ]
     },
     {
       "id": "mixar",
