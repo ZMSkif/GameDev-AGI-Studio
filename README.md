@@ -29,6 +29,7 @@ The skills cite the studio decisions they apply and link to their sources.
 | `playgama-release` | Bridge steps, requirement numbers, packaging, release gate, sandbox flow and the owner's gates |
 | `web-monetization` | ads, purchases, telemetry, KPIs, scenarios, live-ops |
 | `art-acceptance` | no primitives, tiers A/B/C, rework of blanks, icons, the wearables posed-fit gate |
+| `asset-catalog` | about 100 sources and 600+ packs of free assets with links, licences and how to get them |
 | `asset-licensing` | sources, the licence registry, credits, notices, audio processing |
 | `i18n-portal` | languages, validator, length and glyph checks, the ru/uk language review |
 | `fair-bots-balance` | fair bots, balance tests, determinism, crowd soaks |
