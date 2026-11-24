@@ -46,7 +46,7 @@
       ],
       "paid": false,
       "availability": "verified",
-      "last_verified_at": "2026-11-24T00:00:00Z",
+      "last_verified_at": "2026-11-24T00:59:14Z",
       "evidence_url": "https://github.com/ZMSkif/GameDev-AGI-Studio/issues/150#issuecomment-7118882390",
       "license": "MIT",
       "recovery_policy": "manual_recovery"
