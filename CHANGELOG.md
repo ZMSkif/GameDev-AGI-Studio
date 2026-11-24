@@ -48,7 +48,7 @@ All notable changes to the `gamedev-studio` plugin. The version lives only in `.
 ### Fixed
 
 - Windows: every script now writes UTF-8 to a pipe (`scripts/console_io.py`). `studio_tools.py status` crashed with `'charmap' codec can't encode character` in Claude's tools, so `/gamedev-studio:setup-tools` failed as shipped; Windows' own error texts (cp1251) broke two tests with `stderr` = None.
-- Windows: catalog paths that start with `{tools}` or `{game}` get the system's separators (no more `C:\...	ools/Motion2MixamoRig/.venv`).
+- Windows: catalog paths that start with `{tools}` or `{game}` get the system's separators (no more `C:\...\tools/Motion2MixamoRig/.venv`).
 - A half-finished install is no longer shown as installed: `detect.verify` (Motion2MixamoRig: the `m2mr` program in its venv) is checked by `status` and after each install.
 - Blender outside PATH (its MSI installer never adds it) is found in its install folder (`detect.known_paths`), in `status` and in `doctor.py`. Before, a Blender the person already had was reported as missing, and installing it ran winget's Blender MSI, which replaced the existing version (found 23.11.2026: 5.2 replaced by 5.3; settings in `%APPDATA%` are kept and can be loaded on first start).
 - An extensionless file on PATH (for example an empty `C:\Windows\System32\winget`) is no longer taken for the program; installs start the real `winget.exe`.
