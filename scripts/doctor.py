@@ -99,7 +99,7 @@ TEXT = {
         "fix_plugin_disabled": "Включите плагин: `claude plugin enable gamedev-studio@gamedev-studio`. Затем {restart}.",
         "fix_plugin_other": "Плагин подключён из другой папки. Запустите проверку из неё или обновите плагин по разделу «Обновление» руководства.",
         "fix_plugin_unreadable": "Посмотрите сами: `claude plugin list` должен показать gamedev-studio@gamedev-studio.",
-        "fix_hindsight": "Не обязательно: плагин работает без памяти. Включать её — только по решению владельца студии (раздел «Память Hindsight» руководства).",
+        "fix_hindsight": "Плагин работает и без памяти. Поставить: `/gamedev-studio:setup-tools` (раздел «Память Hindsight» руководства); запустить: `python scripts/memory_server.py start`.",
     },
     "en": {
         "title": "gamedev-studio: computer check (installs and changes nothing)",
@@ -146,7 +146,7 @@ TEXT = {
         "fix_plugin_disabled": "Enable the plugin: `claude plugin enable gamedev-studio@gamedev-studio`. Then {restart}.",
         "fix_plugin_other": "The plugin is connected from another folder. Run the check from that folder, or update the plugin as the guide's \"Updating\" says.",
         "fix_plugin_unreadable": "Look yourself: `claude plugin list` should show gamedev-studio@gamedev-studio.",
-        "fix_hindsight": "Optional: the plugin works without memory. Turn it on only when the studio owner decides so (the guide's \"Hindsight memory\" section).",
+        "fix_hindsight": "The plugin also works without memory. Install it with `/gamedev-studio:setup-tools` (the guide's \"Hindsight memory\" section); start it with `python scripts/memory_server.py start`.",
     },
 }
 
@@ -453,7 +453,7 @@ def check_hindsight(t, url):
         ok = isinstance(body, dict) and body.get("database") == "connected"
     except (urllib.error.URLError, OSError, ValueError):
         ok = False
-    return (True, t["healthy"], "", "") if ok else (False, t["unreachable"], t["fix_hindsight"], "you")
+    return (True, t["healthy"], "", "") if ok else (False, t["unreachable"], t["fix_hindsight"], "claude_yes")
 
 
 def checks(lang: str, repo: str, hindsight: str | None, github: bool = False) -> list[dict]:

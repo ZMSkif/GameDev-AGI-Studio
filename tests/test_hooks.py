@@ -847,7 +847,9 @@ class SessionStartHook(HookTestCase):
         text = out["hookSpecificOutput"]["additionalContext"]
         self.assertIn("preflight FAILED", text)
         self.assertIn("`gh` (GitHub CLI) was not found", text)
-        self.assertIn("stop and request recovery", text)
+        self.assertIn("Only a task that needs it waits", text)
+        self.assertIn("never ask for access to the studio repository (DEC-147)", text)
+        self.assertNotIn("request recovery from the owner", text)  # a person without studio access is not blocked
         self.assertIn("gamedev-studio:studio-rules", text)  # reminder still present
         self.assertIn("gh", out["systemMessage"])
         self.assertNotIn("decision", out)

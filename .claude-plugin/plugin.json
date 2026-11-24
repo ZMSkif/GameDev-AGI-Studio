@@ -7,5 +7,13 @@
     "url": "https://github.com/ZMSkif"
   },
   "repository": "https://github.com/ZMSkif/GameDev-AGI-Studio",
-  "homepage": "https://github.com/ZMSkif/GameDev-AGI-Studio"
+  "homepage": "https://github.com/ZMSkif/GameDev-AGI-Studio",
+  "mcpServers": {
+    "memory": {
+      "command": "${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd",
+      "args": [
+        "memory_mcp"
+      ]
+    }
+  }
 }

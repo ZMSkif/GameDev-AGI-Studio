@@ -190,38 +190,29 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Install hindsight-api 1.2.2 in a venv, as the guide's optional section says
-        shell: pwsh
-        run: |
-          python --version
-          python -m venv "$env:USERPROFILE\.hindsight-runtime"
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          & "$env:USERPROFILE\.hindsight-runtime\Scripts\python.exe" -m pip install --disable-pip-version-check hindsight-api==1.2.2
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          "{0:N0} MB" -f ((Get-ChildItem "$env:USERPROFILE\.hindsight-runtime" -Recurse -File | Measure-Object Length -Sum).Sum / 1MB)
-
-      - name: Start the server on 127.0.0.1 and wait for /health (no Claude sign-in on the runner)
+      - name: Install Hindsight with the plugin's own catalog command, as setup-tools does
         shell: pwsh
         env:
           PYTHONIOENCODING: utf-8
-          HINDSIGHT_API_LLM_PROVIDER: claude-code
-          HINDSIGHT_API_HOST: 127.0.0.1
-          HINDSIGHT_API_PORT: "8888"
-          HINDSIGHT_API_MODEL_INIT_TIMEOUT: "900"
-          HINDSIGHT_API_MCP_ENABLED_TOOLS: retain,recall,list_memories,get_memory,get_bank
         run: |
-          $exe = "$env:USERPROFILE\.hindsight-runtime\Scripts\hindsight-api.exe"
-          $p = Start-Process -FilePath $exe -ArgumentList "--host", "127.0.0.1", "--port", "8888" -PassThru `
-            -RedirectStandardOutput "$env:RUNNER_TEMP\hindsight.out" -RedirectStandardError "$env:RUNNER_TEMP\hindsight.err"
-          $start = Get-Date; $up = $false
-          while (((Get-Date) - $start).TotalSeconds -lt 1200 -and -not $p.HasExited) {
-            try { $h = Invoke-RestMethod http://127.0.0.1:8888/health -TimeoutSec 5; "health: $($h | ConvertTo-Json -Compress)"; if ($h.database -eq "connected") { $up = $true; break } } catch { }
-            Start-Sleep 15
-          }
-          "waited {0:N0} s; server exited: {1}" -f ((Get-Date) - $start).TotalSeconds, $p.HasExited
+          python --version
+          python scripts/studio_tools.py --game "$env:RUNNER_TEMP" install hindsight --yes
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          "{0:N0} MB" -f ((Get-ChildItem "$env:USERPROFILE\.gamedev-studio	ools\hindsight" -Recurse -File | Measure-Object Length -Sum).Sum / 1MB)
+
+      - name: Start it with memory_server.py and wait for /health (no Claude sign-in on the runner)
+        shell: pwsh
+        env:
+          PYTHONIOENCODING: utf-8
+        run: |
+          python scripts/memory_server.py start --wait 1200
+          $code = $LASTEXITCODE
+          python scripts/memory_server.py status
           python scripts/doctor.py --hindsight --lang en
+          "== the memory MCP lists its tools over stdio"
+          '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}', '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | python scripts/memory_mcp.py
           "== server log (last 60 lines)"
-          Get-Content "$env:RUNNER_TEMP\hindsight.out", "$env:RUNNER_TEMP\hindsight.err" -Tail 60 -ErrorAction SilentlyContinue
-          if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force }
-          if (-not $up) { throw "Hindsight did not answer /health with the database connected" }
+          Get-Content "$env:USERPROFILE\.gamedev-studio\memory\hindsight.log" -Tail 60 -ErrorAction SilentlyContinue
+          python scripts/memory_server.py stop
+          if ($code) { throw "Hindsight did not answer /health (memory_server.py start exit $code)" }
           exit 0

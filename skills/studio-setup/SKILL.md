@@ -9,7 +9,9 @@ Apply the `studio-rules` skill first. The single source of truth is [`tools/cata
 
 ## 1. See what is there
 
-From the game folder (the one with the `.gamedev-studio` marker):
+**Which folder is the game.** The game is the folder the person started Claude in (or its nearest parent with the `.gamedev-studio` marker). A folder without the marker is still the person's game: run the studio scripts there with `--game <that folder>`. Never switch to a temporary or empty folder instead, and never decide on your own that the game must not be touched: reading status and opening the panel change nothing in it. Ask once whether to add the marker (an empty `.gamedev-studio` file at the game's root) so the studio's hooks work there; add it only on yes. Only actions the person chooses (an install into the game, a key, a setting) write into the game folder.
+
+From the game folder:
 
 ```text
 python <plugin-root>/scripts/studio_tools.py status --json --lang ru
@@ -32,7 +34,8 @@ Rules for the answers:
 
 - A tool marked `commercial: non_commercial` gets the warning in the question itself ("for prototypes and reference; its files cannot ship in a game you sell"). It can be installed like any other `claude_yes` tool; read its `licence_gate` lines to the person, and after install remind them that every output is recorded with `studio_tools.py mark-reference` and blocked by the release report. `commercial_effective: licensed` or `owner_accepted` means the owner recorded a licence or chose to use the outputs at their own risk: then do not mark outputs or repeat the warning. The person switches this on in the panel or asks you to run `studio_tools.py accept-risk <tool>`; never switch it on without being asked.
 - Paid services (`cost: paid`): installing their free client is fine after a yes; every generation still needs the owner's yes on the Issue.
-- Owner tools (`who: owner`, for example memory): only the owner turns them on, with the GitHub link of the decision. Do not ask anyone else to decide.
+- Owner tools (`who: owner`): only the owner turns them on, with the GitHub link of the decision. Do not ask anyone else to decide.
+- **Memory (Hindsight) is recommended for everyone** and asked first on a first setup: each person gets their own local memory (see "Memory" below).
 - Tools with `pending_decision` are shown as waiting for their decision and never installed.
 
 ## 3. Install what was chosen
@@ -57,6 +60,16 @@ python <plugin-root>/scripts/studio_tools.py check <id> --json
 
 Exit code 0: installed and no `use` prerequisite is missing. Exit code 3: not ready; tell the person which rows are missing (`met: false`), who does each, and offer the install through this skill. `confirm_with_person` lists the rows only the person can confirm (`met: null`: an account, a key, a registration, an app the studio cannot see): ask about them once before the first use in a session, and never assume them.
 
+## Memory
+
+Memory is the person's own Hindsight server on this computer (the `memory` skill). After the person said yes to installing `hindsight`:
+
+1. Install it as any tool: `python <plugin-root>/scripts/studio_tools.py install hindsight --yes` (about 2 GB; Windows may ask nothing, it needs no administrator rights).
+2. Ask, as its own question, whether memory should start at sign-in, so it is ready whenever Claude starts (recommended). On yes: `python <plugin-root>/scripts/memory_server.py autostart --yes` (Windows Task Scheduler task "GameDev Studio memory", or a macOS LaunchAgent; `--off` removes it).
+3. Start it now: `python <plugin-root>/scripts/memory_server.py start --wait 600`. The first start downloads the search models and can take several minutes.
+4. Nothing else to wire: the plugin's `memory` MCP server is connected in every session and reaches the studio bank and the bank of the game the session runs in. New sessions see it; the current one already has it.
+5. Check: `python <plugin-root>/scripts/memory_server.py status`.
+
 ## 4. Keys and settings
 
 Never ask for a key in the chat and never print one. The person enters keys in the panel (Tools → the tool's card) or in their own terminal:
@@ -65,7 +78,7 @@ Never ask for a key in the chat and never print one. The person enters keys in t
 python <plugin-root>/scripts/studio_tools.py set-secret fal FAL_KEY
 ```
 
-The key goes to the game's `.env`, and `.env` is added to `.gitignore`. Non-secret settings (`chromium_path`, `hindsight_url`) use `studio_tools.py set <id> <key> <value>`.
+The key goes to the game's `.env`, and `.env` is added to `.gitignore`. Non-secret settings (`chromium_path`) use `studio_tools.py set <id> <key> <value>`.
 
 ## 5. Offer the panel
 

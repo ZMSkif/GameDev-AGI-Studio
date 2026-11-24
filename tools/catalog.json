@@ -855,42 +855,102 @@
       "group": "memory",
       "name": "Hindsight memory",
       "gives": {
-        "ru": "Долговременная память студии и проектов через MCP. Включается только по решению владельца.",
-        "en": "Long-term studio and project memory over MCP. Turned on only by the owner's decision."
+        "ru": "Долговременная память студии и каждой игры через MCP. Своя на каждом компьютере (только 127.0.0.1), включается сама при входе в систему и подключается к Claude при каждом запуске.",
+        "en": "Long-term memory for the studio and each game over MCP. Your own on each computer (127.0.0.1 only); it starts at sign-in and is connected to Claude in every session."
       },
       "cost": {
         "kind": "free"
       },
       "licence": "MIT",
       "source": "https://hindsight.vectorize.io",
-      "who": "owner",
-      "scope": "game",
+      "who": "claude_yes",
+      "scope": "machine",
       "detect": {
-        "type": "http_health",
-        "setting": "hindsight_url"
+        "type": "which",
+        "names": [
+          "hindsight-api"
+        ],
+        "known_paths": {
+          "windows": [
+            "~/.gamedev-studio/tools/hindsight/Scripts/hindsight-api.exe",
+            "~/.hindsight-runtime/Scripts/hindsight-api.exe"
+          ],
+          "darwin": [
+            "~/.gamedev-studio/tools/hindsight/bin/hindsight-api",
+            "~/.hindsight-runtime/bin/hindsight-api"
+          ],
+          "linux": [
+            "~/.gamedev-studio/tools/hindsight/bin/hindsight-api",
+            "~/.hindsight-runtime/bin/hindsight-api"
+          ]
+        }
       },
-      "config": [
-        {
-          "key": "hindsight_url",
-          "kind": "url",
-          "target": "settings",
-          "label": {
-            "ru": "Адрес сервера памяти (выдаёт владелец)",
-            "en": "Memory server URL (from the owner)"
-          }
-        }
-      ],
       "install": {
-        "manual": {
-          "ru": "Сервер ставит и включает владелец студии (skill memory, задача #150).",
-          "en": "The studio owner installs and enables the server (the memory skill, task #150)."
-        }
+        "windows": [
+          [
+            "{python}",
+            "-m",
+            "venv",
+            "{tools}/hindsight"
+          ],
+          [
+            "{tools}/hindsight/Scripts/python.exe",
+            "-m",
+            "pip",
+            "install",
+            "--upgrade",
+            "pip"
+          ],
+          [
+            "{tools}/hindsight/Scripts/python.exe",
+            "-m",
+            "pip",
+            "install",
+            "hindsight-api==1.2.3"
+          ]
+        ],
+        "all": [
+          [
+            "{python}",
+            "-m",
+            "venv",
+            "{tools}/hindsight"
+          ],
+          [
+            "{tools}/hindsight/bin/python",
+            "-m",
+            "pip",
+            "install",
+            "--upgrade",
+            "pip"
+          ],
+          [
+            "{tools}/hindsight/bin/python",
+            "-m",
+            "pip",
+            "install",
+            "hindsight-api==1.2.3"
+          ]
+        ]
       },
       "used_by": [
         "memory",
         "context-brief",
         "lessons"
-      ]
+      ],
+      "recommended": true,
+      "requirements": {
+        "ru": "Около 2 ГБ на диске и 1–2 ГБ памяти, пока сервер работает. При первом запуске он скачивает модели поиска (несколько минут). Факты из записей извлекает ваша подписка Claude (claude-code): каждая запись немного расходует её лимит, платный API не нужен. После установки Claude предложит автозапуск при входе в систему и подключение игры — каждое после вашего «да».",
+        "en": "About 2 GB of disk and 1–2 GB of RAM while the server runs. The first start downloads the search models (a few minutes). Facts are extracted by your Claude subscription (claude-code): each memory uses a little of its limit; no paid API. After the install Claude offers start at sign-in and connecting the game, each after your yes."
+      },
+      "prerequisites": {
+        "install": [
+          "python-3-11"
+        ],
+        "use": [
+          "claude-cli"
+        ]
+      }
     },
     {
       "id": "awesome-gamedev-agent-skills",
